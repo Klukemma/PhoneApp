@@ -1,57 +1,26 @@
-// Cache-first for the shell so the app opens instantly and works with no signal.
-// Bump CACHE whenever the shell changes — old caches are dropped on activate.
+// Retirement worker.
+//
+// CoinKeep used to be served from this path and registered a service worker
+// with scope /PhoneApp/ — which covers /PhoneApp/albion/ too. While that
+// registration lives, the installed CoinKeep captures the Albion app's URL and
+// Chrome will not install it separately. So this worker drops the old cache,
+// unregisters itself, and hands the pages back to the network.
 
-const CACHE = 'coinkeep-v1';
-const SHELL = [
-  './',
-  './index.html',
-  './manifest.webmanifest',
-  './css/app.css',
-  './js/app.js',
-  './js/views.js',
-  './js/sheets.js',
-  './js/store.js',
-  './js/budget.js',
-  './js/util.js',
-  './js/ui.js',
-  './icons/icon.svg',
-  './icons/icon-192.png',
-  './icons/icon-512.png',
-];
+const RETIRED_CACHE = 'coinkeep-v1';   // the old root-scoped shell
 
-self.addEventListener('install', (e) => {
-  e.waitUntil(
-    caches.open(CACHE)
-      // addAll rejects the whole batch if one file 404s, so add individually.
-      .then((c) => Promise.allSettled(SHELL.map((url) => c.add(url))))
-      .then(() => self.skipWaiting()),
-  );
+self.addEventListener('install', () => self.skipWaiting());
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil((async () => {
+    // Only the old cache — caches are shared per origin, and the apps in their
+    // new homes own the others.
+    await caches.delete(RETIRED_CACHE);
+    await self.registration.unregister();
+    for (const client of await self.clients.matchAll({ type: 'window' })) {
+      client.navigate(client.url).catch(() => {});
+    }
+  })());
 });
 
-self.addEventListener('activate', (e) => {
-  e.waitUntil(
-    caches.keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
-      .then(() => self.clients.claim()),
-  );
-});
-
-self.addEventListener('fetch', (e) => {
-  const { request } = e;
-  if (request.method !== 'GET' || new URL(request.url).origin !== self.location.origin) return;
-
-  e.respondWith(
-    caches.match(request).then((hit) => {
-      // Serve the cache immediately, then quietly refresh it for next launch.
-      const network = fetch(request).then((res) => {
-        if (res && res.status === 200) {
-          const copy = res.clone();
-          caches.open(CACHE).then((c) => c.put(request, copy));
-        }
-        return res;
-      }).catch(() => hit || caches.match('./index.html'));
-
-      return hit || network;
-    }),
-  );
-});
+// Until the unregister lands, stay out of the way.
+self.addEventListener('fetch', () => {});

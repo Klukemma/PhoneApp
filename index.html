@@ -2,49 +2,77 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
-<title>CoinKeep</title>
-<meta name="description" content="Daily spending limit that keeps you on track for your savings goal.">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Apps</title>
 <meta name="theme-color" content="#0b0d11">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
-<link rel="apple-touch-icon" href="icons/icon-180.png">
-<link rel="stylesheet" href="css/app.css">
+<link rel="icon" href="./coinkeep/icons/icon.svg" type="image/svg+xml">
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0; min-height: 100vh; background: #0b0d11; color: #eef1f6;
+    font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
+    display: flex; flex-direction: column; justify-content: center;
+    padding: calc(env(safe-area-inset-top, 0px) + 28px) 20px
+             calc(env(safe-area-inset-bottom, 0px) + 28px);
+  }
+  main { width: 100%; max-width: 420px; margin: 0 auto; }
+  h1 { font-size: 20px; font-weight: 650; letter-spacing: -.3px; margin: 0 0 6px; }
+  .lede { color: #9aa3b2; font-size: 13.5px; margin: 0 0 22px; }
+  a.app {
+    display: flex; align-items: center; gap: 14px; text-decoration: none; color: inherit;
+    background: #171b24; border: 1px solid #262c38; border-radius: 18px;
+    padding: 16px; margin-bottom: 12px;
+  }
+  a.app:active { background: #1f2430; }
+  a.app img { width: 46px; height: 46px; border-radius: 13px; flex: 0 0 46px; }
+  .t { font-size: 16px; font-weight: 620; }
+  .d { font-size: 12.5px; color: #8b94a4; margin-top: 2px; }
+  .go { margin-left: auto; color: #626d80; font-size: 20px; }
+  .tip {
+    margin-top: 20px; font-size: 12.5px; color: #8b94a4; background: #12151c;
+    border: 1px solid #262c38; border-radius: 14px; padding: 13px 15px;
+  }
+  .tip b { color: #eef1f6; font-weight: 600; }
+</style>
 </head>
 <body>
-<div id="app">
-  <header class="topbar">
-    <div>
-      <h1 id="viewTitle">Today</h1>
-      <div class="sub" id="viewSub"></div>
-    </div>
-    <div class="spacer"></div>
-    <button class="balance" id="balanceBtn">
-      <div class="k">Balance</div>
-      <div class="v num" id="balanceVal">—</div>
-    </button>
-    <button id="gearBtn" aria-label="Settings" style="font-size:20px;opacity:.65;padding:6px">⚙️</button>
-  </header>
+<main>
+  <h1>Apps</h1>
+  <p class="lede">Open one, then use Chrome&rsquo;s <b>&#8942; &rarr; Add to Home screen</b>
+     to install it on its own.</p>
 
-  <main id="view"></main>
+  <a class="app" href="./coinkeep/">
+    <img src="./coinkeep/icons/icon-192.png" alt="">
+    <span><span class="t">CoinKeep</span>
+      <span class="d">What can I spend today and still hit my savings goal?</span></span>
+    <span class="go">&rsaquo;</span>
+  </a>
 
-  <button class="fab" id="fab" aria-label="Add an expense">+</button>
+  <a class="app" href="./albion/">
+    <img src="./albion/icons/icon-192.png" alt="">
+    <span><span class="t">Albion Farm Profit</span>
+      <span class="d">What does farming and crafting actually earn?</span></span>
+    <span class="go">&rsaquo;</span>
+  </a>
 
-  <nav id="nav">
-    <button data-view="today" aria-current="page"><span class="e">🎯</span>Today</button>
-    <button data-view="log"><span class="e">🧾</span>Log</button>
-    <span class="gap"></span>
-    <button data-view="bills"><span class="e">🔁</span>Bills</button>
-    <button data-view="stats"><span class="e">📊</span>Stats</button>
-  </nav>
-</div>
-
-<div class="scrim" id="scrim"></div>
-<div class="sheet" id="sheet" role="dialog" aria-modal="true"></div>
-<div class="toast" id="toast"><span id="toastMsg"></span><button id="toastAction" class="hide"></button></div>
-
-<script type="module" src="js/app.js"></script>
+  <p class="tip">Each app installs separately, with its own icon. Install them from
+     <b>this page</b> rather than from a shared link, so Chrome treats them as two
+     different apps.</p>
+</main>
+<script type="module">
+  // Retire the old service worker that used to own this whole path. Until it
+  // goes, it keeps claiming /albion/ and Chrome will not install that app.
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+  // CoinKeep used to live here, so an existing install opens this page.
+  // Send it straight on to where CoinKeep moved.
+  const installed = matchMedia('(display-mode: standalone)').matches ||
+    navigator.standalone === true;
+  if (installed && !new URLSearchParams(location.search).has('stay')) {
+    location.replace('./coinkeep/');
+  }
+</script>
 </body>
 </html>

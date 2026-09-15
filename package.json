@@ -5,7 +5,7 @@
   "type": "module",
   "description": "Two offline phone apps: CoinKeep (personal budgeting) and Albion Farm Profit.",
   "scripts": {
-    "test": "node --test tests/*.test.mjs albion/tests/*.test.mjs",
+    "test": "node --test coinkeep/tests/*.test.mjs albion/tests/*.test.mjs",
     "start": "node tools/serve.mjs",
     "gamedata": "python3 albion/tools/build_gamedata.py"
   },

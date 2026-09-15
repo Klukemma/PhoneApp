@@ -47,10 +47,13 @@ jobs:
       # Publish only what the app needs — not .git, tests or tooling.
       - name: Stage the site
         run: |
-          mkdir -p _site/albion
-          cp -r index.html manifest.webmanifest sw.js css js icons _site/
-          cp -r albion/index.html albion/manifest.webmanifest albion/sw.js \
-                albion/css albion/js albion/icons albion/data _site/albion/
+          mkdir -p _site
+          cp index.html sw.js _site/
+          cp -r coinkeep _site/coinkeep
+          cp -r albion _site/albion
+          # Source-only bits that should not be published.
+          rm -rf _site/coinkeep/tests _site/albion/tests _site/albion/tools
+          rm -f _site/coinkeep/README.md _site/albion/README.md
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
