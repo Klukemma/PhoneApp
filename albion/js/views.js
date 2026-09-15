@@ -1,8 +1,8 @@
 // The four screens. Each returns { title, sub, html }.
 
 import {
-  animalCycle, craftBatch, perPeriod, planTotals, plantCycle, productCycle,
-  rankFarmables, rankRecipes, returnRate,
+  animalCycle, cityFor, craftBatch, perPeriod, planTotals, plantCycle,
+  productCycle, rankFarmables, rankRecipes, returnRate,
 } from './calc.js';
 import { DATA, priceOf, state } from './store.js';
 import { esc } from './ui.js';
@@ -143,13 +143,15 @@ function planLine(line) {
 
 function craftLine(line) {
   const { cycle, rate, row } = line;
+  const where = cycle.city
+    ? `${cycle.city.name}${cycle.bonus.specialises ? ' +bonus' : ''}` : '';
   return `
     <button class="row" data-craft="${esc(row.id)}">
       <span class="ico">${EMOJI[cycle.ref.category] || EMOJI.potion}</span>
       <span class="body">
         <span class="title">T${cycle.ref.tier} ${esc(cycle.ref.name)} ×${row.craftsPerDay}/day</span>
-        <span class="meta">${short(cycle.profit)} per craft · ${pct(cycle.rrr)} returned
-          ${cycle.focus ? `· ${short(rate.focusPerDay)} focus/day` : ''}</span>
+        <span class="meta">${esc(where)} · ${pct(cycle.rrr)} returned${cycle.focus
+          ? ` · ${Math.round(cycle.focus)} focus at ${cycle.spec} mastery` : ''}</span>
       </span>
       <span class="amt num ${toneOf(rate.perMonth)}">${short(rate.perMonth)}</span>
     </button>`;
@@ -186,7 +188,7 @@ export function rank() {
     title: 'Best',
     sub: rankTab === 'farm'
       ? `Per plot per day · ${s.watered ? 'watered' : 'unwatered'}`
-      : `Per craft · ${s.useFocus ? 'with focus' : 'no focus'}`,
+      : `In ${cityFor(s)?.name || '\u2014'} · ${s.useFocus ? 'with focus' : 'no focus'}`,
     html: `
       <section>
         <div class="seg">
@@ -206,8 +208,8 @@ export function rank() {
           : `
             <button class="mini" data-toggle="useFocus" aria-pressed="${s.useFocus}">
               Use focus</button>
-            <button class="mini" data-toggle="citySpecialty" aria-pressed="${s.citySpecialty}">
-              City bonus</button>
+            <button class="mini" data-act="craft-city">
+              ${esc(cityFor(s)?.name || 'Pick a city')} ▾</button>
             <button class="mini" data-toggle="ownInputsAtCost" aria-pressed="${!!s.ownInputsAtCost}">
               Inputs from my farm</button>`}
         </div>
@@ -420,11 +422,17 @@ export function detailHTML(cycle, rate) {
       line(`${i.count} × ${nameOf(i.id)}`, short(-i.total), 'bad');
     }
     line('Materials', short(-cycle.materials), 'bad');
+    if (cycle.city) {
+      line(`In ${cycle.city.name}`, cycle.bonus.specialises
+        ? `+${cycle.bonus.base} base, +${cycle.bonus.specialty} specialty`
+        : `+${cycle.bonus.base} base, no specialty`);
+    }
+    if (cycle.focus) line('Focus bonus', `+${s.focusCraftBonus}`);
     line(`Returned (${pct(cycle.rrr)})`, short(cycle.materials - cycle.materialsAfterReturn), 'good');
     line('Net materials', short(-cycle.materialsAfterReturn), 'bad');
     if (cycle.fees) line('Fees', short(-cycle.fees), 'bad');
     line(`Sale of ${cycle.ref.amount} after tax`, short(cycle.revenue), 'good');
-    if (cycle.focus) line('Focus', short(cycle.focus));
+    if (cycle.focus) line(`Focus at ${cycle.spec} mastery`, short(cycle.focus));
     if (cycle.silverPerFocus != null) line('Silver per focus', short(cycle.silverPerFocus), 'good');
   }
 

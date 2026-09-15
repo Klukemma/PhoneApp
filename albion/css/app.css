@@ -237,3 +237,9 @@ nav button[aria-current="page"] .e { filter: none; opacity: 1; }
 .toast button { color: var(--gold); font-weight: 650; font-size: 13px; }
 
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+/* Mastery editor: a compact number box on the right of each recipe row. */
+.spec-input {
+  width: 62px; min-height: 38px; flex: 0 0 62px; padding: 8px 6px;
+  text-align: center; font-size: 14px; border-radius: 10px;
+}

@@ -81,13 +81,41 @@ simply stack. The defaults reproduce the figures players see in game:
 | Specialty city + focus | 18 + 15 + 59 | 47.9% |
 | Refining specialty + focus | 18 + 40 + 59 | 53.9% |
 
+### Cities
+
+The specialty bonus only applies when the city actually specialises in what you
+are making, so you pick the city and the app works out the rest. Of this app's
+two craft categories:
+
+| Category | Bonus city | Everywhere else |
+| --- | --- | --- |
+| Potions | **Brecilien** (+18 base, +15 specialty) | +18 base only |
+| Cooked food | **Caerleon** (+18 base, +15 specialty) | +18 base only |
+
+The five royal cities specialise in weapons, armour and refining, so for
+potions and food they give the base and nothing more. Brewing a T4 healing
+potion with focus returns 47.9% of materials in Brecilien but 43.5% in
+Martlock — worth several hundred silver a craft, so it is worth getting right.
+
+Set your usual city under **⚙️ Setup → Craft in…**, and override it per job by
+tapping that job on the Plan screen. The Best screen costs everything in the
+city shown in its header.
+
+### Mastery
+
+Albion specialises per item line, not globally, so mastery is set per recipe:
+**⚙️ Setup → Mastery per recipe**, or on a job directly. Focus cost falls by the
+constant from the game files and is exactly halved at mastery 100 — a T4
+healing potion drops from 210 focus to 105, which doubles the silver you get
+per point of focus. Recipes you have not set use your default level.
+
 **Not everything is published in the dumps.** The city base bonus (+18), the
-crafting specialty bonus (+15), focus regeneration (10,000/day) and market tax
-(6.5% with premium, 10.5% without) are community-sourced and cross-checked
-against the return rates above. Every one of them is editable under
-**⚙️ Setup → Game numbers**, so when a patch moves them you fix it yourself
-rather than waiting for me. For potions the specialty cities are **Caerleon**
-and **Brecilien**.
+crafting specialty bonus (+15), which cities hold which specialty, focus
+regeneration (10,000/day) and market tax (6.5% with premium, 10.5% without) are
+community-sourced and cross-checked against the return rates above. Every one
+of them is editable under **⚙️ Setup → Game numbers**, so when a patch moves
+them you fix it yourself rather than waiting for me. In game, a station's real
+bonus is on the city map — the yellow triangle under the resource icons.
 
 ### One assumption worth knowing
 
@@ -112,8 +140,10 @@ baby, and the sale of the grown animal is taxed. Kept for eggs or milk instead,
 it produces every 22 hours and keeps eating, so upkeep is charged per harvest.
 
 **A craft.** Materials are charged at `(1 − return rate)`, because the rest
-comes back. With focus on, the app also reports silver per focus and tells you
-how many crafts a day your focus budget covers.
+comes back. The return rate comes from the city you chose for that job plus the
+focus bonus, and the focus cost comes from your mastery in that specific
+recipe. With focus on, the app also reports silver per focus and tells you how
+many crafts a day your focus budget covers.
 
 **Per month.** Crops ripen in 22 hours, but the default assumes you harvest
 every 24 — the honest cadence for someone logging in once a day. Set it to 22
@@ -128,7 +158,7 @@ actually pay on the buy side.
 
 ```bash
 npm start      # http://localhost:8080/albion/
-npm test       # 24 tests over the profit engine and the extracted data
+npm test       # 32 tests over the profit engine and the extracted data
 npm run gamedata
 ```
 

@@ -4,8 +4,9 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
 import {
-  animalCycle, craftBatch, focusCostAt, perPeriod, planTotals, plantCycle,
-  productCycle, rankRecipes, returnRate, taxRate,
+  animalCycle, cityBonus, cityFor, craftBatch, focusCostAt, perPeriod,
+  planTotals, plantCycle, productCycle, rankRecipes, returnRate, specFor,
+  taxRate,
 } from '../js/calc.js';
 
 const data = JSON.parse(
@@ -20,7 +21,7 @@ const ctx = (prices = {}, over = {}) => ({
   settings: {
     ...data.constants,
     premium: true, watered: false, favouriteFood: true, useFocus: false,
-    citySpecialty: false, specLevel: 0, cadenceHours: 24,
+    craftCity: 'martlock', spec: {}, specLevel: 0, cadenceHours: 24,
     stationFeePerCraft: 0, feedItemId: 'T3_WHEAT',
     ...over,
   },
@@ -160,7 +161,7 @@ test('focus and the city bonus both cut the material bill', () => {
 
   const plain = craftBatch(r, ctx(p));
   const focus = craftBatch(r, ctx(p, { useFocus: true }));
-  const both = craftBatch(r, ctx(p, { useFocus: true, citySpecialty: true }));
+  const both = craftBatch(r, { ...ctx(p, { useFocus: true }), cityId: 'brecilien' });
 
   assert.equal(plain.materials, 24 * 500 + 6 * 300);          // 13800
   assert.equal(Math.round(plain.rrr * 1000) / 10, 15.3);
@@ -288,4 +289,111 @@ test('a row with an unpriced input is reported, not silently valued at zero', as
   // With it priced, the same call turns a profit.
   const full = animalCycle(chick, ctx({ ...priced, 'T3_FARM_CHICKEN_GROWN': 11500, 'T3_FARM_CHICKEN_BABY': 5000 }));
   assert.ok(full.profit > 0);
+});
+
+/* ------------------------------------------------- city, per category -- */
+
+test('a city only boosts the categories it actually specialises in', () => {
+  const s = ctx({}).settings;
+  const brecilien = cityFor(s, 'brecilien');
+  const caerleon = cityFor(s, 'caerleon');
+  const martlock = cityFor(s, 'martlock');
+
+  // Brecilien is the potion city, Caerleon the food city.
+  assert.equal(cityBonus(brecilien, 'potion', s).total, 18 + 15);
+  assert.equal(cityBonus(brecilien, 'food', s).total, 18);
+  assert.equal(cityBonus(caerleon, 'food', s).total, 18 + 15);
+  assert.equal(cityBonus(caerleon, 'potion', s).total, 18);
+  // Royal cities specialise in weapons and armour, so neither applies.
+  assert.equal(cityBonus(martlock, 'potion', s).total, 18);
+  assert.equal(cityBonus(martlock, 'food', s).total, 18);
+  assert.equal(cityBonus(martlock, 'potion', s).specialises, false);
+});
+
+test('brewing a potion outside Brecilien loses the specialty', () => {
+  const r = recipe('T4_POTION_HEAL');
+  const p = { 'T4_BURDOCK': 500, 'T3_EGG': 300, 'T4_POTION_HEAL': 2000 };
+  const base = { ...ctx(p, { useFocus: true }) };
+
+  const brec = craftBatch(r, { ...base, cityId: 'brecilien' });
+  const mart = craftBatch(r, { ...base, cityId: 'martlock' });
+
+  assert.equal(Math.round(brec.rrr * 1000) / 10, 47.9);   // 18 + 15 + 59
+  assert.equal(Math.round(mart.rrr * 1000) / 10, 43.5);   // 18 + 59
+  assert.ok(brec.profit > mart.profit);
+  assert.equal(brec.city.id, 'brecilien');
+  assert.equal(mart.bonus.specialises, false);
+});
+
+test('food gets its bonus in Caerleon, not Brecilien', () => {
+  const food = data.recipes.find((x) => x.category === 'food' && x.focus > 0);
+  const base = { ...ctx({}, { useFocus: true }) };
+  const caer = craftBatch(food, { ...base, cityId: 'caerleon' });
+  const brec = craftBatch(food, { ...base, cityId: 'brecilien' });
+  assert.equal(caer.bonus.specialises, true);
+  assert.equal(brec.bonus.specialises, false);
+  assert.ok(caer.rrr > brec.rrr);
+});
+
+test('an unknown city falls back rather than producing NaN', () => {
+  const r = recipe('T4_POTION_HEAL');
+  const b = craftBatch(r, { ...ctx({}), cityId: 'atlantis' });
+  assert.ok(Number.isFinite(b.rrr));
+  assert.ok(Number.isFinite(b.profit));
+});
+
+/* ------------------------------------------------------------ mastery -- */
+
+test('mastery is per recipe, falling back to the default', () => {
+  const s = { spec: { T4_POTION_HEAL: 80 }, specLevel: 20 };
+  assert.equal(specFor(s, 'T4_POTION_HEAL'), 80);
+  assert.equal(specFor(s, 'T6_POTION_HEAL'), 20);
+  assert.equal(specFor({ specLevel: 0 }, 'anything'), 0);
+});
+
+test("a recipe's own mastery drives its focus cost", () => {
+  const r = recipe('T4_POTION_HEAL');          // 210 focus at spec 0
+  const p = { 'T4_BURDOCK': 400, 'T3_EGG': 300, 'T4_POTION_HEAL': 2500 };
+
+  const raw = craftBatch(r, { ...ctx(p, { useFocus: true }) });
+  const spec100 = craftBatch(r, { ...ctx(p, { useFocus: true }), specLevel: 100 });
+  const viaMap = craftBatch(r, ctx(p, { useFocus: true, spec: { T4_POTION_HEAL: 100 } }));
+
+  assert.equal(Math.round(raw.focus), 210);
+  assert.equal(Math.round(spec100.focus), 105);          // halved at 100
+  assert.equal(Math.round(viaMap.focus), 105);           // same, set per recipe
+  assert.equal(spec100.spec, 100);
+  // Focus buys the same return rate either way, so silver per focus doubles.
+  assert.equal(spec100.rrr, raw.rrr);
+  assert.ok(spec100.silverPerFocus > raw.silverPerFocus * 1.9);
+});
+
+test('mastery on one recipe does not leak into another', () => {
+  const p = { 'T4_BURDOCK': 400, 'T3_EGG': 300, 'T4_POTION_HEAL': 2500 };
+  const c = ctx(p, { useFocus: true, spec: { T4_POTION_HEAL: 100 }, specLevel: 0 });
+  const healed = craftBatch(recipe('T4_POTION_HEAL'), c);
+  const other = craftBatch(recipe('T4_POTION_ENERGY'), c);
+  assert.equal(healed.spec, 100);
+  assert.equal(other.spec, 0);
+});
+
+test('a plan costs each craft job in its own city at its own mastery', () => {
+  const plan = {
+    plots: [],
+    crafts: [
+      { id: 'a', recipeId: 'T4_POTION_HEAL', craftsPerDay: 10, cityId: 'brecilien', specLevel: 100 },
+      { id: 'b', recipeId: 'T4_POTION_HEAL', craftsPerDay: 10, cityId: 'martlock', specLevel: 0 },
+    ],
+  };
+  const c = ctx({ 'T4_BURDOCK': 400, 'T3_EGG': 300, 'T4_POTION_HEAL': 2500 },
+    { useFocus: true });
+  const totals = planTotals(plan, data, c);
+  const [brec, mart] = totals.lines;
+
+  assert.equal(brec.cycle.city.id, 'brecilien');
+  assert.equal(mart.cycle.city.id, 'martlock');
+  assert.ok(brec.cycle.profit > mart.cycle.profit);       // specialty applies
+  assert.equal(Math.round(brec.cycle.focus), 105);        // mastery 100
+  assert.equal(Math.round(mart.cycle.focus), 210);        // mastery 0
+  assert.equal(Math.round(totals.focusPerDay), 10 * 105 + 10 * 210);
 });

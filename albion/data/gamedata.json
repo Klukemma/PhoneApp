@@ -7,6 +7,60 @@
   "cityBaseBonus": 18,
   "craftSpecialtyBonus": 15,
   "refineSpecialtyBonus": 40,
+  "cities": [
+   {
+    "id": "brecilien",
+    "name": "Brecilien",
+    "base": 18,
+    "specialties": [
+     "potion"
+    ]
+   },
+   {
+    "id": "caerleon",
+    "name": "Caerleon",
+    "base": 18,
+    "specialties": [
+     "food"
+    ]
+   },
+   {
+    "id": "martlock",
+    "name": "Martlock",
+    "base": 18,
+    "specialties": []
+   },
+   {
+    "id": "thetford",
+    "name": "Thetford",
+    "base": 18,
+    "specialties": []
+   },
+   {
+    "id": "lymhurst",
+    "name": "Lymhurst",
+    "base": 18,
+    "specialties": []
+   },
+   {
+    "id": "bridgewatch",
+    "name": "Bridgewatch",
+    "base": 18,
+    "specialties": []
+   },
+   {
+    "id": "fortsterling",
+    "name": "Fort Sterling",
+    "base": 18,
+    "specialties": []
+   },
+   {
+    "id": "island",
+    "name": "Island or hideout",
+    "base": 18,
+    "specialties": []
+   }
+  ],
   "focusPerDay": 10000,
   "focusCap": 30000,
   "marketTaxPremium": 6.5,

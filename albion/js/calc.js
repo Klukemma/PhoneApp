@@ -121,18 +121,53 @@ export function productCycle(animal, { priceOf, settings }) {
 
 /* ----------------------------------------------------------- crafting --- */
 
+/** The city you are standing in, by id, falling back to your default. */
+export function cityFor(settings, cityId) {
+  const list = settings.cities || [];
+  return list.find((c) => c.id === (cityId || settings.craftCity)) || list[0] || null;
+}
+
+/**
+ * The production bonus a city gives for one kind of item.
+ *
+ * Every city gives the same base. On top of that a city adds its specialty
+ * bonus only for the categories it actually specialises in — potions in
+ * Brecilien, cooked food in Caerleon. Crafting a potion in Martlock gets the
+ * base and nothing more.
+ */
+export function cityBonus(city, category, settings) {
+  const base = city?.base ?? settings.cityBaseBonus;
+  const specialises = !!city?.specialties?.includes(category);
+  return {
+    base,
+    specialty: specialises ? settings.craftSpecialtyBonus : 0,
+    specialises,
+    total: base + (specialises ? settings.craftSpecialtyBonus : 0),
+  };
+}
+
+/** Mastery for one recipe: its own level if set, otherwise your default. */
+export function specFor(settings, recipeId) {
+  const own = settings.spec?.[recipeId];
+  return Number.isFinite(own) ? own : (Number(settings.specLevel) || 0);
+}
+
 /**
  * One craft action (which makes `recipe.amount` items).
  *
  * The return rate refunds part of the materials, so materials are charged at
  * (1 - RRR). With focus the real constraint is focus, not silver, which is why
  * silverPerFocus is the number to rank recipes by.
+ *
+ * `cityId` and `specLevel` override your defaults, so a single job can be
+ * costed in the city you actually brew in, at the mastery you actually have.
  */
-export function craftBatch(recipe, { priceOf, settings, inputCostOf }) {
+export function craftBatch(recipe, { priceOf, settings, inputCostOf, cityId, specLevel }) {
   const useFocus = settings.useFocus;
-  const bonusTotal = settings.cityBaseBonus +
-    (settings.citySpecialty ? settings.craftSpecialtyBonus : 0) +
-    (useFocus ? settings.focusCraftBonus : 0);
+  const city = cityFor(settings, cityId);
+  const bonus = cityBonus(city, recipe.category, settings);
+  const spec = Number.isFinite(specLevel) ? specLevel : specFor(settings, recipe.id);
+  const bonusTotal = bonus.total + (useFocus ? settings.focusCraftBonus : 0);
   const rrr = returnRate(bonusTotal);
 
   const inputs = recipe.inputs.map((i) => {
@@ -143,7 +178,7 @@ export function craftBatch(recipe, { priceOf, settings, inputCostOf }) {
   const materialsAfterReturn = materials * (1 - rrr);
 
   const focus = useFocus
-    ? focusCostAt(recipe.focus, settings.specLevel, settings.focusCostConstant)
+    ? focusCostAt(recipe.focus, spec, settings.focusCostConstant)
     : 0;
 
   const revenue = recipe.amount * priceOf(recipe.id) * (1 - taxRate(settings));
@@ -152,6 +187,7 @@ export function craftBatch(recipe, { priceOf, settings, inputCostOf }) {
 
   return {
     kind: 'craft', ref: recipe, rrr, bonusTotal, focus,
+    city, bonus, spec,
     inputs, materials, materialsAfterReturn, fees, revenue, profit,
     margin: revenue > 0 ? profit / revenue : 0,
     silverPerFocus: focus > 0 ? profit / focus : null,
@@ -241,7 +277,9 @@ export function planTotals(plan, data, ctx) {
   for (const job of plan.crafts) {
     const recipe = byId.recipe[job.recipeId];
     if (!recipe) continue;
-    const batch = craftBatch(recipe, ctx);
+    const batch = craftBatch(recipe, {
+      ...ctx, cityId: job.cityId, specLevel: job.specLevel,
+    });
     const perDay = job.craftsPerDay || 0;
     lines.push({
       row: job, cycle: batch,

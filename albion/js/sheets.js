@@ -1,11 +1,11 @@
 // Bottom sheets: pickers, editors, settings.
 
-import { craftBatch, perPeriod } from './calc.js';
+import { cityBonus, cityFor, craftBatch, perPeriod, specFor } from './calc.js';
 import { explain, fetchPrices, CITIES, SERVERS } from './prices.js';
 import {
   addCraft, addPlot, DATA, exportJSON, importJSON, priceOf, pricedItemIds,
-  commit, removeCraft, removePlot, setPrice, setPrices, setSettings, state,
-  updateCraft, updatePlot, wipe,
+  commit, removeCraft, removePlot, setPrice, setPrices, setSettings, setSpec,
+  state, updateCraft, updatePlot, wipe,
 } from './store.js';
 import { $, $$, closeSheet, esc, openSheet, toast } from './ui.js';
 import { hours, short, silver } from './util.js';
@@ -145,7 +145,10 @@ export function openAddCraft() {
 export function openCraft(job) {
   const recipe = DATA.recipes.find((r) => r.id === job.recipeId);
   if (!recipe) return;
-  const batch = craftBatch(recipe, ctx());
+  const s = state.settings;
+  const cityId = job.cityId || s.craftCity;
+  const spec = Number.isFinite(job.specLevel) ? job.specLevel : specFor(s, recipe.id);
+  const batch = craftBatch(recipe, { ...ctx(), cityId, specLevel: spec });
   const rate = {
     perMonth: batch.profit * job.craftsPerDay * 30,
     focusPerDay: batch.focus * job.craftsPerDay,
@@ -153,14 +156,28 @@ export function openCraft(job) {
 
   openSheet(`
     <h2>T${recipe.tier} ${esc(recipe.name)}</h2>
+
     <div class="field">
-      <label>Crafts per day</label>
-      <input type="number" id="perDay" inputmode="numeric" min="0" max="9999"
-        value="${job.craftsPerDay}">
-      <div class="hint">${batch.focus
-        ? `At ${Math.round(batch.focus)} focus each, ${Math.floor(state.settings.focusPerDay / batch.focus)} a day fits your focus budget.`
-        : 'No focus used, so only materials limit you.'}</div>
+      <label>Where do you craft this?</label>
+      <select id="cityId">${cityOptions(cityId, recipe.category)}</select>
+      <div class="hint" id="cityHint">${esc(cityHint(cityId, recipe.category))}</div>
     </div>
+
+    <div class="two">
+      <div class="field">
+        <label>Crafts per day</label>
+        <input type="number" id="perDay" inputmode="numeric" min="0" max="9999"
+          value="${job.craftsPerDay}">
+      </div>
+      <div class="field">
+        <label>Mastery for this item</label>
+        <input type="number" id="specLevel" inputmode="numeric" min="0" max="120" value="${spec}">
+      </div>
+    </div>
+    <div class="hint" style="margin:-4px 0 12px">${batch.focus
+      ? `${Math.round(batch.focus)} focus each, so ${Math.floor(s.focusPerDay / batch.focus)} a day fits your budget. Mastery halves focus cost at 100.`
+      : 'No focus used, so only materials limit you.'}</div>
+
     ${detailHTML(batch, rate)}
     <div class="sheet-actions">
       <button class="btn primary" id="save">Save</button>
@@ -168,11 +185,88 @@ export function openCraft(job) {
     </div>
   `, {
     onMount(root) {
+      // Re-render live so the effect of a city or mastery change is visible
+      // before you commit to it.
+      const refresh = () => {
+        updateCraft(job.id, {
+          cityId: $('#cityId', root).value,
+          specLevel: Math.max(0, Number($('#specLevel', root).value) || 0),
+          craftsPerDay: Math.max(0, Number($('#perDay', root).value) || 0),
+        });
+        openCraft(state.plan.crafts.find((c) => c.id === job.id));
+      };
+      $('#cityId', root).onchange = refresh;
+      $('#specLevel', root).onchange = refresh;
+
       $('#save', root).onclick = () => {
-        updateCraft(job.id, { craftsPerDay: Math.max(0, Number($('#perDay', root).value) || 0) });
+        updateCraft(job.id, {
+          craftsPerDay: Math.max(0, Number($('#perDay', root).value) || 0),
+          cityId: $('#cityId', root).value,
+          specLevel: Math.max(0, Number($('#specLevel', root).value) || 0),
+        });
         closeSheet();
       };
       $('#del', root).onclick = () => { removeCraft(job.id); closeSheet(); toast('Removed'); };
+    },
+  });
+}
+
+/** City <option>s, flagging the ones that actually boost this category. */
+function cityOptions(selected, category) {
+  return (state.settings.cities || []).map((c) => {
+    const boosts = c.specialties?.includes(category);
+    return `<option value="${esc(c.id)}" ${c.id === selected ? 'selected' : ''}>
+      ${esc(c.name)}${boosts ? ' \u2014 bonus' : ''}</option>`;
+  }).join('');
+}
+
+function cityHint(cityId, category) {
+  const s = state.settings;
+  const city = cityFor(s, cityId);
+  const b = cityBonus(city, category, s);
+  const withFocus = s.useFocus ? b.total + s.focusCraftBonus : b.total;
+  const rate = (1 - 100 / (100 + withFocus)) * 100;
+  const what = category === 'potion' ? 'Potions' : 'Cooked food';
+  return b.specialises
+    ? `${what} get this city's specialty: +${b.base} base and +${b.specialty} specialty, ` +
+      `so ${rate.toFixed(1)}% of materials come back.`
+    : `${what} are not this city's specialty, so just the +${b.base} base — ` +
+      `${rate.toFixed(1)}% of materials come back.`;
+}
+
+/** Choose the default city used by the Best screen and new craft jobs. */
+export function openCraftCity() {
+  const s = state.settings;
+  openSheet(`
+    <h2>Where do you craft?</h2>
+    <p class="muted">This sets the default. Each job on your plan can override it.</p>
+    ${(s.cities || []).map((c) => {
+      const pot = c.specialties?.includes('potion');
+      const food = c.specialties?.includes('food');
+      const tags = [pot && 'potions', food && 'cooked food'].filter(Boolean).join(', ');
+      return `
+        <button class="row" data-city="${esc(c.id)}"
+          ${c.id === s.craftCity ? 'style="border-color:var(--gold)"' : ''}>
+          <span class="ico">\u{1F3EF}</span>
+          <span class="body"><span class="title">${esc(c.name)}</span>
+            <span class="meta">+${c.base} base${tags ? `, +${s.craftSpecialtyBonus} for ${tags}` : ', no specialty here'}</span></span>
+          <span class="amt">${c.id === s.craftCity ? '\u2713' : ''}</span>
+        </button>`;
+    }).join('')}
+    <p class="muted small" style="margin-top:12px">
+      Only Brecilien boosts potions and only Caerleon boosts cooked food. The
+      royal cities specialise in weapons and armour, so for these they give the
+      base and nothing more. Your station shows its real bonus on the city map
+      \u2014 if it differs, change the numbers under Setup.</p>
+  `, {
+    onMount(root) {
+      root.onclick = (e) => {
+        const id = e.target.closest('[data-city]')?.dataset.city;
+        if (!id) return;
+        setSettings({ craftCity: id });
+        closeSheet();
+        toast(`Crafting in ${cityFor(state.settings, id)?.name}`);
+      };
     },
   });
 }
@@ -292,12 +386,25 @@ export function openSettings() {
     ${toggle('watered', 'Water plots with focus', 'More seeds and babies back, at 1000 focus each.')}
     ${toggle('favouriteFood', 'Feed animals their favourite', 'Their favourite plant is worth double nutrition.')}
     ${toggle('useFocus', 'Craft with focus', `Adds +${s.focusCraftBonus}% to the return rate.`)}
-    ${toggle('citySpecialty', 'Crafting in a bonus city', `Adds +${s.craftSpecialtyBonus}% for that city's specialty.`)}
     ${toggle('ownInputsAtCost', 'Value inputs at my farm cost', 'Instead of what they would sell for.')}
     ${toggle('hideMounts', 'Hide mounts', 'Only show livestock and plants.')}
 
+    <div class="section-head"><h2>Crafting</h2></div>
+    <button class="row" data-act="open-city" style="margin-bottom:8px">
+      <span class="ico">\u{1F3EF}</span>
+      <span class="body"><span class="title">Craft in ${esc(cityFor(s)?.name || 'a city')}</span>
+        <span class="meta">Only Brecilien boosts potions, only Caerleon boosts cooked food</span></span>
+      <span class="amt">\u203A</span>
+    </button>
+    <button class="row" data-act="open-mastery" style="margin-bottom:12px">
+      <span class="ico">\u{1F4DA}</span>
+      <span class="body"><span class="title">Mastery per recipe</span>
+        <span class="meta">${Object.keys(state.spec || {}).length || 'none'} set, rest use the default</span></span>
+      <span class="amt">\u203A</span>
+    </button>
+
     <div class="two">
-      <div class="field"><label>Specialisation level</label>
+      <div class="field"><label>Default mastery</label>
         <input type="number" id="specLevel" inputmode="numeric" min="0" max="120" value="${s.specLevel}">
         <div class="hint">Halves focus cost at 100.</div></div>
       <div class="field"><label>Harvest every (hours)</label>
@@ -362,6 +469,8 @@ export function openSettings() {
         closeSheet();
         toast('Saved');
       };
+      $('[data-act="open-city"]', root).onclick = openCraftCity;
+      $('[data-act="open-mastery"]', root).onclick = () => openMastery();
       $('#export', root).onclick = () => {
         const blob = new Blob([exportJSON()], { type: 'application/json' });
         const a = document.createElement('a');
@@ -383,6 +492,68 @@ export function openSettings() {
           wipe(); closeSheet(); toast('Erased');
         }
       };
+    },
+  });
+}
+
+/* ----------------------------------------------------------- mastery -- */
+
+const focusAt = (base, spec) =>
+  base / (state.settings.focusCostConstant || 1.00695555005672) ** Math.max(0, spec);
+
+/**
+ * Mastery is per item line in Albion, not one global number, so this lists
+ * recipes individually. Anything left blank falls back to your default level.
+ */
+export function openMastery(filter = '') {
+  const s = state.settings;
+  const inPlan = new Set(state.plan.crafts.map((c) => c.recipeId));
+  const term = filter.trim().toLowerCase();
+
+  const match = (r) => !term || r.name.toLowerCase().includes(term)
+    || `t${r.tier}`.startsWith(term);
+  const shown = DATA.recipes.filter(match);
+  const mine = shown.filter((r) => inPlan.has(r.id) || state.spec[r.id] != null);
+  const rest = shown.filter((r) => !inPlan.has(r.id) && state.spec[r.id] == null)
+    .slice(0, term ? 40 : 0);
+
+  const row = (r) => {
+    const own = state.spec[r.id];
+    const focus = Math.round(focusAt(r.focus, own ?? s.specLevel));
+    return `
+      <div class="row" style="gap:8px">
+        <span class="ico">${r.category === 'food' ? '\u{1F35E}' : '\u{1F9EA}'}</span>
+        <span class="body"><span class="title">T${r.tier} ${esc(r.name)}</span>
+          <span class="meta">${focus} focus each${own == null ? ', default' : ''}</span></span>
+        <input type="number" class="spec-input" data-spec="${esc(r.id)}"
+          inputmode="numeric" min="0" max="120" placeholder="${s.specLevel}"
+          value="${own ?? ''}" aria-label="Mastery for ${esc(r.name)}">
+      </div>`;
+  };
+
+  openSheet(`
+    <h2>Mastery per recipe</h2>
+    <p class="muted">Albion specialises per item, so each one has its own level.
+      Leave a box empty to use your default of ${s.specLevel}.</p>
+    <div class="field">
+      <input type="text" id="find" placeholder="Search recipes" value="${esc(filter)}">
+    </div>
+    ${mine.length ? `<div class="section-head"><h2>In your plan</h2></div>${mine.map(row).join('')}` : ''}
+    ${rest.length ? `<div class="section-head"><h2>Other recipes</h2></div>${rest.map(row).join('')}` : ''}
+    ${!mine.length && !rest.length ? `<div class="empty">${term
+      ? 'Nothing matches that.'
+      : 'Add a craft job, or search, to set mastery for a recipe.'}</div>` : ''}
+    <div class="sheet-actions">
+      <button class="btn primary" id="done">Done</button>
+    </div>
+  `, {
+    onMount(root) {
+      for (const input of $$('[data-spec]', root)) {
+        input.onchange = () => { setSpec(input.dataset.spec, input.value); openMastery(filter); };
+      }
+      const find = $('#find', root);
+      find.onchange = () => openMastery(find.value);
+      $('#done', root).onclick = () => openSettings();
     },
   });
 }

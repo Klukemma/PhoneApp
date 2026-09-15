@@ -22,8 +22,8 @@ function defaults() {
       watered: false,          // water plots with focus
       favouriteFood: true,     // feed animals their favourite plant
       useFocus: true,          // craft with focus
-      citySpecialty: true,     // crafting in a city with the bonus for this item
-      specLevel: 0,
+      craftCity: 'brecilien',  // where you craft by default; a job can override
+      specLevel: 0,            // default mastery, when a recipe has none of its own
       cadenceHours: 24,        // how often you actually log in to harvest
       hideMounts: false,
       stationFeePerCraft: 0,
@@ -35,6 +35,7 @@ function defaults() {
       ...{},
     },
     prices: {},
+    spec: {},                  // recipe id -> mastery level
     plan: { plots: [], crafts: [] },
   };
 }
@@ -44,6 +45,8 @@ function withConstants(state, data) {
   for (const [k, v] of Object.entries(data.constants)) {
     if (state.settings[k] === undefined) state.settings[k] = v;
   }
+  // calc reads per-recipe mastery through settings, so keep the two joined.
+  state.settings.spec = state.spec;
   // Seeds have a fixed NPC price — a sane starting value for every seed.
   for (const p of data.plants) {
     if (state.prices[p.seedId] === undefined) state.prices[p.seedId] = p.seedNpc;
@@ -60,6 +63,7 @@ function normalize(raw) {
     ...base, ...raw,
     settings: { ...base.settings, ...(raw.settings || {}) },
     prices: { ...(raw.prices || {}) },
+    spec: { ...(raw.spec || {}) },
     plan: {
       plots: Array.isArray(raw.plan?.plots) ? raw.plan.plots : [],
       crafts: Array.isArray(raw.plan?.crafts) ? raw.plan.crafts : [],
@@ -69,6 +73,13 @@ function normalize(raw) {
     const n = Number(v);
     if (!Number.isFinite(n) || n < 0) delete s.prices[k];
   }
+  for (const [k, v] of Object.entries(s.spec)) {
+    const n = Number(v);
+    if (!Number.isFinite(n) || n < 0) delete s.spec[k];
+  }
+  // Older saves carried one global "am I in a bonus city" flag, which applied
+  // the specialty to every recipe. The city now decides, per item.
+  delete s.settings.citySpecialty;
   return s;
 }
 
@@ -180,6 +191,15 @@ export function removeCraft(id) {
 
 export function setSettings(patch) {
   Object.assign(state.settings, patch);
+  commit();
+}
+
+/** Mastery for one recipe. Clearing it falls back to your default level. */
+export function setSpec(recipeId, level) {
+  const n = Number(level);
+  if (!Number.isFinite(n) || n <= 0) delete state.spec[recipeId];
+  else state.spec[recipeId] = Math.min(120, Math.round(n));
+  state.settings.spec = state.spec;
   commit();
 }
 

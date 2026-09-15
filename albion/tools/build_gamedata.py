@@ -246,6 +246,22 @@ def main() -> None:
             "cityBaseBonus": 18,
             "craftSpecialtyBonus": 15,
             "refineSpecialtyBonus": 40,
+            # Every city gives the same base bonus; the specialty is what differs.
+            # Only two of this app's categories are anyone's specialty: potions
+            # belong to Brecilien and cooked food to Caerleon. The royal cities
+            # specialise in weapons and armour, so for potions and food they are
+            # just the base. A station shows its real bonus on the city map, and
+            # every figure here is editable in the app.
+            "cities": [
+                {"id": "brecilien", "name": "Brecilien", "base": 18, "specialties": ["potion"]},
+                {"id": "caerleon", "name": "Caerleon", "base": 18, "specialties": ["food"]},
+                {"id": "martlock", "name": "Martlock", "base": 18, "specialties": []},
+                {"id": "thetford", "name": "Thetford", "base": 18, "specialties": []},
+                {"id": "lymhurst", "name": "Lymhurst", "base": 18, "specialties": []},
+                {"id": "bridgewatch", "name": "Bridgewatch", "base": 18, "specialties": []},
+                {"id": "fortsterling", "name": "Fort Sterling", "base": 18, "specialties": []},
+                {"id": "island", "name": "Island or hideout", "base": 18, "specialties": []},
+            ],
             "focusPerDay": 10000,
             "focusCap": 30000,
             "marketTaxPremium": 6.5,
