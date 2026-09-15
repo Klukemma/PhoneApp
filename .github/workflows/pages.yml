@@ -1,5 +1,7 @@
 # Publishes the app to GitHub Pages so it can be installed on a phone.
-# One-time setup: repo Settings -> Pages -> Source: "GitHub Actions".
+# Pages is switched on by the configure-pages step below, so no manual repo
+# setup is needed. If that step is ever blocked, turn it on by hand at
+# Settings -> Pages -> Source: "GitHub Actions".
 
 name: Deploy to GitHub Pages
 
@@ -37,9 +39,18 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+      # enablement turns Pages on via the API, so the repo does not have to be
+      # configured by hand before the first deploy.
       - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+      # Publish only what the app needs — not .git, tests or tooling.
+      - name: Stage the site
+        run: |
+          mkdir -p _site
+          cp -r index.html manifest.webmanifest sw.js css js icons _site/
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: _site
       - id: deployment
         uses: actions/deploy-pages@v4
