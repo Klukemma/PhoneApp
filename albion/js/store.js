@@ -23,12 +23,13 @@ function defaults() {
       favouriteFood: true,     // feed animals their favourite plant
       useFocus: true,          // craft with focus
       craftCity: 'brecilien',  // where you craft by default; a job can override
+      farmCity: 'martlock',    // where your farm or island is; a plot can override
       specLevel: 0,            // default mastery, when a recipe has none of its own
       cadenceHours: 24,        // how often you actually log in to harvest
       hideMounts: false,
       stationFeePerCraft: 0,
       feedItemId: 'T3_WHEAT',
-      server: 'west',
+      server: 'americas',      // Albion Americas, Asia or Europe
       priceCity: 'Caerleon',
       // These come from gamedata.json constants at first run; kept here so
       // they stay editable when a patch changes them.
@@ -47,6 +48,9 @@ function withConstants(state, data) {
   }
   // calc reads per-recipe mastery through settings, so keep the two joined.
   state.settings.spec = state.spec;
+  // Cities live outside constants and are always taken fresh from the game
+  // data, never from a saved copy.
+  state.settings.cities = data.cities;
   // Seeds have a fixed NPC price — a sane starting value for every seed.
   for (const p of data.plants) {
     if (state.prices[p.seedId] === undefined) state.prices[p.seedId] = p.seedNpc;
@@ -80,6 +84,12 @@ function normalize(raw) {
   // Older saves carried one global "am I in a bonus city" flag, which applied
   // the specialty to every recipe. The city now decides, per item.
   delete s.settings.citySpecialty;
+  // The cities table is regenerated from the game files, so never keep a
+  // stale copy from an old save or an old backup.
+  delete s.settings.cities;
+  // Server ids used to be the data project's hostnames.
+  const RENAMED = { west: 'americas', east: 'asia' };
+  if (RENAMED[s.settings.server]) s.settings.server = RENAMED[s.settings.server];
   return s;
 }
 
@@ -152,7 +162,7 @@ export function pricedItemIds(data = DATA) {
 /* -------------------------------------------------------------- plan --- */
 
 export function addPlot(itemId, count = 9, mode = 'grow') {
-  state.plan.plots.push({ id: uid(), itemId, count, mode });
+  state.plan.plots.push({ id: uid(), itemId, count, mode, cityId: state.settings.farmCity });
   commit();
 }
 

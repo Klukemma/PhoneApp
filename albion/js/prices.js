@@ -5,13 +5,23 @@
 // rather than overwritten with a zero. Typing prices in by hand always works
 // and is never blocked by this failing.
 
-const HOSTS = {
-  west: 'https://west.albion-online-data.com',
-  east: 'https://east.albion-online-data.com',
-  europe: 'https://europe.albion-online-data.com',
-};
+/**
+ * The three live game servers.
+ *
+ * The data project's hostnames still use the old names — Albion Americas was
+ * "West" and Albion Asia was "East" — so the hostname is kept as an
+ * implementation detail and the server is shown by the name it has in game.
+ */
+export const SERVERS = [
+  { id: 'americas', name: 'Americas', host: 'https://west.albion-online-data.com' },
+  { id: 'asia', name: 'Asia', host: 'https://east.albion-online-data.com' },
+  { id: 'europe', name: 'Europe', host: 'https://europe.albion-online-data.com' },
+];
 
-export const SERVERS = Object.keys(HOSTS);
+const hostFor = (id) => SERVERS.find((s) => s.id === id)?.host;
+
+export const serverName = (id) =>
+  SERVERS.find((s) => s.id === id)?.name || id;
 
 export const CITIES = [
   'Caerleon', 'Bridgewatch', 'Fort Sterling', 'Lymhurst', 'Martlock',
@@ -29,9 +39,9 @@ const chunk = (arr, n) =>
  * cheapest current sell offer, which is what you would actually pay.
  * `onProgress` is called with (done, total) so the UI can show movement.
  */
-export async function fetchPrices(ids, { server = 'west', city = 'Caerleon',
+export async function fetchPrices(ids, { server = 'americas', city = 'Caerleon',
   maxAgeHours = 0, onProgress, signal } = {}) {
-  const host = HOSTS[server];
+  const host = hostFor(server);
   if (!host) throw new Error(`Unknown server "${server}"`);
 
   const batches = chunk([...new Set(ids)], BATCH);

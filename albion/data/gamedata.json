@@ -4,69 +4,219 @@
  "constants": {
   "focusCraftBonus": 59.0,
   "focusCostConstant": 1.00695555005672,
-  "cityBaseBonus": 18,
-  "craftSpecialtyBonus": 15,
-  "refineSpecialtyBonus": 40,
-  "cities": [
-   {
-    "id": "brecilien",
-    "name": "Brecilien",
-    "base": 18,
-    "specialties": [
-     "potion"
-    ]
-   },
-   {
-    "id": "caerleon",
-    "name": "Caerleon",
-    "base": 18,
-    "specialties": [
-     "food"
-    ]
-   },
-   {
-    "id": "martlock",
-    "name": "Martlock",
-    "base": 18,
-    "specialties": []
-   },
-   {
-    "id": "thetford",
-    "name": "Thetford",
-    "base": 18,
-    "specialties": []
-   },
-   {
-    "id": "lymhurst",
-    "name": "Lymhurst",
-    "base": 18,
-    "specialties": []
-   },
-   {
-    "id": "bridgewatch",
-    "name": "Bridgewatch",
-    "base": 18,
-    "specialties": []
-   },
-   {
-    "id": "fortsterling",
-    "name": "Fort Sterling",
-    "base": 18,
-    "specialties": []
-   },
-   {
-    "id": "island",
-    "name": "Island or hideout",
-    "base": 18,
-    "specialties": []
-   }
-  ],
+  "marketSetupFee": 2.5,
+  "marketTransactionTax": 8.0,
   "focusPerDay": 10000,
   "focusCap": 30000,
-  "marketTaxPremium": 6.5,
-  "marketTaxNormal": 10.5,
   "premiumYieldMultiplier": 2
  },
+ "cities": [
+  {
+   "id": "thetford",
+   "name": "Thetford",
+   "cluster": "0000",
+   "craftBase": 18.0,
+   "craftSpecialties": {
+    "ore": 40.0,
+    "meat_pig": 10.0,
+    "mace": 15.0,
+    "naturestaff": 15.0,
+    "firestaff": 15.0,
+    "leather_armor": 15.0,
+    "cloth_helmet": 15.0
+   },
+   "farmBonus": {
+    "T2_FARM_AGARIC_SEED": 10.0,
+    "T5_FARM_CABBAGE_SEED": 10.0,
+    "T7_FARM_MULLEIN_SEED": 10.0
+   }
+  },
+  {
+   "id": "lymhurst",
+   "name": "Lymhurst",
+   "cluster": "1000",
+   "craftBase": 18.0,
+   "craftSpecialties": {
+    "fiber": 40.0,
+    "meat_goose": 10.0,
+    "sword": 15.0,
+    "bow": 15.0,
+    "arcanestaff": 15.0,
+    "leather_helmet": 15.0,
+    "leather_shoes": 15.0
+   },
+   "farmBonus": {
+    "T1_FARM_CARROT_SEED": 10.0,
+    "T4_FARM_BURDOCK_SEED": 10.0,
+    "T5_FARM_GOOSE_GROWN": 10.0,
+    "T8_FARM_PUMPKIN_SEED": 10.0
+   }
+  },
+  {
+   "id": "bridgewatch",
+   "name": "Bridgewatch",
+   "cluster": "2000",
+   "craftBase": 18.0,
+   "craftSpecialties": {
+    "rock": 40.0,
+    "meat_goat": 10.0,
+    "crossbow": 15.0,
+    "dagger": 15.0,
+    "cursestaff": 15.0,
+    "plate_armor": 15.0,
+    "cloth_shoes": 15.0
+   },
+   "farmBonus": {
+    "T2_FARM_BEAN_SEED": 10.0,
+    "T4_FARM_GOAT_GROWN": 10.0,
+    "T5_FARM_TEASEL_SEED": 10.0,
+    "T7_FARM_CORN_SEED": 10.0
+   }
+  },
+  {
+   "id": "martlock",
+   "name": "Martlock",
+   "cluster": "3004",
+   "craftBase": 18.0,
+   "craftSpecialties": {
+    "hide": 40.0,
+    "meat_cow": 10.0,
+    "axe": 15.0,
+    "quarterstaff": 15.0,
+    "froststaff": 15.0,
+    "plate_shoes": 15.0,
+    "offhand": 15.0
+   },
+   "farmBonus": {
+    "T3_FARM_WHEAT_SEED": 10.0,
+    "T6_FARM_POTATO_SEED": 10.0,
+    "T6_FARM_FOXGLOVE_SEED": 10.0,
+    "T8_FARM_COW_GROWN": 10.0
+   }
+  },
+  {
+   "id": "fortsterling",
+   "name": "Fort Sterling",
+   "cluster": "4000",
+   "craftBase": 18.0,
+   "craftSpecialties": {
+    "wood": 40.0,
+    "meat_chicken": 10.0,
+    "meat_sheep": 10.0,
+    "hammer": 15.0,
+    "spear": 15.0,
+    "holystaff": 15.0,
+    "plate_helmet": 15.0,
+    "cloth_armor": 15.0
+   },
+   "farmBonus": {
+    "T3_FARM_CHICKEN_GROWN": 10.0,
+    "T4_FARM_TURNIP_SEED": 10.0,
+    "T6_FARM_SHEEP_GROWN": 10.0,
+    "T8_FARM_YARROW_SEED": 10.0
+   }
+  },
+  {
+   "id": "caerleon",
+   "name": "Caerleon",
+   "cluster": "3003",
+   "craftBase": 18.0,
+   "craftSpecialties": {
+    "gatherergear": 15.0,
+    "tools": 15.0,
+    "food": 15.0,
+    "knuckles": 15.0,
+    "shapeshifterstaff": 15.0
+   },
+   "farmBonus": {
+    "T3_FARM_COMFREY_SEED": 10.0,
+    "T5_FARM_TEASEL_SEED": 10.0,
+    "T7_FARM_MULLEIN_SEED": 10.0
+   }
+  },
+  {
+   "id": "brecilien",
+   "name": "Brecilien",
+   "cluster": "5000",
+   "craftBase": 18.0,
+   "craftSpecialties": {
+    "cape": 15.0,
+    "bag": 15.0,
+    "potion": 15.0
+   },
+   "farmBonus": {
+    "T1_FARM_CARROT_SEED": 10.0,
+    "T2_FARM_BEAN_SEED": 10.0,
+    "T3_FARM_WHEAT_SEED": 10.0,
+    "T4_FARM_TURNIP_SEED": 10.0,
+    "T5_FARM_CABBAGE_SEED": 10.0,
+    "T6_FARM_POTATO_SEED": 10.0,
+    "T7_FARM_CORN_SEED": 10.0,
+    "T8_FARM_PUMPKIN_SEED": 10.0
+   }
+  },
+  {
+   "id": "arthurs",
+   "name": "Arthur's Rest",
+   "cluster": "4300",
+   "craftBase": 18.0,
+   "craftSpecialties": {
+    "axe": 15.0,
+    "crossbow": 15.0,
+    "hammer": 15.0,
+    "mace": 15.0,
+    "sword": 15.0,
+    "knuckles": 15.0,
+    "plate_helmet": 15.0,
+    "plate_armor": 15.0,
+    "plate_shoes": 15.0
+   },
+   "farmBonus": {}
+  },
+  {
+   "id": "merlyns",
+   "name": "Merlyn's Rest",
+   "cluster": "1012",
+   "craftBase": 18.0,
+   "craftSpecialties": {
+    "bow": 15.0,
+    "dagger": 15.0,
+    "quarterstaff": 15.0,
+    "spear": 15.0,
+    "naturestaff": 15.0,
+    "shapeshifterstaff": 15.0,
+    "leather_helmet": 15.0,
+    "leather_armor": 15.0,
+    "leather_shoes": 15.0
+   },
+   "farmBonus": {}
+  },
+  {
+   "id": "morganas",
+   "name": "Morgana's Rest",
+   "cluster": "0008",
+   "craftBase": 18.0,
+   "craftSpecialties": {
+    "arcanestaff": 15.0,
+    "cursestaff": 15.0,
+    "firestaff": 15.0,
+    "froststaff": 15.0,
+    "holystaff": 15.0,
+    "cloth_helmet": 15.0,
+    "cloth_armor": 15.0,
+    "cloth_shoes": 15.0
+   },
+   "farmBonus": {}
+  },
+  {
+   "id": "island",
+   "name": "My island (no city bonus)",
+   "cluster": null,
+   "craftBase": 0,
+   "craftSpecialties": {},
+   "farmBonus": {}
+  }
+ ],
  "plants": [
   {
    "id": "T1_FARM_CARROT_SEED",

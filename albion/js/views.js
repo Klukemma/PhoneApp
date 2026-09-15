@@ -1,10 +1,11 @@
 // The four screens. Each returns { title, sub, html }.
 
 import {
-  animalCycle, cityFor, craftBatch, perPeriod, planTotals, plantCycle,
-  productCycle, rankFarmables, rankRecipes, returnRate,
+  animalCycle, cityFor, craftBatch, farmCityFor, perPeriod, planTotals,
+  plantCycle, productCycle, rankFarmables, rankRecipes, returnRate,
 } from './calc.js';
 import { DATA, priceOf, state } from './store.js';
+import { serverName } from './prices.js';
 import { esc } from './ui.js';
 import { hours, pct, short, silver, toneOf } from './util.js';
 
@@ -134,8 +135,9 @@ function planLine(line) {
       <span class="ico">${emoji}</span>
       <span class="body">
         <span class="title">T${ref.tier} ${esc(what)} ×${row.count}</span>
-        <span class="meta">${short(rate.perCycle)} per ${hours(rate.every)}
-          ${cycle.focus ? `· ${short(rate.focusPerDay)} focus/day` : ''}</span>
+        <span class="meta">${short(rate.perCycle)} per ${hours(rate.every)}${
+          cycle.farmBonusPct ? ` · ${cycle.city.name} +${cycle.farmBonusPct}%` : ''}${
+          cycle.focus ? ` · ${short(rate.focusPerDay)} focus/day` : ''}</span>
       </span>
       <span class="amt num ${toneOf(rate.perMonth)}">${short(rate.perMonth)}</span>
     </button>`;
@@ -187,7 +189,7 @@ export function rank() {
   return {
     title: 'Best',
     sub: rankTab === 'farm'
-      ? `Per plot per day · ${s.watered ? 'watered' : 'unwatered'}`
+      ? `${farmCityFor(s)?.name || '\u2014'} · ${s.watered ? 'watered' : 'unwatered'}`
       : `In ${cityFor(s)?.name || '\u2014'} · ${s.useFocus ? 'with focus' : 'no focus'}`,
     html: `
       <section>
@@ -204,7 +206,9 @@ export function rank() {
             <button class="mini" data-toggle="premium" aria-pressed="${s.premium}">
               Premium</button>
             <button class="mini" data-toggle="hideMounts" aria-pressed="${s.hideMounts}">
-              Hide mounts</button>`
+              Hide mounts</button>
+            <button class="mini" data-act="farm-city">
+              ${esc(farmCityFor(s)?.name || 'Pick a city')} ▾</button>`
           : `
             <button class="mini" data-toggle="useFocus" aria-pressed="${s.useFocus}">
               Use focus</button>
@@ -311,7 +315,7 @@ export function prices() {
         <button class="btn primary" data-act="fetch-prices">
           ↓ Fetch live market prices</button>
         <div class="hint centered">From the Albion Online Data Project ·
-          ${esc(state.settings.server)} · ${esc(state.settings.priceCity)}
+          ${esc(serverName(state.settings.server))} · ${esc(state.settings.priceCity)}
           · <button class="linkish" data-act="price-source">change</button></div>
       </section>
       <section>
@@ -396,7 +400,10 @@ export function detailHTML(cycle, rate) {
 
   if (cycle.kind === 'plant') {
     const p = cycle.ref;
-    line('Harvest per plot', `${cycle.yieldPerPlot} ${nameOf(p.cropId)}`);
+    line('Harvest per plot', `${round1(cycle.yieldPerPlot)} ${nameOf(p.cropId)}`);
+    if (cycle.farmBonusPct) {
+      line(`${cycle.city.name} farming bonus`, `+${cycle.farmBonusPct}% yield`, 'good');
+    }
     line('Sale after tax', short(cycle.revenue), 'good');
     line(`Seeds back (${s.watered ? 'watered' : 'dry'})`, pct(cycle.seedsBack, 0));
     line(cycle.seedCost >= 0 ? 'Seed cost' : 'Spare seeds',
@@ -413,7 +420,10 @@ export function detailHTML(cycle, rate) {
     line('Sale after tax', short(cycle.revenue), 'good');
     if (cycle.focus) line('Focus to nurture', short(cycle.focus));
   } else if (cycle.kind === 'product') {
-    line('Per harvest', `${cycle.perCycle} × ${nameOf(cycle.ref.product.itemId)}`);
+    line('Per harvest', `${round1(cycle.perCycle)} × ${nameOf(cycle.ref.product.itemId)}`);
+    if (cycle.farmBonusPct) {
+      line(`${cycle.city.name} farming bonus`, `+${cycle.farmBonusPct}% yield`, 'good');
+    }
     line('Sale after tax', short(cycle.revenue), 'good');
     line('Upkeep feed', `${cycle.plantsNeeded} × ${nameOf(cycle.feedId)}`);
     line('Feed cost', short(-cycle.feedCost), 'bad');
@@ -446,8 +456,8 @@ export function detailHTML(cycle, rate) {
     </div>`;
 }
 
-export function cycleFor(itemId, mode) {
-  const c = ctx();
+export function cycleFor(itemId, mode, cityId) {
+  const c = { ...ctx(), cityId };
   const p = DATA.plants.find((x) => x.id === itemId);
   if (p) return plantCycle(p, c);
   const a = DATA.animals.find((x) => x.id === itemId);
@@ -456,3 +466,5 @@ export function cycleFor(itemId, mode) {
 }
 
 export const views = { plan, rank, prices };
+
+const round1 = (n) => String(Math.round(n * 10) / 10);

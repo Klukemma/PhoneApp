@@ -20,9 +20,16 @@ export const returnRate = (bonusTotal) => 1 - 100 / (100 + Math.max(0, bonusTota
 export const focusCostAt = (base, specLevel, constant = 1.00695555005672) =>
   base / constant ** Math.max(0, specLevel);
 
-/** What the market keeps when you sell. */
-export const taxRate = (s) =>
-  (s.premium ? s.marketTaxPremium : s.marketTaxNormal) / 100;
+/**
+ * What the market keeps when you sell: a setup fee plus a transaction tax,
+ * both from gamedata.xml. Premium halves the transaction tax (2.5 + 4 = 6.5%
+ * against 2.5 + 8 = 10.5%).
+ */
+export const taxRate = (s) => {
+  const setup = s.marketSetupFee ?? 2.5;
+  const txn = (s.marketTransactionTax ?? 8) / (s.premium ? 2 : 1);
+  return (setup + txn) / 100;
+};
 
 const avg = (lo, hi) => (lo + hi) / 2;
 
@@ -35,10 +42,13 @@ const avg = (lo, hi) => (lo + hi) / 2;
  * Above 1.0 the plot pays for its own seed and leaves a surplus, so netSeeds
  * goes negative and counts as income rather than cost.
  */
-export function plantCycle(plant, { priceOf, settings }) {
+export function plantCycle(plant, { priceOf, settings, cityId }) {
   const watered = settings.watered;
+  const city = farmCityFor(settings, cityId);
+  const bonusPct = farmBonus(city, plant.id);
   const yieldPerPlot = avg(plant.yieldMin, plant.yieldMax) *
-    (settings.premium ? settings.premiumYieldMultiplier : 1);
+    (settings.premium ? settings.premiumYieldMultiplier : 1) *
+    (1 + bonusPct / 100);
 
   const seedsBack = plant.seedReturn + (watered ? plant.wateredBonus : 0);
   const netSeeds = 1 - seedsBack;
@@ -54,7 +64,7 @@ export function plantCycle(plant, { priceOf, settings }) {
   const profit = revenue - seedCost;
 
   return {
-    kind: 'plant', ref: plant, hours, focus,
+    kind: 'plant', ref: plant, hours, focus, city, farmBonusPct: bonusPct,
     yieldPerPlot, seedsBack, netSeeds, seedCost, revenue, profit,
     // What a unit actually cost you to grow — used when a craft eats your own crops.
     costPerUnit: yieldPerPlot > 0 ? Math.max(0, seedCost) / yieldPerPlot : 0,
@@ -67,8 +77,9 @@ export function plantCycle(plant, { priceOf, settings }) {
  * Feed is nutrition / 48 plants. A favourite plant is worth (1 + favouriteBonus)
  * nutrition each, so it takes proportionally fewer of them.
  */
-export function animalCycle(animal, { priceOf, settings }) {
+export function animalCycle(animal, { priceOf, settings, cityId }) {
   const watered = settings.watered;
+  const city = farmCityFor(settings, cityId);
   const useFav = settings.favouriteFood && animal.favouriteFood;
 
   const plantsNeeded = animal.nutrition / NUTRITION_PER_PLANT /
@@ -86,7 +97,7 @@ export function animalCycle(animal, { priceOf, settings }) {
   const profit = revenue - feedCost - babyCost;
 
   return {
-    kind: 'animal', ref: animal, hours, focus,
+    kind: 'animal', ref: animal, hours, focus, city, farmBonusPct: 0,
     plantsNeeded, feedId, feedCost, babiesBack, netBabies, babyCost,
     revenue, profit,
   };
@@ -96,13 +107,16 @@ export function animalCycle(animal, { priceOf, settings }) {
  * A grown animal kept for eggs or milk instead of sold. It keeps eating,
  * so feed is charged per production cycle.
  */
-export function productCycle(animal, { priceOf, settings }) {
+export function productCycle(animal, { priceOf, settings, cityId }) {
   if (!animal.product) return null;
   const p = animal.product;
   const hours = p.seconds / HOUR;
 
+  const city = farmCityFor(settings, cityId);
+  const bonusPct = farmBonus(city, animal.grownId);
   const perCycle = avg(p.min, p.max) *
-    (settings.premium ? settings.premiumYieldMultiplier : 1);
+    (settings.premium ? settings.premiumYieldMultiplier : 1) *
+    (1 + bonusPct / 100);
   const revenue = perCycle * priceOf(p.itemId) * (1 - taxRate(settings));
 
   // Upkeep: the grown animal eats its full nutrition over each cycle.
@@ -113,7 +127,7 @@ export function productCycle(animal, { priceOf, settings }) {
   const feedCost = plantsNeeded * priceOf(feedId);
 
   return {
-    kind: 'product', ref: animal, hours, focus: 0,
+    kind: 'product', ref: animal, hours, focus: 0, city, farmBonusPct: bonusPct,
     perCycle, feedId, plantsNeeded, feedCost,
     revenue, profit: revenue - feedCost,
   };
@@ -121,10 +135,25 @@ export function productCycle(animal, { priceOf, settings }) {
 
 /* ----------------------------------------------------------- crafting --- */
 
-/** The city you are standing in, by id, falling back to your default. */
-export function cityFor(settings, cityId) {
+/** Look a city up by id, falling back to the given default. */
+export function cityById(settings, cityId, fallbackKey = 'craftCity') {
   const list = settings.cities || [];
-  return list.find((c) => c.id === (cityId || settings.craftCity)) || list[0] || null;
+  return list.find((c) => c.id === (cityId || settings[fallbackKey])) || list[0] || null;
+}
+
+/** Where you craft. */
+export const cityFor = (settings, cityId) => cityById(settings, cityId, 'craftCity');
+
+/** Where your farm is. An island carries the bonus of the city it is bound to. */
+export const farmCityFor = (settings, cityId) => cityById(settings, cityId, 'farmCity');
+
+/**
+ * The +10% yield some cities give a specific crop, herb or animal product.
+ * Keyed by seed id for plants and by grown-animal id for eggs and milk, which
+ * is how farmingmodifiers.xml keys them. Raising an animal gets nothing.
+ */
+export function farmBonus(city, farmableId) {
+  return Number(city?.farmBonus?.[farmableId]) || 0;
 }
 
 /**
@@ -136,14 +165,9 @@ export function cityFor(settings, cityId) {
  * base and nothing more.
  */
 export function cityBonus(city, category, settings) {
-  const base = city?.base ?? settings.cityBaseBonus;
-  const specialises = !!city?.specialties?.includes(category);
-  return {
-    base,
-    specialty: specialises ? settings.craftSpecialtyBonus : 0,
-    specialises,
-    total: base + (specialises ? settings.craftSpecialtyBonus : 0),
-  };
+  const base = Number(city?.craftBase ?? settings.cityBaseBonus ?? 0);
+  const specialty = Number(city?.craftSpecialties?.[category]) || 0;
+  return { base, specialty, specialises: specialty > 0, total: base + specialty };
 }
 
 /** Mastery for one recipe: its own level if set, otherwise your default. */
@@ -220,18 +244,17 @@ export function perPeriod(cycle, { count = 1, cadenceHours, daysPerMonth = 30 })
 /** Rank every plant and animal by what one plot earns per day. */
 export function rankFarmables(data, ctx) {
   const rows = [];
+  const cadenceHours = ctx.settings.cadenceHours;
   for (const plant of data.plants) {
     const cycle = plantCycle(plant, ctx);
-    rows.push({ cycle, rate: perPeriod(cycle, { cadenceHours: ctx.settings.cadenceHours }) });
+    rows.push({ cycle, rate: perPeriod(cycle, { cadenceHours }) });
   }
   for (const animal of data.animals) {
     if (ctx.settings.hideMounts && animal.kind === 'mount') continue;
     const cycle = animalCycle(animal, ctx);
-    rows.push({ cycle, rate: perPeriod(cycle, { cadenceHours: ctx.settings.cadenceHours }) });
+    rows.push({ cycle, rate: perPeriod(cycle, { cadenceHours }) });
     const prod = productCycle(animal, ctx);
-    if (prod) {
-      rows.push({ cycle: prod, rate: perPeriod(prod, { cadenceHours: ctx.settings.cadenceHours }) });
-    }
+    if (prod) rows.push({ cycle: prod, rate: perPeriod(prod, { cadenceHours }) });
   }
   return rows.sort((a, b) => b.rate.perDay - a.rate.perDay);
 }
@@ -261,11 +284,12 @@ export function planTotals(plan, data, ctx) {
   for (const row of plan.plots) {
     const plant = byId.plant[row.itemId];
     const animal = byId.animal[row.itemId];
+    const at = { ...ctx, cityId: row.cityId };
     let cycle = null;
-    if (plant) cycle = plantCycle(plant, ctx);
+    if (plant) cycle = plantCycle(plant, at);
     else if (animal) {
       cycle = row.mode === 'product'
-        ? productCycle(animal, ctx) : animalCycle(animal, ctx);
+        ? productCycle(animal, at) : animalCycle(animal, at);
     }
     if (!cycle) continue;
     lines.push({

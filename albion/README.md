@@ -34,7 +34,10 @@ opens up into the arithmetic behind it. Nothing is a black box.
 
 Hit **Fetch live market prices** to pull current sell orders from the
 [Albion Online Data Project](https://www.albion-online-data.com/), choosing
-your server and city under *change*. ADP is community-fed, so coverage varies —
+your server — **Americas**, **Asia** or **Europe** — and city under *change*.
+(The data project's hostnames still carry the old names, `west` for Americas
+and `east` for Asia; the app keeps that as an implementation detail and shows
+the servers by the names they have in game.) ADP is community-fed, so coverage varies —
 anything it has no data for is left alone rather than overwritten, and you can
 always type prices in by hand.
 
@@ -56,6 +59,8 @@ typed in from a guide:
 | Crops and herbs | tier, NPC seed price, 22h grow time, seed return rate, watering bonus, focus cost, 3–6 yield |
 | Animals | baby price, grow time, offspring rate, nutrition needed, favourite food, egg/milk output |
 | Recipes | every potion and food recipe that uses something you farm — inputs, output count, focus cost |
+| Cities | crafting bonus per category, the island value, farming bonus per item |
+| Market | 2.5% setup fee, 8% transaction tax |
 | Focus | crafting bonus **+59%**, and the cost constant that halves focus at specialisation 100 |
 
 To refresh after a patch:
@@ -83,23 +88,45 @@ simply stack. The defaults reproduce the figures players see in game:
 
 ### Cities
 
-The specialty bonus only applies when the city actually specialises in what you
-are making, so you pick the city and the app works out the rest. Of this app's
-two craft categories:
+Where you do something changes what you get, so the app asks rather than
+assumes. All of this is read from the game's own `craftingmodifiers.xml` and
+`farmingmodifiers.xml`, not copied from a guide.
 
-| Category | Bonus city | Everywhere else |
-| --- | --- | --- |
-| Potions | **Brecilien** (+18 base, +15 specialty) | +18 base only |
-| Cooked food | **Caerleon** (+18 base, +15 specialty) | +18 base only |
+**Crafting.** Every city gives +18%. On top of that a city adds +15% only for
+the categories it specialises in, and of this app's two categories there is
+exactly one city each:
 
-The five royal cities specialise in weapons, armour and refining, so for
-potions and food they give the base and nothing more. Brewing a T4 healing
-potion with focus returns 47.9% of materials in Brecilien but 43.5% in
-Martlock — worth several hundred silver a craft, so it is worth getting right.
+| Category | Bonus city | Any other city | Your own island |
+| --- | --- | --- | --- |
+| Potions | **Brecilien** (+33) | +18 | **+0** |
+| Cooked food | **Caerleon** (+33) | +18 | **+0** |
 
-Set your usual city under **⚙️ Setup → Craft in…**, and override it per job by
-tapping that job on the Plan screen. The Best screen costs everything in the
-city shown in its header.
+The royal cities specialise in weapons, armour and refining, so for potions and
+food they are just the base. Crafting on a private island earns *no* city bonus
+at all — `islandvalue` is 0 throughout the game file — which costs you more
+than crafting in the wrong city does. A T4 healing potion with focus returns
+47.9% in Brecilien, 43.5% in a royal city and 37.1% on your island.
+
+**Farming.** Each city gives **+10% yield** on a few named crops, herbs and
+animal products, and here an island *does* inherit the bonus of the city it is
+bound to. Raising an animal gets nothing; only its eggs or milk do.
+
+| City | +10% on |
+| --- | --- |
+| Thetford | Agaric, Cabbage, Mullein |
+| Lymhurst | Carrot, Burdock, Goose eggs, Pumpkin |
+| Bridgewatch | Bean, Goat milk, Teasel, Corn |
+| Martlock | Wheat, Potato, Foxglove, Cow milk |
+| Fort Sterling | Chicken eggs, Turnip, Sheep milk, Yarrow |
+| Caerleon | Comfrey, Teasel, Mullein |
+| Brecilien | every crop (no herbs) |
+
+An animal's favourite food is deliberately boosted in a *different* city from
+the animal, so no single city is best at everything — there is a test that
+asserts exactly that, to catch it if the game ever changes.
+
+Set your usual places under **⚙️ Setup** — *Farm in…* and *Craft in…* — and
+override either per plot or per craft job by tapping it on the Plan screen.
 
 ### Mastery
 
@@ -109,13 +136,12 @@ constant from the game files and is exactly halved at mastery 100 — a T4
 healing potion drops from 210 focus to 105, which doubles the silver you get
 per point of focus. Recipes you have not set use your default level.
 
-**Not everything is published in the dumps.** The city base bonus (+18), the
-crafting specialty bonus (+15), which cities hold which specialty, focus
-regeneration (10,000/day) and market tax (6.5% with premium, 10.5% without) are
-community-sourced and cross-checked against the return rates above. Every one
-of them is editable under **⚙️ Setup → Game numbers**, so when a patch moves
-them you fix it yourself rather than waiting for me. In game, a station's real
-bonus is on the city map — the yellow triangle under the resource icons.
+**Not everything is published in the dumps.** Focus regeneration (10,000 a day,
+capped at 30,000) and premium doubling the farm yield are community-sourced and
+editable under **⚙️ Setup → Game numbers**. Everything else now comes out of the
+game files, including market tax: `gamedata.xml` gives a 2.5% setup fee and an
+8% transaction tax, and premium halves the transaction half — 6.5% against
+10.5%.
 
 ### One assumption worth knowing
 
@@ -158,7 +184,7 @@ actually pay on the buy side.
 
 ```bash
 npm start      # http://localhost:8080/albion/
-npm test       # 32 tests over the profit engine and the extracted data
+npm test       # 40 tests over the profit engine and the extracted data
 npm run gamedata
 ```
 

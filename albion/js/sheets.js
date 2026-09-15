@@ -1,7 +1,9 @@
 // Bottom sheets: pickers, editors, settings.
 
-import { cityBonus, cityFor, craftBatch, perPeriod, specFor } from './calc.js';
-import { explain, fetchPrices, CITIES, SERVERS } from './prices.js';
+import {
+  cityBonus, cityFor, craftBatch, farmBonus, farmCityFor, perPeriod, specFor,
+} from './calc.js';
+import { explain, fetchPrices, serverName, CITIES, SERVERS } from './prices.js';
 import {
   addCraft, addPlot, DATA, exportJSON, importJSON, priceOf, pricedItemIds,
   commit, removeCraft, removePlot, setPrice, setPrices, setSettings, setSpec,
@@ -68,15 +70,24 @@ export function openAddPlot() {
 /* -------------------------------------------------------- edit a plot -- */
 
 export function openPlot(row) {
-  const cycle = cycleFor(row.itemId, row.mode);
+  const cycle = cycleFor(row.itemId, row.mode, row.cityId);
   if (!cycle) return;
   const rate = perPeriod(cycle, { count: row.count, cadenceHours: state.settings.cadenceHours });
   const ref = cycle.ref;
   const heading = cycle.kind === 'product'
     ? `${nameOf(ref.product.itemId)} from ${ref.name}` : ref.name;
+  // The bonus is keyed on the seed for plants and the grown animal for produce.
+  const bonusKey = cycle.kind === 'product' ? ref.grownId : ref.id;
 
   openSheet(`
     <h2>T${ref.tier} ${esc(heading)}</h2>
+
+    <div class="field">
+      <label>Where is this farm?</label>
+      <select id="cityId">${farmCityOptions(row.cityId || state.settings.farmCity, bonusKey)}</select>
+      <div class="hint">${esc(farmHint(row.cityId, bonusKey, cycle.kind))}</div>
+    </div>
+
     <div class="field">
       <label>How many plots or pens</label>
       <input type="number" id="count" inputmode="numeric" min="1" max="999" value="${row.count}">
@@ -89,10 +100,16 @@ export function openPlot(row) {
     </div>
   `, {
     onMount(root) {
-      $('#save', root).onclick = () => {
-        updatePlot(row.id, { count: Math.max(1, Number($('#count', root).value) || 1) });
-        closeSheet();
+      const apply = (close) => {
+        updatePlot(row.id, {
+          count: Math.max(1, Number($('#count', root).value) || 1),
+          cityId: $('#cityId', root).value,
+        });
+        if (close) closeSheet();
+        else openPlot(state.plan.plots.find((x) => x.id === row.id));
       };
+      $('#cityId', root).onchange = () => apply(false);
+      $('#save', root).onclick = () => apply(true);
       $('#del', root).onclick = () => {
         const gone = removePlot(row.id);
         closeSheet();
@@ -100,6 +117,76 @@ export function openPlot(row) {
       };
     },
   });
+}
+
+/** City options for a farm, flagging the ones that boost this particular thing. */
+function farmCityOptions(selected, bonusKey) {
+  return (state.settings.cities || [])
+    .filter((c) => c.id !== 'island')      // an island carries its city's bonus
+    .map((c) => {
+      const pct = farmBonus(c, bonusKey);
+      return `<option value="${esc(c.id)}" ${c.id === selected ? 'selected' : ''}>
+        ${esc(c.name)}${pct ? ` \u2014 +${pct}%` : ''}</option>`;
+    }).join('');
+}
+
+function farmHint(cityId, bonusKey, kind) {
+  const city = farmCityFor(state.settings, cityId);
+  const pct = farmBonus(city, bonusKey);
+  if (kind === 'animal') {
+    return 'Raising animals gets no city bonus \u2014 only their eggs and milk do.';
+  }
+  if (pct) return `${city.name} gives +${pct}% yield on this. Islands bound here get it too.`;
+  const better = (state.settings.cities || [])
+    .filter((c) => farmBonus(c, bonusKey) > 0).map((c) => c.name);
+  return better.length
+    ? `No bonus here. ${better.join(' and ')} give +10%.`
+    : 'No city gives a bonus on this one.';
+}
+
+/** Choose where your farm or island sits, for the Best screen and new plots. */
+export function openFarmCity() {
+  const s = state.settings;
+  openSheet(`
+    <h2>Where is your farm?</h2>
+    <p class="muted">A private island carries the farming bonus of the city it is
+      bound to, so pick that city. Each plot can override it.</p>
+    ${(s.cities || []).filter((c) => c.id !== 'island').map((c) => {
+      const items = Object.keys(c.farmBonus || {});
+      return `
+        <button class="row" data-farm-city="${esc(c.id)}"
+          ${c.id === s.farmCity ? 'style="border-color:var(--gold)"' : ''}>
+          <span class="ico">\u{1F33E}</span>
+          <span class="body"><span class="title">${esc(c.name)}</span>
+            <span class="meta">${items.length
+              ? `+10% on ${items.map((k) => nameOf(bonusItemOf(k))).join(', ')}`
+              : 'no farming bonus'}</span></span>
+          <span class="amt">${c.id === s.farmCity ? '\u2713' : ''}</span>
+        </button>`;
+    }).join('')}
+    <p class="muted small" style="margin-top:12px">
+      The bonus is +10% yield on a few named crops, herbs and animal products.
+      An animal's favourite food deliberately grows better somewhere else, so no
+      one city is best at everything.</p>
+  `, {
+    onMount(root) {
+      root.onclick = (e) => {
+        const id = e.target.closest('[data-farm-city]')?.dataset.farmCity;
+        if (!id) return;
+        setSettings({ farmCity: id });
+        closeSheet();
+        toast(`Farming in ${farmCityFor(state.settings, id)?.name}`);
+      };
+    },
+  });
+}
+
+/** farmBonus keys are seeds and grown animals; show what they produce. */
+function bonusItemOf(key) {
+  const plant = DATA.plants.find((p) => p.id === key);
+  if (plant) return plant.cropId;
+  const animal = DATA.animals.find((a) => a.grownId === key);
+  return animal?.product?.itemId || key;
 }
 
 function addPlotBack(row) {
@@ -300,9 +387,9 @@ export function openPrice(id) {
 export function openPriceSource() {
   openSheet(`
     <h2>Where prices come from</h2>
-    <div class="field"><label>Server</label>
-      <select id="server">${SERVERS.map((s) =>
-        `<option value="${s}" ${s === state.settings.server ? 'selected' : ''}>${s}</option>`).join('')}</select></div>
+    <div class="field"><label>Game server</label>
+      <select id="server">${SERVERS.map((sv) =>
+        `<option value="${esc(sv.id)}" ${sv.id === state.settings.server ? 'selected' : ''}>${esc(sv.name)}</option>`).join('')}</select></div>
     <div class="field"><label>City</label>
       <select id="city">${CITIES.map((c) =>
         `<option value="${esc(c)}" ${c === state.settings.priceCity ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select>
@@ -389,6 +476,14 @@ export function openSettings() {
     ${toggle('ownInputsAtCost', 'Value inputs at my farm cost', 'Instead of what they would sell for.')}
     ${toggle('hideMounts', 'Hide mounts', 'Only show livestock and plants.')}
 
+    <div class="section-head"><h2>Farming</h2></div>
+    <button class="row" data-act="open-farm-city" style="margin-bottom:12px">
+      <span class="ico">\u{1F33E}</span>
+      <span class="body"><span class="title">Farm in ${esc(farmCityFor(s)?.name || 'a city')}</span>
+        <span class="meta">+10% yield on that city's crops, herbs and produce</span></span>
+      <span class="amt">\u203A</span>
+    </button>
+
     <div class="section-head"><h2>Crafting</h2></div>
     <button class="row" data-act="open-city" style="margin-bottom:8px">
       <span class="ico">\u{1F3EF}</span>
@@ -416,21 +511,21 @@ export function openSettings() {
       <div class="hint">The usage fee the station owner charges. 0 on your own island.</div></div>
 
     <div class="section-head"><h2>Game numbers</h2></div>
-    <p class="muted small">Straight from the game files, except where noted.
-      Change them if a patch changes them.</p>
+    <p class="muted small">Straight from the game files, except focus regeneration
+      and the premium yield, which are not published. City bonuses are read from
+      the game's own tables, so they are not listed here.</p>
     <div class="two">
       <div class="field"><label>Focus craft bonus (%)</label>
         <input type="number" id="focusCraftBonus" inputmode="decimal" value="${s.focusCraftBonus}"></div>
-      <div class="field"><label>City base bonus (%)</label>
-        <input type="number" id="cityBaseBonus" inputmode="decimal" value="${s.cityBaseBonus}"></div>
-      <div class="field"><label>Craft specialty (%)</label>
-        <input type="number" id="craftSpecialtyBonus" inputmode="decimal" value="${s.craftSpecialtyBonus}"></div>
       <div class="field"><label>Premium yield ×</label>
         <input type="number" id="premiumYieldMultiplier" inputmode="decimal" step="0.1" value="${s.premiumYieldMultiplier}"></div>
       <div class="field"><label>Focus per day</label>
         <input type="number" id="focusPerDay" inputmode="numeric" value="${s.focusPerDay}"></div>
-      <div class="field"><label>Market tax, premium (%)</label>
-        <input type="number" id="marketTaxPremium" inputmode="decimal" step="0.1" value="${s.marketTaxPremium}"></div>
+      <div class="field"><label>Market setup fee (%)</label>
+        <input type="number" id="marketSetupFee" inputmode="decimal" step="0.1" value="${s.marketSetupFee}"></div>
+      <div class="field"><label>Transaction tax (%)</label>
+        <input type="number" id="marketTransactionTax" inputmode="decimal" step="0.1" value="${s.marketTransactionTax}">
+        <div class="hint">Premium halves this.</div></div>
     </div>
 
     <div class="section-head"><h2>Your data</h2></div>
@@ -456,8 +551,8 @@ export function openSettings() {
         };
       }
       const NUM = ['specLevel', 'cadenceHours', 'stationFeePerCraft', 'focusCraftBonus',
-        'cityBaseBonus', 'craftSpecialtyBonus', 'premiumYieldMultiplier',
-        'focusPerDay', 'marketTaxPremium'];
+        'premiumYieldMultiplier', 'focusPerDay', 'marketSetupFee',
+        'marketTransactionTax'];
 
       $('#save', root).onclick = () => {
         const patch = { ...flags };
@@ -469,6 +564,7 @@ export function openSettings() {
         closeSheet();
         toast('Saved');
       };
+      $('[data-act="open-farm-city"]', root).onclick = openFarmCity;
       $('[data-act="open-city"]', root).onclick = openCraftCity;
       $('[data-act="open-mastery"]', root).onclick = () => openMastery();
       $('#export', root).onclick = () => {

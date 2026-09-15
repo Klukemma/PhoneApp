@@ -6,7 +6,12 @@ patch you re-run this rather than hand-editing numbers:
 
     python3 albion/tools/build_gamedata.py
 
-Source: https://github.com/ao-data/ao-bin-dumps (items.xml, loot.xml, gamedata.xml)
+Source: https://github.com/ao-data/ao-bin-dumps
+  items.xml              plants, animals, recipes
+  loot.xml               harvest yields
+  gamedata.xml           focus constants, market tax
+  craftingmodifiers.xml  city crafting bonuses
+  farmingmodifiers.xml   city farming bonuses
 Stdlib only - no packages to install.
 """
 
@@ -94,6 +99,76 @@ def loot_table(root: ET.Element) -> dict:
     return out
 
 
+
+# Cluster ids carry no names in the files; the comments above them do.
+CITY_IDS = {
+    "0000": ("thetford", "Thetford"),
+    "1000": ("lymhurst", "Lymhurst"),
+    "2000": ("bridgewatch", "Bridgewatch"),
+    "3004": ("martlock", "Martlock"),
+    "4000": ("fortsterling", "Fort Sterling"),
+    "3003": ("caerleon", "Caerleon"),
+    "5000": ("brecilien", "Brecilien"),
+    "4300": ("arthurs", "Arthur's Rest"),
+    "1012": ("merlyns", "Merlyn's Rest"),
+    "0008": ("morganas", "Morgana's Rest"),
+}
+
+
+def build_cities() -> list:
+    """City crafting and farming bonuses, read from the game's own tables.
+
+    Crafting: a flat base in the city and, importantly, ZERO on a private
+    island - islandvalue is 0 throughout craftingmodifiers.xml. On top of that
+    a city adds a percentage for each category it specialises in.
+
+    Farming: a flat +10% yield for a handful of named crops, herbs and animal
+    products, and here the island value matches the city value, so an island
+    bound to a city farms with that city's bonus.
+    """
+    craft_root = parse("craftingmodifiers.xml")
+    farm_root = parse("farmingmodifiers.xml")
+
+    craft = {}
+    for loc in craft_root.findall("craftinglocation"):
+        bonus = loc.find("craftingbonus")
+        if bonus is None:
+            continue                      # refining-only territory
+        craft[loc.get("clusterid")] = {
+            "base": round(float(bonus.get("value")) * 100, 2),
+            "island": round(float(bonus.get("islandvalue", 0)) * 100, 2),
+            "specialties": {
+                m.get("name"): round(float(m.get("value")) * 100, 2)
+                for m in loc.findall("craftingmodifier")
+            },
+        }
+
+    farm = {}
+    for loc in farm_root.findall("location"):
+        farm[loc.get("clusterid")] = {
+            m.get("farmable"): round(float(m.get("value")) * 100, 2)
+            for m in loc.findall("farmingyieldmodifier")
+        }
+
+    out = []
+    for cluster, (cid, name) in CITY_IDS.items():
+        c = craft.get(cluster, {})
+        out.append({
+            "id": cid,
+            "name": name,
+            "cluster": cluster,
+            "craftBase": c.get("base", 0),
+            "craftSpecialties": c.get("specialties", {}),
+            "farmBonus": farm.get(cluster, {}),
+        })
+    # Crafting on your own island earns no city bonus at all.
+    out.append({
+        "id": "island", "name": "My island (no city bonus)", "cluster": None,
+        "craftBase": 0, "craftSpecialties": {}, "farmBonus": {},
+    })
+    return out
+
+
 def main() -> None:
     print("Reading Albion dumps...", file=sys.stderr)
     items = parse("items.xml")
@@ -104,6 +179,13 @@ def main() -> None:
     focus_el = gd.find(".//ActionFocus")
     focus_bonus = float(focus_el.find("CraftingEfficiency").get("bonus"))
     cost_const = float(focus_el.get("costreductionconstant"))
+
+    taxes = {t.get("name"): float(t.get("value"))
+             for t in gd.findall(".//MarketPlace/TaxValues/TaxFactor")}
+    setup_fee = taxes.get("setupfee", 0.025)
+    txn_tax = taxes.get("transactiontax", 0.08)
+
+    cities = build_cities()
 
     simple = {s.get("uniquename"): s for s in items.findall(".//simpleitem")}
     farm_out = {
@@ -242,32 +324,20 @@ def main() -> None:
             # Straight out of gamedata.xml <ActionFocus>.
             "focusCraftBonus": round(focus_bonus * 100, 2),
             "focusCostConstant": cost_const,
-            # Not published in the dumps - see README for sourcing. Editable in-app.
-            "cityBaseBonus": 18,
-            "craftSpecialtyBonus": 15,
-            "refineSpecialtyBonus": 40,
-            # Every city gives the same base bonus; the specialty is what differs.
-            # Only two of this app's categories are anyone's specialty: potions
-            # belong to Brecilien and cooked food to Caerleon. The royal cities
-            # specialise in weapons and armour, so for potions and food they are
-            # just the base. A station shows its real bonus on the city map, and
-            # every figure here is editable in the app.
-            "cities": [
-                {"id": "brecilien", "name": "Brecilien", "base": 18, "specialties": ["potion"]},
-                {"id": "caerleon", "name": "Caerleon", "base": 18, "specialties": ["food"]},
-                {"id": "martlock", "name": "Martlock", "base": 18, "specialties": []},
-                {"id": "thetford", "name": "Thetford", "base": 18, "specialties": []},
-                {"id": "lymhurst", "name": "Lymhurst", "base": 18, "specialties": []},
-                {"id": "bridgewatch", "name": "Bridgewatch", "base": 18, "specialties": []},
-                {"id": "fortsterling", "name": "Fort Sterling", "base": 18, "specialties": []},
-                {"id": "island", "name": "Island or hideout", "base": 18, "specialties": []},
-            ],
+            # Market tax straight out of gamedata.xml <MarketPlace>.
+            # Premium halves the transaction tax; that halving is not in the
+            # dumps, so the premium figure is community-sourced.
+            "marketSetupFee": round(setup_fee * 100, 2),
+            "marketTransactionTax": round(txn_tax * 100, 2),
+            # Not published in the dumps. Editable in-app.
             "focusPerDay": 10000,
             "focusCap": 30000,
-            "marketTaxPremium": 6.5,
-            "marketTaxNormal": 10.5,
+            "premiumYieldMultiplier": 2,
+            "focusPerDay": 10000,
+            "focusCap": 30000,
             "premiumYieldMultiplier": 2,
         },
+        "cities": cities,
         "plants": plants,
         "animals": animals,
         "recipes": recipes,
@@ -281,6 +351,8 @@ def main() -> None:
           f"{len(recipes)} recipes, {len(item_meta)} items")
     print(f"  focus crafting bonus +{data['constants']['focusCraftBonus']}% "
           f"(from gamedata.xml)")
+    print(f"  {len(cities)} crafting/farming locations (from craftingmodifiers.xml "
+          f"+ farmingmodifiers.xml)")
 
 
 if __name__ == "__main__":

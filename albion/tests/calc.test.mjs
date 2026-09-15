@@ -4,9 +4,9 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
 import {
-  animalCycle, cityBonus, cityFor, craftBatch, focusCostAt, perPeriod,
-  planTotals, plantCycle, productCycle, rankRecipes, returnRate, specFor,
-  taxRate,
+  animalCycle, cityBonus, cityFor, craftBatch, farmBonus, farmCityFor,
+  focusCostAt, perPeriod, planTotals, plantCycle, productCycle, rankRecipes,
+  returnRate, specFor, taxRate,
 } from '../js/calc.js';
 
 const data = JSON.parse(
@@ -20,8 +20,10 @@ const ctx = (prices = {}, over = {}) => ({
   priceOf: (id) => prices[id] ?? 0,
   settings: {
     ...data.constants,
+    cities: data.cities,
     premium: true, watered: false, favouriteFood: true, useFocus: false,
-    craftCity: 'martlock', spec: {}, specLevel: 0, cadenceHours: 24,
+    craftCity: 'martlock', farmCity: 'island', spec: {}, specLevel: 0,
+    cadenceHours: 24,
     stationFeePerCraft: 0, feedItemId: 'T3_WHEAT',
     ...over,
   },
@@ -47,9 +49,13 @@ test('focus cost halves at specialisation 100', () => {
   assert.equal(Math.round(focusCostAt(1000, 50, data.constants.focusCostConstant)), 707);
 });
 
-test('market tax follows premium', () => {
-  assert.equal(taxRate({ premium: true, marketTaxPremium: 6.5, marketTaxNormal: 10.5 }), 0.065);
-  assert.equal(taxRate({ premium: false, marketTaxPremium: 6.5, marketTaxNormal: 10.5 }), 0.105);
+test('market tax is the setup fee plus a transaction tax premium halves', () => {
+  // Both figures come from gamedata.xml: 2.5% setup, 8% transaction.
+  const g = { marketSetupFee: 2.5, marketTransactionTax: 8 };
+  assert.equal(taxRate({ ...g, premium: true }), 0.065);    // 2.5 + 4
+  assert.equal(taxRate({ ...g, premium: false }), 0.105);   // 2.5 + 8
+  assert.equal(data.constants.marketSetupFee, 2.5);
+  assert.equal(data.constants.marketTransactionTax, 8);
 });
 
 /* ------------------------------------------------------------- farming - */
@@ -300,9 +306,9 @@ test('a city only boosts the categories it actually specialises in', () => {
   const martlock = cityFor(s, 'martlock');
 
   // Brecilien is the potion city, Caerleon the food city.
-  assert.equal(cityBonus(brecilien, 'potion', s).total, 18 + 15);
+  assert.equal(cityBonus(brecilien, 'potion', s).total, 33);
   assert.equal(cityBonus(brecilien, 'food', s).total, 18);
-  assert.equal(cityBonus(caerleon, 'food', s).total, 18 + 15);
+  assert.equal(cityBonus(caerleon, 'food', s).total, 33);
   assert.equal(cityBonus(caerleon, 'potion', s).total, 18);
   // Royal cities specialise in weapons and armour, so neither applies.
   assert.equal(cityBonus(martlock, 'potion', s).total, 18);
@@ -396,4 +402,139 @@ test('a plan costs each craft job in its own city at its own mastery', () => {
   assert.equal(Math.round(brec.cycle.focus), 105);        // mastery 100
   assert.equal(Math.round(mart.cycle.focus), 210);        // mastery 0
   assert.equal(Math.round(totals.focusPerDay), 10 * 105 + 10 * 210);
+});
+
+/* ------------------------------------------------ crafting on an island - */
+
+test('crafting on your own island earns no city bonus at all', () => {
+  // craftingmodifiers.xml gives every city islandvalue="0" for crafting.
+  const s = ctx({}).settings;
+  const island = cityFor(s, 'island');
+  assert.equal(island.craftBase, 0);
+  assert.equal(cityBonus(island, 'potion', s).total, 0);
+
+  const r = recipe('T4_POTION_HEAL');
+  const p = { 'T4_BURDOCK': 500, 'T3_EGG': 300, 'T4_POTION_HEAL': 2000 };
+  const onIsland = craftBatch(r, { ...ctx(p, { useFocus: true }), cityId: 'island' });
+  const inCity = craftBatch(r, { ...ctx(p, { useFocus: true }), cityId: 'martlock' });
+
+  // Focus alone: 1 - 100/159 = 37.1%, against 43.5% with the city's +18.
+  assert.equal(Math.round(onIsland.rrr * 1000) / 10, 37.1);
+  assert.equal(Math.round(inCity.rrr * 1000) / 10, 43.5);
+  assert.ok(onIsland.profit < inCity.profit);
+});
+
+/* ------------------------------------------------------ farming bonus -- */
+
+test('a city gives +10% yield only on the things it actually boosts', () => {
+  const s = ctx({}).settings;
+  const martlock = farmCityFor(s, 'martlock');
+  const thetford = farmCityFor(s, 'thetford');
+
+  // From farmingmodifiers.xml: Martlock boosts wheat, Thetford cabbage.
+  assert.equal(farmBonus(martlock, 'T3_FARM_WHEAT_SEED'), 10);
+  assert.equal(farmBonus(martlock, 'T5_FARM_CABBAGE_SEED'), 0);
+  assert.equal(farmBonus(thetford, 'T5_FARM_CABBAGE_SEED'), 10);
+  assert.equal(farmBonus(thetford, 'T3_FARM_WHEAT_SEED'), 0);
+});
+
+test('the farming bonus lifts the harvest by exactly a tenth', () => {
+  const wheat = plant('T3_FARM_WHEAT_SEED');
+  const prices = { 'T3_FARM_WHEAT_SEED': 5000, 'T3_WHEAT': 200 };
+
+  const plain = plantCycle(wheat, { ...ctx(prices), cityId: 'thetford' });
+  const boosted = plantCycle(wheat, { ...ctx(prices), cityId: 'martlock' });
+
+  assert.equal(plain.yieldPerPlot, 9);          // 4.5 avg, doubled by premium
+  assert.equal(round2(boosted.yieldPerPlot), 9.9);
+  assert.equal(boosted.farmBonusPct, 10);
+  assert.equal(plain.farmBonusPct, 0);
+  assert.ok(boosted.revenue > plain.revenue);
+});
+
+test('Brecilien boosts every crop but no herb', () => {
+  const s = ctx({}).settings;
+  const brec = farmCityFor(s, 'brecilien');
+  const crops = data.plants.filter((x) => x.kind === 'crop');
+  const herbs = data.plants.filter((x) => x.kind === 'herb');
+  assert.ok(crops.every((x) => farmBonus(brec, x.id) === 10), 'all crops');
+  assert.ok(herbs.every((x) => farmBonus(brec, x.id) === 0), 'no herbs');
+});
+
+test('eggs and milk get the bonus, but raising the animal does not', () => {
+  const chicken = animal('T3_FARM_CHICKEN_BABY');
+  const prices = {
+    'T3_WHEAT': 180, 'T3_EGG': 500,
+    'T3_FARM_CHICKEN_BABY': 5000, 'T3_FARM_CHICKEN_GROWN': 11500,
+  };
+  // Fort Sterling boosts T3_FARM_CHICKEN_GROWN, i.e. the eggs.
+  const eggsHere = productCycle(chicken, { ...ctx(prices), cityId: 'fortsterling' });
+  const eggsAway = productCycle(chicken, { ...ctx(prices), cityId: 'martlock' });
+  assert.equal(eggsHere.farmBonusPct, 10);
+  assert.equal(eggsAway.farmBonusPct, 0);
+  assert.equal(round2(eggsHere.perCycle), 19.8);   // 18 plus a tenth
+  assert.equal(eggsAway.perCycle, 18);
+
+  // Raising the bird is unaffected wherever you do it.
+  const raiseHere = animalCycle(chicken, { ...ctx(prices), cityId: 'fortsterling' });
+  const raiseAway = animalCycle(chicken, { ...ctx(prices), cityId: 'martlock' });
+  assert.equal(raiseHere.farmBonusPct, 0);
+  assert.equal(raiseHere.profit, raiseAway.profit);
+});
+
+test('an animal favourite food is boosted somewhere other than the animal', () => {
+  // The game deliberately splits these to create trade. Chickens are boosted in
+  // Fort Sterling; their favourite wheat is boosted in Martlock.
+  const s = ctx({}).settings;
+  const chicken = animal('T3_FARM_CHICKEN_BABY');
+  const birdCity = s.cities.find((c) => farmBonus(c, chicken.grownId) > 0);
+  const feedCity = s.cities.find((c) => farmBonus(c, `T3_FARM_WHEAT_SEED`) > 0);
+  assert.equal(chicken.favouriteFood, 'T3_WHEAT');
+  assert.ok(birdCity && feedCity);
+  assert.notEqual(birdCity.id, feedCity.id);
+});
+
+test('each plot on a plan is farmed in its own city', () => {
+  const plan = {
+    plots: [
+      { id: 'a', itemId: 'T3_FARM_WHEAT_SEED', count: 9, mode: 'grow', cityId: 'martlock' },
+      { id: 'b', itemId: 'T3_FARM_WHEAT_SEED', count: 9, mode: 'grow', cityId: 'thetford' },
+    ],
+    crafts: [],
+  };
+  const c = ctx({ 'T3_FARM_WHEAT_SEED': 5000, 'T3_WHEAT': 200 });
+  const totals = planTotals(plan, data, c);
+  assert.equal(totals.lines[0].cycle.farmBonusPct, 10);
+  assert.equal(totals.lines[1].cycle.farmBonusPct, 0);
+  assert.ok(totals.lines[0].cycle.profit > totals.lines[1].cycle.profit);
+});
+
+/* --------------------------------------------------- the city data set - */
+
+test('the city table came out of the game files intact', () => {
+  const cities = data.cities;
+  assert.equal(cities.length, 11);                  // 10 locations plus island
+
+  const byId = Object.fromEntries(cities.map((c) => [c.id, c]));
+  // Only these two matter for what this app crafts.
+  assert.equal(byId.brecilien.craftSpecialties.potion, 15);
+  assert.equal(byId.caerleon.craftSpecialties.food, 15);
+  for (const id of ['martlock', 'thetford', 'lymhurst', 'bridgewatch', 'fortsterling']) {
+    assert.equal(byId[id].craftSpecialties.potion, undefined, id);
+    assert.equal(byId[id].craftSpecialties.food, undefined, id);
+    assert.equal(byId[id].craftBase, 18, id);
+  }
+  assert.equal(byId.island.craftBase, 0);
+
+  // Every farming key must name something the app knows about.
+  const known = new Set([
+    ...data.plants.map((p) => p.id),
+    ...data.animals.map((a) => a.grownId),
+  ]);
+  for (const c of cities) {
+    for (const [key, pct] of Object.entries(c.farmBonus)) {
+      assert.ok(known.has(key), `${c.id} boosts unknown ${key}`);
+      assert.equal(pct, 10, `${c.id} ${key}`);
+    }
+  }
 });
