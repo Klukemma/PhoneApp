@@ -1,3 +1,17 @@
+# PhoneApp
+
+Two small offline phone apps, installed from a link and updated automatically.
+
+| App | What it does | Link |
+| --- | --- | --- |
+| **CoinKeep** | What can I spend today and still hit my savings goal? | [/](https://klukemma.github.io/PhoneApp/) |
+| **Albion Farm Profit** | What does farming and crafting actually earn in Albion Online? | [/albion/](https://klukemma.github.io/PhoneApp/albion/) — [docs](albion/README.md) |
+
+Both are PWAs: no Play Store, no APK, no account, no server. Everything stays
+on the phone. `npm test` covers both.
+
+---
+
 # CoinKeep
 
 A small offline money tracker for your phone. It answers one question every
@@ -134,6 +148,7 @@ No build step and no dependencies. Plain ES modules served as-is.
 | `js/util.js` | Date and currency helpers |
 | `tests/` | Tests for `budget.js` |
 | `sw.js` | Service worker — makes it work offline |
+| `albion/` | The Albion Farm Profit app — see [its README](albion/README.md) |
 
 `budget.js` is deliberately pure: it reads state and returns numbers, never
 touching storage or the DOM. Every figure on every screen comes from

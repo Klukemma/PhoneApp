@@ -47,8 +47,10 @@ jobs:
       # Publish only what the app needs — not .git, tests or tooling.
       - name: Stage the site
         run: |
-          mkdir -p _site
+          mkdir -p _site/albion
           cp -r index.html manifest.webmanifest sw.js css js icons _site/
+          cp -r albion/index.html albion/manifest.webmanifest albion/sw.js \
+                albion/css albion/js albion/icons albion/data _site/albion/
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site

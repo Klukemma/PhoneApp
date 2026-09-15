@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Albion Farm Profit">
+  <rect width="512" height="512" rx="115" fill="#0c0a07"/>
+  <circle cx="256" cy="256" r="159" fill="none" stroke="#2f2819" stroke-width="46"/>
+  <path d="M256 97a159 159 0 1 1-44 306" fill="none" stroke="#d4a94e"
+        stroke-width="46" stroke-linecap="round"/>
+  <!-- Leaf: the lens where two r=120 circles overlap, on the up-right diagonal. -->
+  <path d="M189 323A120 120 0 0 1 323 189A120 120 0 0 1 189 323Z" fill="#6ee7a5"/>
+</svg>
