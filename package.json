@@ -1,0 +1,12 @@
+{
+  "name": "coinkeep",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Offline-first PWA that works out what you can safely spend today to hit a monthly savings goal on a non-monthly pay cycle.",
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "start": "node tools/serve.mjs"
+  },
+  "license": "MIT"
+}
