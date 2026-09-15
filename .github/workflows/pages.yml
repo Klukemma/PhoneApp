@@ -5,7 +5,9 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [main]
+    # Also covers the working branch, so the app publishes before this is
+    # merged into main.
+    branches: [main, 'claude/**']
   workflow_dispatch:
 
 permissions:
