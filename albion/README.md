@@ -36,7 +36,9 @@ Three things it tells you that are easy to miss:
 - **What skipping a day buys you.** Farming every other day halves your
   harvests but doubles the focus waiting for each watering, so a bigger share
   of the farm gets watered. Set the rhythm under *Your cycle* and compare.
-- **What is really limiting each craft** — materials or focus. Leftover focus
+- **What is really limiting each craft** — and *which* material, by name.
+  "Short on Elusive Foxglove" tells you what to plant; "no Potato Schnapps at
+  all" tells you that you forgot a step, and offers to add it. Leftover focus
   means grow more; leftover materials mean focus is the wall.
 
 **Best** — the "what should I plant" screen. Every crop, herb and animal ranked
@@ -267,7 +269,7 @@ actually pay on the buy side.
 
 ```bash
 npm start      # http://localhost:8080/albion/
-npm test       # 76 tests over the profit engine and the extracted data
+npm test       # 79 tests over the profit engine and the extracted data
 npm run gamedata
 ```
 

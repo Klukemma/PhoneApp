@@ -47,7 +47,8 @@ function wire() {
   $('#view').addEventListener('click', (e) => {
     const el = e.target.closest(
       '[data-act],[data-plot],[data-craft],[data-price],[data-rank],' +
-      '[data-price-filter],[data-toggle],[data-add-plot],[data-add-craft]');
+      '[data-price-filter],[data-toggle],[data-add-plot],[data-add-craft],' +
+      '[data-add-step]');
     if (!el) return;
     const d = el.dataset;
 
@@ -64,6 +65,11 @@ function wire() {
       go('plan');
     } else if (d.addCraft) {
       addCraft(d.addCraft);
+      go('plan');
+    } else if (d.addStep) {
+      // The missing intermediate is usually a cheap one, so keep focus for
+      // whatever it feeds rather than burning it here.
+      addCraft(d.addStep, { useFocus: false });
       go('plan');
     } else if (d.rank) {
       setRankTab(d.rank);

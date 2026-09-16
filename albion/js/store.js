@@ -80,7 +80,14 @@ function normalize(raw) {
     nodeLevels: { ...(raw.nodeLevels || {}) },
     plan: {
       plots: Array.isArray(raw.plan?.plots) ? raw.plan.plots : [],
-      crafts: Array.isArray(raw.plan?.crafts) ? raw.plan.crafts : [],
+      crafts: (Array.isArray(raw.plan?.crafts) ? raw.plan.crafts : []).map((c) => {
+        // Craft jobs used to be "so many per day" before the cycle existed.
+        // Carry that number over rather than silently resetting it to zero.
+        if (c.perCycle === undefined && c.craftsPerDay !== undefined) {
+          return { ...c, mode: c.mode || 'fixed', perCycle: c.craftsPerDay };
+        }
+        return c;
+      }),
     },
   };
   for (const [k, v] of Object.entries(s.prices)) {
@@ -192,14 +199,17 @@ export function removePlot(id) {
   return gone;
 }
 
-export function addCraft(recipeId) {
-  state.plan.crafts.push({
+export function addCraft(recipeId, over = {}) {
+  const job = {
     id: uid(), recipeId,
     mode: 'auto',              // craft as much as materials and focus allow
     perCycle: 0,               // used when mode is 'fixed'
     cityId: state.settings.craftCity,
-  });
+    ...over,
+  };
+  state.plan.crafts.push(job);
   commit();
+  return job;
 }
 
 export function updateCraft(id, patch) {

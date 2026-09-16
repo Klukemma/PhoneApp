@@ -623,11 +623,14 @@ export function simulateCycle(plan, data, ctx) {
 
     // The return rate hands materials straight back, so the same pile makes
     // more crafts — and each of those still costs focus.
-    const perCraft = recipe.inputs.map((i) => ({
-      ...i, net: i.count * (1 - batch.rrr),
-    }));
-    const byMaterial = Math.min(...perCraft.map((i) =>
-      (i.net > 0 ? Math.floor((pool[i.id] || 0) / i.net) : Infinity)));
+    const perCraft = recipe.inputs.map((i) => {
+      const net = i.count * (1 - batch.rrr);
+      const have = pool[i.id] || 0;
+      return { ...i, net, have, allows: net > 0 ? Math.floor(have / net) : Infinity };
+    });
+    const byMaterial = Math.min(...perCraft.map((i) => i.allows));
+    // Which input is the wall, so it can be named rather than left to guess.
+    const bottleneck = perCraft.find((i) => i.allows === byMaterial) || null;
     const byFocus = batch.focus > 0 ? Math.floor(focusLeft / batch.focus) : Infinity;
 
     let crafts;
@@ -657,7 +660,9 @@ export function simulateCycle(plan, data, ctx) {
 
     craftLines.push({
       job, recipe, batch, crafts, limitedBy, byMaterial, byFocus,
-      consumed, made, useFocus,
+      consumed, made, useFocus, inputs: perCraft, bottleneck,
+      // An input you have none of, which some other recipe could make for you.
+      missing: perCraft.filter((i) => i.have <= 0).map((i) => i.id),
       focusUsed: batch.focus * crafts,
     });
   }

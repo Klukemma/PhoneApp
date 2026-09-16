@@ -224,23 +224,56 @@ function farmRow(line) {
 }
 
 function craftRow(line) {
-  const { batch, recipe, crafts, made, limitedBy, job, useFocus } = line;
-  const why = limitedBy === 'materials' ? 'materials run out'
-    : limitedBy === 'focus' ? 'focus runs out' : 'you set the number';
-  // Negative means the inputs sell for more than the output, at your prices.
+  const { batch, recipe, crafts, made, limitedBy, job, useFocus, bottleneck } = line;
   const destroys = crafts > 0 && batch.profit < 0;
+
+  // Naming the input that ran out is the difference between "materials run
+  // out" and knowing what to go and plant, or which step you forgot to add.
+  const why = limitedBy === 'materials'
+    ? (bottleneck
+      ? (bottleneck.have <= 0
+        ? `no ${nameOf(bottleneck.id)} at all`
+        : `short on ${nameOf(bottleneck.id)}`)
+      : 'materials run out')
+    : limitedBy === 'focus' ? 'focus runs out' : 'you set the number';
+
   return `
-    <button class="row" data-craft="${esc(job.id)}">
+    <button class="row ${crafts === 0 ? 'warn' : ''}" data-craft="${esc(job.id)}">
       <span class="ico">${EMOJI[recipe.category] || EMOJI.potion}</span>
       <span class="body">
         <span class="title">T${recipe.tier} ${esc(recipe.name)} \u00d7${short(made)}</span>
         <span class="meta">${destroys
           ? 'inputs sell for more than the output'
-          : `${short(crafts)} crafts · ${why} · ${useFocus
+          : `${short(crafts)} crafts · ${esc(why)} · ${useFocus
             ? `${short(line.focusUsed)} focus` : 'no focus'}`}</span>
       </span>
       <span class="amt num ${crafts ? '' : 'flat'}">${crafts
         ? `${short(batch.profit * crafts)}` : '\u2014'}</span>
+    </button>
+    ${missingStepRow(line)}`;
+}
+
+/**
+ * When a craft makes nothing because an input is simply absent, and some other
+ * recipe would produce that input, offer to add that step. Growing potatoes
+ * without brewing them into schnapps leaves the potion with nothing to use.
+ */
+function missingStepRow(line) {
+  if (line.crafts > 0 || !line.bottleneck || line.bottleneck.have > 0) return '';
+  const id = line.bottleneck.id;
+  const maker = DATA.recipes.find((r) => r.id === id);
+  const already = state.plan.crafts.some((c) => c.recipeId === id);
+  if (!maker || already) return '';
+  const from = maker.inputs.map((i) => nameOf(i.id)).join(', ');
+  return `
+    <button class="row" data-add-step="${esc(maker.id)}"
+      style="margin-top:6px;border-color:var(--gold)">
+      <span class="ico">\u2795</span>
+      <span class="body">
+        <span class="title">Add ${esc(maker.name)} to your plan</span>
+        <span class="meta">Made from ${esc(from)} \u2014 without it this craft has none</span>
+      </span>
+      <span class="amt" style="color:var(--gold)">Add</span>
     </button>`;
 }
 

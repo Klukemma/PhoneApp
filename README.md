@@ -41,7 +41,7 @@ Browser storage is per *origin*, not per path, so moving CoinKeep from `/` to
 
 ```bash
 npm start     # http://localhost:8080 — launcher, both apps underneath
-npm test      # both apps: 17 CoinKeep + 76 Albion
+npm test      # both apps: 17 CoinKeep + 79 Albion
 npm run gamedata   # refresh Albion's game data after a patch
 ```
 

@@ -1071,3 +1071,69 @@ test('a per-recipe override still wins over the board', () => {
   assert.equal(specFor(s, 'T6_POTION_HEAL'), 50);
   assert.equal(round2(specFor(s, 'T6_POTION_ENERGY')), 22.5);   // board only
 });
+
+/* ------------------------------------------- naming what ran out ------- */
+
+test('the input that ran out is named, not just "materials"', () => {
+  // Potatoes grown but never brewed: the potion has no schnapps at all.
+  const plan = {
+    plots: [
+      { id: 'f', itemId: 'T6_FARM_FOXGLOVE_SEED', count: 9, mode: 'grow', cityId: 'martlock' },
+      { id: 'p', itemId: 'T6_FARM_POTATO_SEED', count: 1, mode: 'grow', cityId: 'martlock' },
+      { id: 'g', itemId: 'T5_FARM_GOOSE_BABY', count: 4, mode: 'product', cityId: 'lymhurst' },
+    ],
+    crafts: [{ id: 'c', recipeId: 'T6_POTION_HEAL', mode: 'auto' }],
+  };
+  const sim = simulateCycle(plan, data, cycleCtx());
+  const line = sim.craftLines[0];
+
+  assert.equal(line.crafts, 0);
+  assert.equal(line.limitedBy, 'materials');
+  assert.equal(line.bottleneck.id, 'T6_ALCOHOL');
+  assert.equal(line.bottleneck.have, 0);
+  assert.deepEqual(line.missing, ['T6_ALCOHOL']);
+  // The other two were plentiful, so they must not be blamed.
+  const foxglove = line.inputs.find((i) => i.id === 'T6_FOXGLOVE');
+  assert.ok(foxglove.allows > 0);
+});
+
+test('adding the missing step makes the potion possible', () => {
+  const base = [
+    { id: 'f', itemId: 'T6_FARM_FOXGLOVE_SEED', count: 9, mode: 'grow', cityId: 'martlock' },
+    { id: 'p', itemId: 'T6_FARM_POTATO_SEED', count: 1, mode: 'grow', cityId: 'martlock' },
+    { id: 'g', itemId: 'T5_FARM_GOOSE_BABY', count: 4, mode: 'product', cityId: 'lymhurst' },
+  ];
+  const withStep = simulateCycle({
+    plots: base,
+    crafts: [
+      { id: 'c', recipeId: 'T6_POTION_HEAL', mode: 'auto' },
+      { id: 's', recipeId: 'T6_ALCOHOL', mode: 'auto', useFocus: false },
+    ],
+  }, data, cycleCtx());
+
+  const potion = withStep.craftLines.find((l) => l.recipe.id === 'T6_ALCOHOL'
+    ? false : l.recipe.id === 'T6_POTION_HEAL');
+  assert.ok(potion.crafts > 0, 'the potion now has schnapps to use');
+  // And the bottleneck moves to something real rather than an absence.
+  assert.ok(potion.bottleneck.have > 0 || potion.limitedBy === 'focus');
+});
+
+test('a bottleneck you merely run short of is reported differently from one you have none of', () => {
+  const plan = {
+    plots: [
+      { id: 'f', itemId: 'T6_FARM_FOXGLOVE_SEED', count: 1, mode: 'grow', cityId: 'martlock' },
+      { id: 'p', itemId: 'T6_FARM_POTATO_SEED', count: 9, mode: 'grow', cityId: 'martlock' },
+      { id: 'g', itemId: 'T5_FARM_GOOSE_BABY', count: 9, mode: 'product', cityId: 'lymhurst' },
+    ],
+    crafts: [
+      { id: 's', recipeId: 'T6_ALCOHOL', mode: 'auto', useFocus: false },
+      { id: 'c', recipeId: 'T6_POTION_HEAL', mode: 'auto' },
+    ],
+  };
+  const sim = simulateCycle(plan, data, cycleCtx());
+  const potion = sim.craftLines.find((l) => l.recipe.id === 'T6_POTION_HEAL');
+  // Foxglove is the scarce one here, but there is some of it.
+  assert.equal(potion.bottleneck.id, 'T6_FOXGLOVE');
+  assert.ok(potion.bottleneck.have > 0);
+  assert.deepEqual(potion.missing, []);
+});
