@@ -12,9 +12,11 @@ Source: https://github.com/ao-data/ao-bin-dumps
   gamedata.xml           focus constants, market tax
   craftingmodifiers.xml  city crafting bonuses
   farmingmodifiers.xml   city farming bonuses
+  localization.xml       the real in-game item names (large: ~76 MB, cached)
 Stdlib only - no packages to install.
 """
 
+import html
 import json
 import re
 import sys
@@ -32,21 +34,6 @@ LIVESTOCK = ["CHICKEN", "GOAT", "GOOSE", "SHEEP", "PIG", "COW"]
 MOUNT_STOCK = ["OX", "HORSE", "DIREWOLF", "DIREBOAR", "DIREBEAR", "SWAMPDRAGON",
                "GIANTSTAG", "MAMMOTH", "COUGAR", "DRAKE"]
 
-# Unique names are terse; these read better in a list on a phone.
-NAMES = {
-    "POTION_HEAL": "Healing Potion", "POTION_ENERGY": "Energy Potion",
-    "POTION_STONESKIN": "Gigantify Potion", "POTION_BERSERK": "Resistance Potion",
-    "POTION_CLEANSE": "Cleansing Potion", "POTION_CLEANSE2": "Purifying Potion",
-    "POTION_GATHER": "Gathering Potion", "POTION_COOLDOWN": "Invisibility Potion",
-    "POTION_REVIVE": "Resurrection Potion", "POTION_LIFEWARD": "Poison Potion",
-    "POTION_SLOWFIELD": "Sticky Potion", "POTION_TORNADO": "Tornado Potion",
-    "POTION_ACID": "Acid Potion", "POTION_LAVA": "Lava Potion",
-    "POTION_MOB_RESET": "Calming Potion",
-    "MEAL_SOUP": "Soup", "MEAL_SALAD": "Salad", "MEAL_PIE": "Pie",
-    "MEAL_OMELETTE": "Omelette", "MEAL_ROAST": "Roast", "MEAL_STEW": "Stew",
-    "MEAL_SANDWICH": "Sandwich", "FLOUR": "Flour", "BUTTER": "Butter",
-    "ALCOHOL": "Alcohol", "EGG": "Eggs", "MILK": "Milk",
-}
 
 
 def fetch(name: str) -> bytes:
@@ -64,15 +51,42 @@ def parse(name: str) -> ET.Element:
     return ET.fromstring(fetch(name).decode("utf-8-sig"))
 
 
+def load_names() -> dict:
+    """The game's own English item names, e.g. T6_ALCOHOL -> 'Potato Schnapps'.
+
+    localization.xml is tens of megabytes and mostly other languages, so this
+    streams it and keeps only the first (EN-US) segment of each @ITEMS_ entry.
+    """
+    names = {}
+    key = None
+    want_seg = False
+    for raw in fetch("localization.xml").decode("utf-8-sig").splitlines():
+        if 'tuid="@ITEMS_' in raw:
+            m = re.search(r'tuid="@ITEMS_([^"]+)"', raw)
+            key = m.group(1) if m else None
+            want_seg = False
+        elif key and 'xml:lang="EN-US"' in raw:
+            want_seg = True
+        elif key and want_seg:
+            m = re.search(r"<seg>(.*?)</seg>", raw)
+            if m:
+                names[key] = html.unescape(m.group(1)).strip()
+                key, want_seg = None, False
+    return names
+
+
+NAMES_BY_ID = {}
+
+
 def pretty(unique: str) -> str:
-    """T5_FARM_CABBAGE_SEED -> 'Cabbage Seed', T4_POTION_HEAL -> 'Healing Potion'."""
-    body = re.sub(r"^T\d+_", "", unique)
-    for key, label in NAMES.items():
-        if body == key or body.startswith(key + "_"):
-            rest = body[len(key):].strip("_")
-            return f"{label} {rest.title()}".strip()
-    body = body.replace("FARM_", "").replace("_", " ").title()
-    return body
+    """The item's name as it appears in game, falling back to its id."""
+    if unique in NAMES_BY_ID:
+        return NAMES_BY_ID[unique]
+    # Enchanted variants share the base item's name.
+    base = unique.split("@")[0]
+    if base in NAMES_BY_ID:
+        return NAMES_BY_ID[base]
+    return unique.replace("FARM_", "").replace("_", " ").title()
 
 
 def tier_of(unique: str) -> int:
@@ -171,6 +185,9 @@ def build_cities() -> list:
 
 def main() -> None:
     print("Reading Albion dumps...", file=sys.stderr)
+    global NAMES_BY_ID
+    NAMES_BY_ID = load_names()
+    print(f"  {len(NAMES_BY_ID)} item names loaded", file=sys.stderr)
     items = parse("items.xml")
     loot = loot_table(parse("loot.xml"))
     gd = parse("gamedata.xml")
@@ -216,7 +233,8 @@ def main() -> None:
         req = f.find("craftingrequirements")
         plants.append({
             "id": f.get("uniquename"),
-            "name": pretty(f.get("uniquename")).replace(" Seed", ""),
+            # Name a plant row by what it grows, not by its seed packet.
+            "name": pretty(crop) if crop else pretty(f.get("uniquename")),
             "tier": int(f.get("tier")),
             "kind": "herb" if is_herb else "crop",
             "seedId": f.get("uniquename"),
@@ -268,7 +286,7 @@ def main() -> None:
 
         animals.append({
             "id": u,
-            "name": pretty(u).replace(" Baby", ""),
+            "name": pretty(grown_id),
             "tier": int(f.get("tier")),
             "kind": "livestock" if species in LIVESTOCK else "mount",
             "babyId": u, "grownId": grown_id,

@@ -41,7 +41,9 @@ silver. Toggle watering, premium, focus and the city bonus and watch the order
 change. Tap any row to add it to your plan.
 
 **Prices** — your market prices. Everything else is fixed by the game; this is
-the only part that is yours, and it is what makes the answers real.
+the only part that is yours, and it is what makes the answers real. Seeds
+default to the NPC price, which is usually well above what they fetch on the
+market — worth correcting before you read anything into a big seed surplus.
 
 Tap any row anywhere to get the full breakdown — every number in this app
 opens up into the arithmetic behind it. Nothing is a black box.
@@ -72,7 +74,8 @@ typed in from a guide:
 
 | From the game files | |
 | --- | --- |
-| Crops and herbs | tier, NPC seed price, 22h grow time, seed return rate, watering bonus, focus cost, 3–6 yield |
+| Names | the real in-game names, so alcohol is Potato Schnapps and a healing potion is a Major Healing Potion |
+| Crops and herbs | tier, NPC seed price, 22h grow time, seed return rate, watering bonus, focus cost, 3–6 yield **per tile** |
 | Animals | baby price, grow time, offspring rate, nutrition needed, favourite food, egg/milk output |
 | Recipes | every potion and food recipe that uses something you farm — inputs, output count, focus cost |
 | Cities | crafting bonus per category, the island value, farming bonus per item |
@@ -171,11 +174,20 @@ their favourite** off in Setup if it does not match.
 
 ## How the maths works
 
+**Counting.** A row is a number of **3×3 plots**, because that is the unit you
+actually build and think in — one plot is nine tiles or nine animals. The game
+data is per tile (3–6 crops, or 7–11 eggs from one bird), so the app multiplies
+by nine and shows both numbers. Getting this wrong understates a farm ninefold,
+which is exactly what it did before someone checked it against a real harvest:
+four goose pastures return about 713 eggs a harvest here, against roughly 760
+counted in game.
+
 **A plot of crops.** Seeds come back at the rate in the game files, and
 watering adds the watering bonus. Above 100% the plot pays for its own seed and
-leaves a surplus, so the seed line becomes income rather than cost — this is
-why watered cabbage beats unwatered cabbage by more than the extra harvest
-alone.
+leaves a surplus. Those spare seeds are treated as **stock you can sell**, not
+as a discount on the seed bill, so they appear in the end-of-cycle sales where
+you can see them — this is why watered high-tier herbs beat unwatered ones by
+more than the extra harvest alone.
 
 **An animal.** Feed is `nutrition ÷ 48` plants, offspring offsets the next
 baby, and the sale of the grown animal is taxed. Kept for eggs or milk instead,
@@ -211,7 +223,7 @@ actually pay on the buy side.
 
 ```bash
 npm start      # http://localhost:8080/albion/
-npm test       # 54 tests over the profit engine and the extracted data
+npm test       # 59 tests over the profit engine and the extracted data
 npm run gamedata
 ```
 

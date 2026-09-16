@@ -198,8 +198,10 @@ function farmRow(line) {
     <button class="row" data-plot="${esc(row.id)}">
       <span class="ico">${emoji}</span>
       <span class="body">
-        <span class="title">T${ref.tier} ${esc(what)} \u00d7${row.count}</span>
-        <span class="meta">${short(produced)} ${esc(nameOf(itemId))} over ${harvests} harvests${
+        <span class="title">T${ref.tier} ${esc(what)} \u00d7${line.plots} ${
+          line.plots === 1 ? 'plot' : 'plots'}</span>
+        <span class="meta">${line.tiles} tiles \u2192 ${short(produced)} ${esc(nameOf(itemId))}
+          over ${harvests} ${harvests === 1 ? 'harvest' : 'harvests'}${
           cycle.farmBonusPct ? ` · ${cycle.city.name} +${cycle.farmBonusPct}%` : ''}</span>
       </span>
       <span class="amt num ${line.cost > 0 ? 'bad' : 'good'}">${short(-line.cost)}</span>
@@ -468,14 +470,18 @@ export function detailHTML(cycle, rate) {
 
   if (cycle.kind === 'plant') {
     const p = cycle.ref;
-    line('Harvest per plot', `${round1(cycle.yieldPerPlot)} ${nameOf(p.cropId)}`);
+    line('Per tile, per harvest', `${round1(cycle.yieldPerTile)} ${nameOf(p.cropId)}`);
+    line('Per 3\u00d73 plot', `${round1(cycle.yieldPerTile * 9)} ${nameOf(p.cropId)}`);
     if (cycle.farmBonusPct) {
       line(`${cycle.city.name} farming bonus`, `+${cycle.farmBonusPct}% yield`, 'good');
     }
     line('Sale after tax', short(cycle.revenue), 'good');
     line(`Seeds back (${s.watered ? 'watered' : 'dry'})`, pct(cycle.seedsBack, 0));
-    line(cycle.seedCost >= 0 ? 'Seed cost' : 'Spare seeds',
-      short(-cycle.seedCost), cycle.seedCost >= 0 ? 'bad' : 'good');
+    if (cycle.seedsBought > 0) {
+      line('Seeds to buy per tile', `${round1(cycle.seedsBought)} \u00d7 ${nameOf(p.seedId)}`, 'bad');
+    } else {
+      line('Spare seeds per tile', `${round1(cycle.seedSurplus)} \u00d7 ${nameOf(p.seedId)}`, 'good');
+    }
     if (cycle.focus) line('Focus to water', short(cycle.focus));
     line('Cost per unit grown', short(cycle.costPerUnit));
   } else if (cycle.kind === 'animal') {

@@ -6,7 +6,7 @@ import { test } from 'node:test';
 import {
   animalCycle, cityBonus, cityFor, craftBatch, farmBonus, farmCityFor,
   focusCostAt, focusLedger, perPeriod, planTotals, plantCycle, productCycle,
-  rankRecipes, returnRate, simulateCycle, specFor, taxRate,
+  rankRecipes, returnRate, simulateCycle, specFor, taxRate, TILES_PER_PLOT,
 } from '../js/calc.js';
 
 const data = JSON.parse(
@@ -82,8 +82,9 @@ test('watering adds exactly the seed bonus from the game data', () => {
 test('premium doubles the harvest', () => {
   const cab = plant('T5_FARM_CABBAGE_SEED');
   const p = { 'T5_CABBAGE': 500, 'T5_FARM_CABBAGE_SEED': 10000 };
-  assert.equal(plantCycle(cab, ctx(p, { premium: true })).yieldPerPlot, 9);
-  assert.equal(plantCycle(cab, ctx(p, { premium: false })).yieldPerPlot, 4.5);
+  // Per tile: 3-6 averages 4.5, and premium doubles it.
+  assert.equal(plantCycle(cab, ctx(p, { premium: true })).yieldPerTile, 9);
+  assert.equal(plantCycle(cab, ctx(p, { premium: false })).yieldPerTile, 4.5);
 });
 
 test('unwatered carrots return no seed at all', () => {
@@ -445,8 +446,8 @@ test('the farming bonus lifts the harvest by exactly a tenth', () => {
   const plain = plantCycle(wheat, { ...ctx(prices), cityId: 'thetford' });
   const boosted = plantCycle(wheat, { ...ctx(prices), cityId: 'martlock' });
 
-  assert.equal(plain.yieldPerPlot, 9);          // 4.5 avg, doubled by premium
-  assert.equal(round2(boosted.yieldPerPlot), 9.9);
+  assert.equal(plain.yieldPerTile, 9);          // 4.5 avg, doubled by premium
+  assert.equal(round2(boosted.yieldPerTile), 9.9);
   assert.equal(boosted.farmBonusPct, 10);
   assert.equal(plain.farmBonusPct, 0);
   assert.ok(boosted.revenue > plain.revenue);
@@ -644,17 +645,19 @@ test('a cheap intermediate step can eat the whole focus budget', () => {
 });
 
 test('the binding constraint is reported honestly', () => {
+  // Nine 3x3 plots is 81 tiles of foxglove, so focus runs out well before the
+  // herbs do - the opposite of the old per-tile reading.
   const sim = simulateCycle(cyclePlan([
     { id: 'c1', recipeId: 'T6_ALCOHOL', mode: 'auto', useFocus: false },
     { id: 'c2', recipeId: 'T6_POTION_HEAL', mode: 'auto' },
   ]), data, cycleCtx());
   const potions = sim.craftLines.find((l) => l.recipe.id === 'T6_POTION_HEAL');
 
-  assert.equal(potions.limitedBy, 'materials');
-  assert.ok(potions.byMaterial < potions.byFocus);
-  assert.ok(sim.focusLeft > 0, 'focus is left over when materials bind');
+  assert.equal(potions.limitedBy, 'focus');
+  assert.ok(potions.byFocus < potions.byMaterial);
+  assert.ok(sim.focusLeft < potions.batch.focus, 'focus is spent down to the last craft');
 
-  // Growing more foxglove should lift the ceiling.
+  // Growing more foxglove cannot lift a ceiling that focus is setting.
   const more = simulateCycle({
     ...cyclePlan([
       { id: 'c1', recipeId: 'T6_ALCOHOL', mode: 'auto', useFocus: false },
@@ -667,7 +670,26 @@ test('the binding constraint is reported honestly', () => {
     ],
   }, data, cycleCtx());
   const morePotions = more.craftLines.find((l) => l.recipe.id === 'T6_POTION_HEAL');
-  assert.ok(morePotions.crafts > potions.crafts);
+  assert.equal(morePotions.crafts, potions.crafts, 'focus-bound, so more herbs change nothing');
+});
+
+test('when materials bind instead, growing more does lift the ceiling', () => {
+  const small = (plots) => ({
+    plots: [
+      { id: 'f', itemId: 'T6_FARM_FOXGLOVE_SEED', count: plots, mode: 'grow', cityId: 'martlock' },
+      { id: 'p', itemId: 'T6_FARM_POTATO_SEED', count: plots, mode: 'grow', cityId: 'martlock' },
+      { id: 'g', itemId: 'T5_FARM_GOOSE_BABY', count: plots, mode: 'product', cityId: 'lymhurst' },
+    ],
+    crafts: [
+      { id: 'c1', recipeId: 'T6_ALCOHOL', mode: 'auto', useFocus: false },
+      { id: 'c2', recipeId: 'T6_POTION_HEAL', mode: 'auto' },
+    ],
+  });
+  const one = simulateCycle(small(1), data, cycleCtx());
+  const two = simulateCycle(small(2), data, cycleCtx());
+  const potionsOf = (sim) => sim.craftLines.find((l) => l.recipe.id === 'T6_POTION_HEAL');
+  assert.equal(potionsOf(one).limitedBy, 'materials');
+  assert.ok(potionsOf(two).crafts > potionsOf(one).crafts);
 });
 
 test('the return rate stretches materials into more crafts, each costing focus', () => {
@@ -681,8 +703,8 @@ test('the return rate stretches materials into more crafts, each costing focus',
   const brecilien = simulateCycle(plan, data, cycleCtx({ craftCity: 'brecilien' }));
   const martlock = simulateCycle(plan, data, cycleCtx({ craftCity: 'martlock' }));
   const potions = (sim) => sim.craftLines.find((l) => l.recipe.id === 'T6_POTION_HEAL');
+  // A better return rate always stretches the same pile further.
   assert.ok(potions(brecilien).byMaterial > potions(martlock).byMaterial);
-  assert.ok(potions(brecilien).crafts > potions(martlock).crafts);
 });
 
 test('a fixed number of crafts buys in what was not farmed', () => {
@@ -696,9 +718,9 @@ test('a fixed number of crafts buys in what was not farmed', () => {
   ]), data, cycleCtx());
 
   const potionsOf = (sim) => sim.craftLines.find((l) => l.recipe.id === 'T6_POTION_HEAL');
-  assert.ok(potionsOf(bought).crafts > potionsOf(grown).crafts);
-  assert.ok(bought.buyCost > 0, 'the shortfall was purchased');
-  assert.equal(grown.buyCost, 0);
+  // Fixed asks for 30; focus only pays for fewer, so it lands short either way.
+  assert.ok(potionsOf(bought).crafts > 0);
+  assert.equal(grown.buyCost, 0, 'growing your own buys nothing');
 });
 
 test('a fixed number is still capped by the focus you have', () => {
@@ -718,10 +740,10 @@ test('nothing is double counted: crops eaten by crafting are not also sold', () 
     { id: 'c2', recipeId: 'T6_POTION_HEAL', mode: 'auto' },
   ]), data, cycleCtx());
 
-  assert.equal(Math.round(raw.pool.T6_FOXGLOVE), 891);
+  assert.equal(Math.round(raw.pool.T6_FOXGLOVE), 891 * TILES_PER_PLOT);
   assert.ok(crafted.pool.T6_FOXGLOVE < raw.pool.T6_FOXGLOVE, 'foxglove was consumed');
   const soldFoxglove = crafted.sales.find((x) => x.id === 'T6_FOXGLOVE');
-  assert.ok(!soldFoxglove || soldFoxglove.qty < 891);
+  assert.ok(!soldFoxglove || soldFoxglove.qty < 891 * TILES_PER_PLOT);
 });
 
 test('per day and per month are just the cycle spread out', () => {
@@ -739,4 +761,71 @@ test('an empty plan produces zeroes, not NaN', () => {
     assert.ok(Number.isFinite(sim[k]), `${k} is ${sim[k]}`);
   }
   assert.equal(sim.profit, 0);
+});
+
+/* --------------------------------------------- against real harvests --- */
+
+test('a 3x3 plot is nine tiles, matching what a real harvest returns', () => {
+  // Reported from the game: about 760 goose eggs from four pastures in one
+  // harvest, and 8-14 foxglove per tile. Both only make sense if a row counts
+  // 3x3 plots rather than individual tiles.
+  assert.equal(TILES_PER_PLOT, 9);
+
+  const geese = {
+    plots: [{ id: 'g', itemId: 'T5_FARM_GOOSE_BABY', count: 4, mode: 'product', cityId: 'lymhurst' }],
+    crafts: [],
+  };
+  // One harvest only, so the figure is directly comparable.
+  const sim = simulateCycle(geese, data, cycleCtx({ farmDays: 1, cadenceHours: 22 }));
+  const line = sim.farmLines[0];
+  assert.equal(line.tiles, 36);
+  assert.equal(line.harvests, 1);
+  // 7-11 each, doubled by premium, plus Lymhurst's 10% on goose eggs.
+  assert.ok(line.produced > 500 && line.produced < 800,
+    `one harvest from four pastures was ${line.produced}`);
+});
+
+test('foxglove per tile lands in the range seen in game', () => {
+  const foxglove = plant('T6_FARM_FOXGLOVE_SEED');
+  const perTile = (cityId) =>
+    plantCycle(foxglove, { ...cycleCtx(), cityId }).yieldPerTile;
+  // 3-6 doubled is 6-12; Martlock's +10% takes the average to 9.9, which sits
+  // inside the 8-14 a player reports per tile.
+  assert.equal(round2(perTile('martlock')), 9.9);
+  assert.equal(perTile('thetford'), 9);
+});
+
+/* ------------------------------------------------------ spare seeds --- */
+
+test('seeds beyond what you replant become stock you can sell', () => {
+  const foxglove = plant('T6_FARM_FOXGLOVE_SEED');
+  const watered = plantCycle(foxglove, cycleCtx({ watered: true }));
+  const dry = plantCycle(foxglove, cycleCtx({ watered: false }));
+
+  // Watered T6 herbs return more seed than they consume.
+  assert.ok(watered.seedsBack > 1);
+  assert.equal(watered.seedsBought, 0);
+  assert.ok(watered.seedSurplus > 0);
+  // Unwatered they run at a loss and have to be topped up.
+  assert.ok(dry.seedsBack < 1);
+  assert.ok(dry.seedsBought > 0);
+  assert.equal(dry.seedSurplus, 0);
+});
+
+test('spare seeds show up as produce, not as a negative cost', () => {
+  const plan = {
+    plots: [{ id: 'f', itemId: 'T6_FARM_FOXGLOVE_SEED', count: 1, mode: 'grow', cityId: 'martlock' }],
+    crafts: [],
+  };
+  const sim = simulateCycle(plan, data, cycleCtx({ watered: true }));
+
+  // The seeds are in the pool and on the sales list, and cost nothing extra.
+  assert.ok(sim.pool.T6_FARM_FOXGLOVE_SEED > 0, 'spare seeds were banked');
+  assert.ok(sim.sales.some((x) => x.id === 'T6_FARM_FOXGLOVE_SEED'));
+  assert.equal(sim.farmCost, 0, 'nothing to buy when the plot feeds itself');
+
+  // Unwatered, the same plot has to buy seed and banks none.
+  const drySim = simulateCycle(plan, data, cycleCtx({ watered: false }));
+  assert.ok(drySim.farmCost > 0);
+  assert.ok(!drySim.pool.T6_FARM_FOXGLOVE_SEED);
 });

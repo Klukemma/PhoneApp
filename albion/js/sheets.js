@@ -90,9 +90,11 @@ export function openPlot(row) {
     </div>
 
     <div class="field">
-      <label>How many plots or pens</label>
+      <label>How many 3\u00d73 plots</label>
       <input type="number" id="count" inputmode="numeric" min="1" max="999" value="${row.count}">
-      <div class="hint">An island farm plot holds 9. A pasture holds 9 animals.</div>
+      <div class="hint">One plot is a 3\u00d73 grid, so nine tiles or nine animals.
+        ${row.count} ${row.count === 1 ? 'plot is' : 'plots are'}
+        <b>${(row.count || 0) * 9} tiles</b>.</div>
     </div>
     ${detailHTML(cycle, rate)}
     <div class="sheet-actions">

@@ -3,6 +3,8 @@
 
 export const HOUR = 3600;
 export const NUTRITION_PER_PLANT = 48;   // every crop and herb is 48 (items.xml)
+/** An island farm plot and a pasture are both 3x3, so nine things per plot. */
+export const TILES_PER_PLOT = 9;
 
 export const round = (n, dp = 2) => {
   const f = 10 ** dp;
@@ -46,7 +48,8 @@ export function plantCycle(plant, { priceOf, settings, cityId }) {
   const watered = settings.watered;
   const city = farmCityFor(settings, cityId);
   const bonusPct = farmBonus(city, plant.id);
-  const yieldPerPlot = avg(plant.yieldMin, plant.yieldMax) *
+  // Per planted tile. A 3x3 plot grows nine of these.
+  const yieldPerTile = avg(plant.yieldMin, plant.yieldMax) *
     (settings.premium ? settings.premiumYieldMultiplier : 1) *
     (1 + bonusPct / 100);
 
@@ -56,8 +59,12 @@ export function plantCycle(plant, { priceOf, settings, cityId }) {
   const seedPrice = priceOf(plant.seedId);
   const cropPrice = priceOf(plant.cropId);
 
+  // Above 100% return the plot feeds itself and leaves seeds over. Those are
+  // stock you can sell, so they count as produce rather than as a negative cost.
+  const seedsBought = Math.max(0, netSeeds);
+  const seedSurplus = Math.max(0, -netSeeds);
   const seedCost = netSeeds * seedPrice;
-  const revenue = yieldPerPlot * cropPrice * (1 - taxRate(settings));
+  const revenue = yieldPerTile * cropPrice * (1 - taxRate(settings));
   const focus = watered ? plant.focusCost : 0;
 
   const hours = plant.growSeconds / HOUR;
@@ -65,9 +72,10 @@ export function plantCycle(plant, { priceOf, settings, cityId }) {
 
   return {
     kind: 'plant', ref: plant, hours, focus, city, farmBonusPct: bonusPct,
-    yieldPerPlot, seedsBack, netSeeds, seedCost, revenue, profit,
+    yieldPerTile, seedsBack, netSeeds, seedsBought, seedSurplus, seedCost,
+    revenue, profit,
     // What a unit actually cost you to grow — used when a craft eats your own crops.
-    costPerUnit: yieldPerPlot > 0 ? Math.max(0, seedCost) / yieldPerPlot : 0,
+    costPerUnit: yieldPerTile > 0 ? Math.max(0, seedCost) / yieldPerTile : 0,
   };
 }
 
@@ -429,26 +437,34 @@ export function simulateCycle(plan, data, ctx) {
 
     const every = Math.max(cycle.hours, cadence);
     const harvests = Math.floor((farmDays * 24) / every);
-    const count = row.count || 0;
+    const plots = row.count || 0;
+    // Rows are counted in 3x3 plots; everything below works in tiles.
+    const tiles = plots * (s.tilesPerPlot || TILES_PER_PLOT);
 
     let itemId = null;
     let perHarvest = 0;
-    if (cycle.kind === 'plant') { itemId = plant.cropId; perHarvest = cycle.yieldPerPlot; }
+    if (cycle.kind === 'plant') { itemId = plant.cropId; perHarvest = cycle.yieldPerTile; }
     else if (cycle.kind === 'product') { itemId = animal.product.itemId; perHarvest = cycle.perCycle; }
     else { itemId = animal.grownId; perHarvest = 1; }
 
-    const produced = perHarvest * count * harvests;
+    const produced = perHarvest * tiles * harvests;
     add(pool, itemId, produced);
 
+    // Seeds that came back beyond what was replanted are stock, not a discount.
+    if (cycle.kind === 'plant' && cycle.seedSurplus > 0) {
+      add(pool, plant.seedId, cycle.seedSurplus * tiles * harvests);
+    }
+
     // Every harvest costs its seed, feed or baby again.
-    const costPer = cycle.kind === 'plant' ? cycle.seedCost
+    const costPer = cycle.kind === 'plant'
+      ? cycle.seedsBought * ctx.priceOf(plant.seedId)   // surplus is produce, above
       : cycle.kind === 'product' ? cycle.feedCost
         : cycle.feedCost + cycle.babyCost;
-    const cost = costPer * count * harvests;
+    const cost = costPer * tiles * harvests;
     farmCost += cost;
-    wateringPerDay += (cycle.focus || 0) * count;
+    wateringPerDay += (cycle.focus || 0) * tiles;
 
-    farmLines.push({ row, cycle, harvests, itemId, produced, cost });
+    farmLines.push({ row, cycle, harvests, itemId, produced, cost, plots, tiles });
   }
 
   /* ---- focus ---- */
