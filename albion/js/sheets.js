@@ -504,6 +504,8 @@ export function openSettings() {
     ${toggle('favouriteFood', 'Feed animals their favourite', 'Their favourite plant is worth double nutrition.')}
     ${toggle('useFocus', 'Craft with focus', `Adds +${s.focusCraftBonus}% to the return rate.`)}
     ${toggle('ownInputsAtCost', 'Value inputs at my farm cost', 'Instead of what they would sell for.')}
+    ${toggle('sellSurplus', 'Sell leftover ingredients',
+      'Off by default: ingredients your crafting uses are kept for the next batch, not sold.')}
     ${toggle('hideMounts', 'Hide mounts', 'Only show livestock and plants.')}
 
     <div class="section-head"><h2>Your cycle</h2></div>

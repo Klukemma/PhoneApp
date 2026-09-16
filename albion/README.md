@@ -19,9 +19,16 @@ idle while focus tops up, craft it all at the end*, and every figure on this
 screen is worked out over one of those.
 
 It is a single profit and loss, so nothing is double counted: what you grow
-feeds what you craft, and only the leftovers get sold. Craft jobs run in
-dependency order automatically — potatoes become alcohol before alcohol becomes
-potions, however you list them.
+feeds what you craft. Craft jobs run in dependency order automatically —
+potatoes become schnapps before schnapps becomes potions, however you list
+them.
+
+**Leftover ingredients are not sold.** Anything your own crafting eats is held
+for the next batch, because that is what you actually do with it — you work
+through the pile over following cycles rather than dumping it on the market.
+Only the finished goods and the spare seeds count as revenue. The stock is
+listed separately with its value, so you can see it without it flattering the
+profit.
 
 Three things it tells you that are easy to miss:
 
@@ -36,6 +43,10 @@ Three things it tells you that are easy to miss:
 - **What skipping a day buys you.** Farming every other day halves your
   harvests but doubles the focus waiting for each watering, so a bigger share
   of the farm gets watered. Set the rhythm under *Your cycle* and compare.
+- **Whether the farm is outrunning the crafting.** Each crop is scored against
+  what your crafting actually gets through — "6.8× what you use" — with the
+  plot count that would match it. A farm running well ahead of its focus is one
+  you will have to stop and let drain, and this is where you see it coming.
 - **What is really limiting each craft** — and *which* material, by name.
   "Short on Elusive Foxglove" tells you what to plant; "no Potato Schnapps at
   all" tells you that you forgot a step, and offers to add it. Leftover focus
@@ -269,7 +280,7 @@ actually pay on the buy side.
 
 ```bash
 npm start      # http://localhost:8080/albion/
-npm test       # 79 tests over the profit engine and the extracted data
+npm test       # 84 tests over the profit engine and the extracted data
 npm run gamedata
 ```
 

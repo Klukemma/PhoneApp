@@ -1137,3 +1137,100 @@ test('a bottleneck you merely run short of is reported differently from one you 
   assert.ok(potion.bottleneck.have > 0);
   assert.deepEqual(potion.missing, []);
 });
+
+/* ----------------------------------- leftovers are kept, not sold ------ */
+
+const chainPlan = (plots) => ({
+  plots,
+  crafts: [
+    { id: 's', recipeId: 'T6_ALCOHOL', mode: 'auto', useFocus: false },
+    { id: 'c', recipeId: 'T6_POTION_HEAL', mode: 'auto' },
+  ],
+});
+const HIS_PLOTS = [
+  { id: 'f', itemId: 'T6_FARM_FOXGLOVE_SEED', count: 9, mode: 'grow', cityId: 'martlock' },
+  { id: 'p', itemId: 'T6_FARM_POTATO_SEED', count: 1, mode: 'grow', cityId: 'martlock' },
+  { id: 'g', itemId: 'T5_FARM_GOOSE_BABY', count: 4, mode: 'product', cityId: 'lymhurst' },
+];
+
+// Board levels a real farmer would have, so watering works and seeds come back.
+const BOARD = {
+  FARM_HERBS: 100, FARM_HERBS_FOXGLOVE: 100, FARM_CROPS: 100,
+  FARM_CROPS_POTATO: 100, FARM_ANIMALS: 100, FARM_ANIMALS_GOOSE: 100,
+  FARM_ALCHEMIST: 100, FARM_ALCHEMIST_HEAL: 100,
+};
+
+test('ingredients your crafting uses are held, not counted as revenue', () => {
+  const sim = simulateCycle(chainPlan(HIS_PLOTS), data, cycleCtx({ nodeLevels: BOARD }));
+
+  const soldIds = sim.sales.map((x) => x.id);
+  const heldIds = sim.stock.map((x) => x.id);
+
+  // Potions and spare seeds are sold; the herbs and eggs that feed the potion
+  // are not, because you keep working through them.
+  assert.ok(soldIds.includes('T6_POTION_HEAL'));
+  assert.ok(soldIds.includes('T6_FARM_FOXGLOVE_SEED'), 'watered plots leave spare seeds');
+  assert.ok(heldIds.includes('T6_FOXGLOVE'), 'leftover foxglove is held');
+  assert.ok(heldIds.includes('T5_EGG'), 'leftover eggs are held');
+  assert.ok(!soldIds.includes('T6_FOXGLOVE'));
+  assert.ok(!soldIds.includes('T5_EGG'));
+
+  // Held stock has value but is nowhere in the profit.
+  assert.ok(sim.stockValue > 0);
+  assert.equal(round2(sim.profit), round2(sim.revenue - sim.cost));
+});
+
+test('keeping leftovers lowers the profit an earlier version invented', () => {
+  const kept = simulateCycle(chainPlan(HIS_PLOTS), data, cycleCtx({ nodeLevels: BOARD }));
+  const sold = simulateCycle(chainPlan(HIS_PLOTS), data,
+    cycleCtx({ nodeLevels: BOARD, sellSurplus: true }));
+
+  assert.ok(sold.profit > kept.profit, 'selling everything looks better on paper');
+  assert.equal(sold.stock.length, 0);
+  assert.equal(sold.stockValue, 0);
+  // The difference is exactly the stock that is no longer being booked.
+  assert.equal(round2(sold.revenue - kept.revenue), round2(kept.stockValue));
+});
+
+test('the farm-against-crafting ratio names what is overgrown', () => {
+  const sim = simulateCycle(chainPlan(HIS_PLOTS), data, cycleCtx({ nodeLevels: BOARD }));
+  const of = (id) => sim.balance.find((b) => b.itemId === id);
+
+  // Four goose pastures feed a potion that barely needs eggs.
+  const eggs = of('T5_EGG');
+  assert.ok(eggs.ratio > 3, `eggs run ${eggs.ratio.toFixed(1)}x ahead`);
+  assert.ok(eggs.balancedPlots < eggs.plots);
+
+  // Potatoes feed schnapps almost exactly.
+  const potato = of('T6_POTATO');
+  assert.ok(potato.ratio < 1.2, `potatoes run ${potato.ratio.toFixed(1)}x ahead`);
+  assert.ok(Math.abs(potato.balancedPlots - potato.plots) < 0.5);
+});
+
+test('a crop nothing uses is reported as unused, not as balanced', () => {
+  const plots = [
+    ...HIS_PLOTS,
+    { id: 'c', itemId: 'T5_FARM_CABBAGE_SEED', count: 1, mode: 'grow', cityId: 'thetford' },
+  ];
+  const sim = simulateCycle(chainPlan(plots), data, cycleCtx());
+  const cabbage = sim.balance.find((b) => b.itemId === 'T5_CABBAGE');
+  assert.equal(cabbage.used, 0);
+  assert.equal(cabbage.ratio, Infinity);
+  // Nothing consumes it, so it is sold rather than held.
+  assert.ok(sim.sales.some((x) => x.id === 'T5_CABBAGE'));
+});
+
+test('a farm sized to its crafting leaves nothing on the pile', () => {
+  // Scale the farm down to roughly what the crafting gets through.
+  const trimmed = [
+    { id: 'f', itemId: 'T6_FARM_FOXGLOVE_SEED', count: 4, mode: 'grow', cityId: 'martlock' },
+    { id: 'p', itemId: 'T6_FARM_POTATO_SEED', count: 1, mode: 'grow', cityId: 'martlock' },
+    { id: 'g', itemId: 'T5_FARM_GOOSE_BABY', count: 1, mode: 'product', cityId: 'lymhurst' },
+  ];
+  const big = simulateCycle(chainPlan(HIS_PLOTS), data, cycleCtx());
+  const small = simulateCycle(chainPlan(trimmed), data, cycleCtx());
+
+  assert.ok(small.stockValue < big.stockValue, 'less piles up');
+  // And the smaller farm costs less to run, so realised profit can be better.
+  assert.ok(small.cost < big.cost);
+});

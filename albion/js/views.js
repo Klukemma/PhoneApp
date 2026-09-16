@@ -136,7 +136,9 @@ export function plan() {
           <div class="bar-row"><span class="n">Profit for the cycle</span>
             <span class="v num ${toneOf(sim.profit)}">${short(sim.profit)}</span></div>
         </div>
-      </section>` : ''}`,
+      </section>` : ''}
+
+      ${stockCard(sim)}`,
   };
 }
 
@@ -590,3 +592,65 @@ export function cycleFor(itemId, mode, cityId) {
 export const views = { plan, rank, prices };
 
 const round1 = (n) => String(Math.round(n * 10) / 10);
+
+
+/**
+ * What the farm grew and the crafting could not get through.
+ *
+ * These are not sold: you hold them and work through them over the cycles that
+ * follow. The useful figure is the ratio, because a farm running well ahead of
+ * its crafting is one you will eventually have to stop and let drain.
+ */
+function stockCard(sim) {
+  if (!sim.stock.length && !sim.balance.length) return '';
+  const over = sim.balance
+    .filter((b) => Number.isFinite(b.ratio) && b.ratio > 1.15)
+    .sort((a, b) => b.ratio - a.ratio);
+  const unused = sim.balance.filter((b) => !Number.isFinite(b.ratio));
+
+  return `
+    <section>
+      <div class="section-head"><h2>Kept for next cycle</h2>
+        <span class="right num" style="color:var(--dim)">${short(sim.stockValue)} held</span></div>
+      <div class="card">
+        ${sim.stock.length
+          ? sim.stock.slice(0, 8).map((x) => `
+            <div class="bar-row"><span class="n">${round1(x.qty)} \u00d7 ${esc(nameOf(x.id))}</span>
+              <span class="v num">${short(x.value)}</span></div>`).join('')
+          : '<div class="bar-row"><span class="n">Nothing left over, the crafting kept up.</span></div>'}
+        <div style="font-size:11.5px;color:var(--faint);margin-top:8px">
+          Ingredients your own crafting uses are not sold. They stay on the pile
+          and get worked through later, so they are held here rather than
+          counted as profit.
+        </div>
+      </div>
+
+      ${over.length || unused.length ? `
+        <div class="card" style="margin-top:10px">
+          ${sim.balance.map((b) => {
+            const label = Number.isFinite(b.ratio)
+              ? `${b.ratio.toFixed(1)}\u00d7 what you use`
+              : 'nothing uses it';
+            const cls = !Number.isFinite(b.ratio) || b.ratio > 1.15 ? 'bad'
+              : b.ratio < 0.85 ? '' : 'good';
+            return `
+              <div class="bar-row">
+                <span class="n">${esc(nameOf(b.itemId))}</span>
+                <span class="v num ${cls}">${label}</span>
+              </div>`;
+          }).join('')}
+          ${over.map((b) => `
+            <div class="warn-note">${esc(nameOf(b.itemId))}: ${short(b.made)} grown,
+              ${short(b.used)} used. ${b.balancedPlots >= 0.5
+                ? `About <b>${b.balancedPlots.toFixed(1)} plots</b> would match your
+                   crafting, against the ${b.plots} you run.`
+                : `Less than half a plot would match your crafting, against the
+                   ${b.plots} you run.`}
+              The rest piles up until you stop farming to clear it.</div>`).join('')}
+          ${unused.map((b) => `
+            <div class="warn-note">Nothing in your plan uses ${esc(nameOf(b.itemId))},
+              so all ${short(b.made)} of it just accumulates. Sell it, craft with it,
+              or grow less.</div>`).join('')}
+        </div>` : ''}
+    </section>`;
+}

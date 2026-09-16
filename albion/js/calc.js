@@ -667,17 +667,62 @@ export function simulateCycle(plan, data, ctx) {
     });
   }
 
-  /* ---- sell whatever is left ---- */
+  /* ---- what is actually sold, and what just piles up ----
+   *
+   * Ingredients your own crafting eats are not sold: you hold them and work
+   * through them over following cycles. Booking them as revenue would invent
+   * money you never take, and would hide the thing that actually matters -
+   * whether the farm is outrunning what your focus can process.
+   */
+  const eatenByPlan = new Set();
+  for (const job of plan.crafts) {
+    const r = recipeOf(job.recipeId);
+    for (const i of r?.inputs || []) eatenByPlan.add(i.id);
+  }
+  const keepStock = s.sellSurplus !== true;
+
   const tax = 1 - taxRate(s);
   const sales = [];
+  const stock = [];
   let revenue = 0;
+  let stockValue = 0;
+
   for (const [id, qty] of Object.entries(pool)) {
     if (qty <= 0.0001) continue;
-    const value = qty * ctx.priceOf(id) * tax;
-    revenue += value;
-    sales.push({ id, qty, value });
+    const unit = ctx.priceOf(id);
+    if (keepStock && eatenByPlan.has(id)) {
+      // Held for the next batch rather than sold. Valued at what it would
+      // fetch, but kept out of profit until it actually is sold.
+      stock.push({ id, qty, value: qty * unit * tax });
+      stockValue += qty * unit * tax;
+    } else {
+      const value = qty * unit * tax;
+      revenue += value;
+      sales.push({ id, qty, value });
+    }
   }
   sales.sort((a, b) => b.value - a.value);
+  stock.sort((a, b) => b.value - a.value);
+
+  /* ---- is the farm outrunning the crafting? ---- */
+  const consumed = {};
+  for (const line of craftLines) {
+    for (const [id, qty] of Object.entries(line.consumed)) {
+      consumed[id] = (consumed[id] || 0) + qty;
+    }
+  }
+  const balance = farmLines.map((l) => {
+    const used = consumed[l.itemId] || 0;
+    const made = l.produced;
+    // How many plots would match what the crafting can actually get through.
+    const perPlot = l.plots > 0 ? made / l.plots : 0;
+    return {
+      itemId: l.itemId, plots: l.plots, made, used,
+      leftover: Math.max(0, made - used),
+      ratio: used > 0 ? made / used : (made > 0 ? Infinity : 1),
+      balancedPlots: perPlot > 0 ? used / perPlot : 0,
+    };
+  }).filter((b) => b.made > 0);
 
   const cost = farmCost + buyCost + feeCost;
   const profit = revenue - cost;
@@ -687,7 +732,7 @@ export function simulateCycle(plan, data, ctx) {
     farmingDays: farmDayCount(farmDays, farmEvery),
     restDays: farmDays - farmDayCount(farmDays, farmEvery),
     ledger, focusAtCraft: ledger.atCraft, focusLeft,
-    farmLines, craftLines, sales, pool,
+    farmLines, craftLines, sales, stock, stockValue, balance, pool,
     // Watering asked for, paid for, and the share that decides how much of the
     // seed bonus the farm above actually earned.
     wateringPerDay, wateringAsked, wateringPaid, wateredFraction,

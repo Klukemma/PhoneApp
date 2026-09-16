@@ -33,6 +33,7 @@ function defaults() {
       farmEvery: 1,            // 1 = every day, 2 = every other day, and so on
       startFocus: 0,           // focus in hand when a cycle begins
       hideMounts: false,
+      sellSurplus: false,      // true = sell leftover ingredients instead of keeping them
       stationFeePerCraft: 0,
       feedItemId: 'T3_WHEAT',
       server: 'americas',      // Albion Americas, Asia or Europe
