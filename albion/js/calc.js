@@ -44,8 +44,12 @@ const avg = (lo, hi) => (lo + hi) / 2;
  * Above 1.0 the plot pays for its own seed and leaves a surplus, so netSeeds
  * goes negative and counts as income rather than cost.
  */
-export function plantCycle(plant, { priceOf, settings, cityId }) {
-  const watered = settings.watered;
+export function plantCycle(plant, { priceOf, settings, cityId, wateredFraction }) {
+  // You only get the watering bonus on the plots you could actually pay to
+  // water. The cycle works out what share that is and passes it in.
+  const share = settings.watered
+    ? Math.max(0, Math.min(1, wateredFraction ?? 1)) : 0;
+  const watered = share > 0;
   const city = farmCityFor(settings, cityId);
   const bonusPct = farmBonus(city, plant.id);
   // Per planted tile. A 3x3 plot grows nine of these.
@@ -53,7 +57,7 @@ export function plantCycle(plant, { priceOf, settings, cityId }) {
     (settings.premium ? settings.premiumYieldMultiplier : 1) *
     (1 + bonusPct / 100);
 
-  const seedsBack = plant.seedReturn + (watered ? plant.wateredBonus : 0);
+  const seedsBack = plant.seedReturn + plant.wateredBonus * share;
   const netSeeds = 1 - seedsBack;
 
   const seedPrice = priceOf(plant.seedId);
@@ -65,13 +69,15 @@ export function plantCycle(plant, { priceOf, settings, cityId }) {
   const seedSurplus = Math.max(0, -netSeeds);
   const seedCost = netSeeds * seedPrice;
   const revenue = yieldPerTile * cropPrice * (1 - taxRate(settings));
-  const focus = watered ? plant.focusCost : 0;
+  // The full ask, not the discounted one: the ledger decides what gets paid.
+  const focus = settings.watered ? plant.focusCost : 0;
 
   const hours = plant.growSeconds / HOUR;
   const profit = revenue - seedCost;
 
   return {
     kind: 'plant', ref: plant, hours, focus, city, farmBonusPct: bonusPct,
+    wateredShare: share,
     yieldPerTile, seedsBack, netSeeds, seedsBought, seedSurplus, seedCost,
     revenue, profit,
     // What a unit actually cost you to grow — used when a craft eats your own crops.
@@ -85,8 +91,10 @@ export function plantCycle(plant, { priceOf, settings, cityId }) {
  * Feed is nutrition / 48 plants. A favourite plant is worth (1 + favouriteBonus)
  * nutrition each, so it takes proportionally fewer of them.
  */
-export function animalCycle(animal, { priceOf, settings, cityId }) {
-  const watered = settings.watered;
+export function animalCycle(animal, { priceOf, settings, cityId, wateredFraction }) {
+  const share = settings.watered
+    ? Math.max(0, Math.min(1, wateredFraction ?? 1)) : 0;
+  const watered = share > 0;
   const city = farmCityFor(settings, cityId);
   const useFav = settings.favouriteFood && animal.favouriteFood;
 
@@ -95,17 +103,18 @@ export function animalCycle(animal, { priceOf, settings, cityId }) {
   const feedId = useFav ? animal.favouriteFood : settings.feedItemId;
   const feedCost = plantsNeeded * priceOf(feedId);
 
-  const babiesBack = animal.offspring + (watered ? animal.wateredBonus : 0);
+  const babiesBack = animal.offspring + animal.wateredBonus * share;
   const netBabies = 1 - babiesBack;
   const babyCost = netBabies * priceOf(animal.babyId);
 
   const revenue = priceOf(animal.grownId) * (1 - taxRate(settings));
   const hours = animal.growSeconds / HOUR;
-  const focus = watered ? animal.focusCost : 0;
+  const focus = settings.watered ? animal.focusCost : 0;
   const profit = revenue - feedCost - babyCost;
 
   return {
     kind: 'animal', ref: animal, hours, focus, city, farmBonusPct: 0,
+    wateredShare: share,
     plantsNeeded, feedId, feedCost, babiesBack, netBabies, babyCost,
     revenue, profit,
   };
@@ -342,14 +351,30 @@ export function planTotals(plan, data, ctx) {
 
 /* ======================================================= the cycle ====== */
 
+/** Is `day` one of the days you actually go out and farm? */
+export function isFarmDay(day, farmDays, farmEvery = 1) {
+  const every = Math.max(1, Math.round(farmEvery) || 1);
+  return day <= farmDays && (day - 1) % every === 0;
+}
+
+/** How many harvests a farming phase of this shape gives. */
+export function farmDayCount(farmDays, farmEvery = 1) {
+  const every = Math.max(1, Math.round(farmEvery) || 1);
+  return farmDays <= 0 ? 0 : Math.floor((farmDays - 1) / every) + 1;
+}
+
 /**
  * Focus day by day across one cycle.
  *
  * Focus regenerates a fixed amount daily and stops dead at the cap, so idling
- * past the cap earns nothing — that wasted regen is the whole reason to know
- * when you cap. Watering plots spends focus on the days you farm.
+ * past the cap earns nothing \u2014 that wasted regen is the whole reason to know
+ * when you cap. Watering spends focus, but only on the days you actually farm:
+ * skipping a day banks another day of regeneration for the next watering, at
+ * the cost of that day's harvest.
  */
-export function focusLedger({ cycleDays, farmDays, perDay, cap, start = 0, wateringPerDay = 0 }) {
+export function focusLedger({
+  cycleDays, farmDays, perDay, cap, start = 0, wateringPerDay = 0, farmEvery = 1,
+}) {
   let focus = Math.min(cap, Math.max(0, start));
   let wasted = 0;
   let shortfall = 0;        // watering you planned but could not pay for
@@ -364,13 +389,16 @@ export function focusLedger({ cycleDays, farmDays, perDay, cap, start = 0, water
     wasted += lost;
     if (focus >= cap && cappedOn === null) cappedOn = day;
 
-    const farming = day <= farmDays;
+    const farming = isFarmDay(day, farmDays, farmEvery);
     // You cannot water with focus you do not have.
     const spent = farming ? Math.min(focus, wateringPerDay) : 0;
     if (farming) shortfall += wateringPerDay - spent;
     focus -= spent;
 
-    days.push({ day, farming, gained, wasted: lost, spent, focus });
+    days.push({
+      day, farming, gained, wasted: lost, spent, focus,
+      resting: day <= farmDays && !farming,
+    });
   }
   return { days, atCraft: focus, wasted, shortfall, cappedOn, cap };
 }
@@ -412,34 +440,70 @@ export function simulateCycle(plan, data, ctx) {
   const s = ctx.settings;
   const cycleDays = Math.max(1, s.cycleDays || 14);
   const farmDays = Math.max(0, Math.min(cycleDays, s.farmDays ?? cycleDays));
+  // Farm every day, every other day, and so on. Skipping banks focus.
+  const farmEvery = Math.max(1, Math.round(s.farmEvery) || 1);
   const cadence = s.cadenceHours || 24;
 
   const plantOf = Object.fromEntries(data.plants.map((p) => [p.id, p]));
   const animalOf = Object.fromEntries(data.animals.map((a) => [a.id, a]));
   const recipeOf = (id) => data.recipes.find((r) => r.id === id);
 
-  /* ---- farm ---- */
+  /* ---- farm ----
+   *
+   * Two passes. The first works out what watering the plan is asking for; the
+   * ledger then says how much of that focus actually exists. Watering you
+   * cannot pay for must not hand you its seed bonus, so the second pass redoes
+   * the farm with the share that really got watered.
+   */
+  const cycleFor = (row, wateredFraction) => {
+    const at = { ...ctx, cityId: row.cityId, wateredFraction };
+    const plant = plantOf[row.itemId];
+    const animal = animalOf[row.itemId];
+    if (plant) return plantCycle(plant, at);
+    if (!animal) return null;
+    return row.mode === 'product' ? productCycle(animal, at) : animalCycle(animal, at);
+  };
+
+  const tilesOf = (row) => (row.count || 0) * (s.tilesPerPlot || TILES_PER_PLOT);
+  const harvestsOf = (cycle) => {
+    const rhythmHours = Math.max(cadence, farmEvery * 24);
+    return rhythmHours >= cycle.hours
+      ? farmDayCount(farmDays, farmEvery)
+      : Math.floor((farmDays * 24) / cycle.hours);
+  };
+
+  // Pass one: the watering bill, if every plot got watered.
+  let wateringPerDay = 0;
+  for (const row of plan.plots) {
+    const cycle = cycleFor(row, 1);
+    if (cycle) wateringPerDay += (cycle.focus || 0) * tilesOf(row);
+  }
+
+  const ledger = focusLedger({
+    cycleDays, farmDays, farmEvery,
+    perDay: s.focusPerDay, cap: s.focusCap,
+    start: s.startFocus || 0,
+    wateringPerDay,
+  });
+
+  const wateringPaid = ledger.days.reduce((t, d) => t + d.spent, 0);
+  const wateringAsked = wateringPerDay * farmDayCount(farmDays, farmEvery);
+  const wateredFraction = wateringAsked > 0 ? wateringPaid / wateringAsked : 1;
+
+  // Pass two: the farm as it really runs.
   const pool = {};
   const farmLines = [];
   let farmCost = 0;
-  let wateringPerDay = 0;
 
   for (const row of plan.plots) {
-    const at = { ...ctx, cityId: row.cityId };
+    const cycle = cycleFor(row, wateredFraction);
+    if (!cycle) continue;
     const plant = plantOf[row.itemId];
     const animal = animalOf[row.itemId];
-    let cycle = null;
-    if (plant) cycle = plantCycle(plant, at);
-    else if (animal) {
-      cycle = row.mode === 'product' ? productCycle(animal, at) : animalCycle(animal, at);
-    }
-    if (!cycle) continue;
 
-    const every = Math.max(cycle.hours, cadence);
-    const harvests = Math.floor((farmDays * 24) / every);
+    const harvests = harvestsOf(cycle);
     const plots = row.count || 0;
-    // Rows are counted in 3x3 plots; everything below works in tiles.
-    const tiles = plots * (s.tilesPerPlot || TILES_PER_PLOT);
+    const tiles = tilesOf(row);
 
     let itemId = null;
     let perHarvest = 0;
@@ -455,25 +519,16 @@ export function simulateCycle(plan, data, ctx) {
       add(pool, plant.seedId, cycle.seedSurplus * tiles * harvests);
     }
 
-    // Every harvest costs its seed, feed or baby again.
     const costPer = cycle.kind === 'plant'
       ? cycle.seedsBought * ctx.priceOf(plant.seedId)   // surplus is produce, above
       : cycle.kind === 'product' ? cycle.feedCost
         : cycle.feedCost + cycle.babyCost;
     const cost = costPer * tiles * harvests;
     farmCost += cost;
-    wateringPerDay += (cycle.focus || 0) * tiles;
 
     farmLines.push({ row, cycle, harvests, itemId, produced, cost, plots, tiles });
   }
 
-  /* ---- focus ---- */
-  const ledger = focusLedger({
-    cycleDays, farmDays,
-    perDay: s.focusPerDay, cap: s.focusCap,
-    start: s.startFocus || 0,
-    wateringPerDay,
-  });
   let focusLeft = ledger.atCraft;
 
   /* ---- craft ---- */
@@ -547,11 +602,14 @@ export function simulateCycle(plan, data, ctx) {
   const profit = revenue - cost;
 
   return {
-    cycleDays, farmDays, idleDays: cycleDays - farmDays,
-    ledger, focusAtCraft: ledger.atCraft, focusLeft, wateringPerDay,
+    cycleDays, farmDays, farmEvery, idleDays: cycleDays - farmDays,
+    farmingDays: farmDayCount(farmDays, farmEvery),
+    restDays: farmDays - farmDayCount(farmDays, farmEvery),
+    ledger, focusAtCraft: ledger.atCraft, focusLeft,
     farmLines, craftLines, sales, pool,
-    // Watering you planned but cannot pay for, so those plots are really dry
-    // and their yields above are optimistic.
+    // Watering asked for, paid for, and the share that decides how much of the
+    // seed bonus the farm above actually earned.
+    wateringPerDay, wateringAsked, wateringPaid, wateredFraction,
     wateringShortfall: ledger.shortfall,
     farmCost, buyCost, feeCost, cost, revenue, profit,
     perDay: profit / cycleDays,

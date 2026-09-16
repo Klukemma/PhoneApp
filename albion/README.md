@@ -28,9 +28,14 @@ Three things it tells you that are easy to miss:
 - **When your focus caps.** Regeneration stops dead at the cap, so idling past
   that day throws away 10,000 focus a day. The card names the day and the
   amount; shortening the cycle to that day wastes none.
-- **Whether you can actually water what you planted.** Watering 18 plots costs
-  18,000 focus a day against 10,000 of regeneration, so most of it never
-  happens and those yields are fiction. It says so.
+- **Whether you can actually water what you planted.** Watering costs 1,000
+  focus a *tile*, so nine 3×3 plots want 81,000 a farming day against 10,000 of
+  regeneration. Only the share you can pay for earns the extra seeds, and the
+  figures already reflect that rather than quietly assuming a fully watered
+  farm. It tells you what that share is.
+- **What skipping a day buys you.** Farming every other day halves your
+  harvests but doubles the focus waiting for each watering, so a bigger share
+  of the farm gets watered. Set the rhythm under *Your cycle* and compare.
 - **What is really limiting each craft** — materials or focus. Leftover focus
   means grow more; leftover materials mean focus is the wall.
 
@@ -182,8 +187,15 @@ which is exactly what it did before someone checked it against a real harvest:
 four goose pastures return about 713 eggs a harvest here, against roughly 760
 counted in game.
 
+**Watering.** A tile costs 1,000 focus to water and the bonus only lands on
+tiles you actually watered. The cycle works out the watering bill, asks the
+focus ledger how much of it exists, and applies the bonus to that share — so a
+farm larger than your focus can serve reports the blended seed return rather
+than the one it would get if focus were free. Farming less often raises the
+share, because each watering has more banked focus behind it.
+
 **A plot of crops.** Seeds come back at the rate in the game files, and
-watering adds the watering bonus. Above 100% the plot pays for its own seed and
+watering adds its bonus on the share that was watered. Above 100% the plot pays for its own seed and
 leaves a surplus. Those spare seeds are treated as **stock you can sell**, not
 as a discount on the seed bill, so they appear in the end-of-cycle sales where
 you can see them — this is why watered high-tier herbs beat unwatered ones by
@@ -223,7 +235,7 @@ actually pay on the buy side.
 
 ```bash
 npm start      # http://localhost:8080/albion/
-npm test       # 59 tests over the profit engine and the extracted data
+npm test       # 68 tests over the profit engine and the extracted data
 npm run gamedata
 ```
 

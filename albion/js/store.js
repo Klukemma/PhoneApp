@@ -30,6 +30,7 @@ function defaults() {
       // craft it all in one go.
       cycleDays: 14,
       farmDays: 10,
+      farmEvery: 1,            // 1 = every day, 2 = every other day, and so on
       startFocus: 0,           // focus in hand when a cycle begins
       hideMounts: false,
       stationFeePerCraft: 0,

@@ -740,6 +740,19 @@ export function openCycle() {
         <input type="number" id="farmDays" inputmode="numeric" min="0" max="60"
           value="${s.farmDays}"></div>
     </div>
+    <div class="field">
+      <label>Farm how often</label>
+      <div class="seg" id="everySeg">
+        ${[1, 2, 3].map((n) => `
+          <button type="button" data-every="${n}" aria-pressed="${(s.farmEvery || 1) === n}">
+            ${n === 1 ? 'Every day' : n === 2 ? 'Every other day' : `Every ${n} days`}</button>`).join('')}
+      </div>
+      <div class="hint">Watering costs focus, so skipping a day banks another
+        ${Math.round(s.focusPerDay).toLocaleString()} for the next one \u2014 at the
+        cost of that day's harvest. ${sim.farmingDays} ${sim.farmingDays === 1 ? 'harvest' : 'harvests'}
+        over ${sim.farmDays} days.</div>
+    </div>
+
     <div class="field"><label>Focus in hand at the start</label>
       <input type="number" id="startFocus" inputmode="numeric" min="0" max="${s.focusCap}"
         value="${s.startFocus || 0}">
@@ -753,7 +766,10 @@ export function openCycle() {
       ${l.cappedOn ? `<div class="bar-row"><span class="n">Hits the cap on</span>
         <span class="v num">day ${l.cappedOn}</span></div>` : ''}
       <div class="bar-row"><span class="n">Watering costs</span>
-        <span class="v num">${Math.round(sim.wateringPerDay).toLocaleString()} a day</span></div>
+        <span class="v num">${Math.round(sim.wateringPerDay).toLocaleString()} per farming day</span></div>
+      ${sim.ledger.shortfall > 0 ? `<div class="bar-row">
+        <span class="n">Watering you cannot pay for</span>
+        <span class="v num bad">${Math.round(sim.ledger.shortfall).toLocaleString()}</span></div>` : ''}
     </div>
 
     ${l.wasted > 0 ? `<div class="warn-note" style="margin-bottom:12px">
@@ -775,7 +791,10 @@ export function openCycle() {
         openCycle();
       };
       for (const id of ['#cycleDays', '#farmDays', '#startFocus']) {
-        $(id, root).onchange = refresh;
+        $(id, root).onchange = () => refresh();
+      }
+      for (const b of $$('[data-every]', root)) {
+        b.onclick = () => { setSettings({ farmEvery: Number(b.dataset.every) }); openCycle(); };
       }
       $('#save', root).onclick = () => {
         setSettings({

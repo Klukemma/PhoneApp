@@ -74,7 +74,9 @@ export function plan() {
 
   return {
     title: 'Plan',
-    sub: `${sim.cycleDays}-day cycle · ${sim.farmDays} farming, ${sim.idleDays} idle`,
+    sub: `${sim.cycleDays}-day cycle · ${sim.farmingDays} ${
+      sim.farmingDays === 1 ? 'harvest' : 'harvests'}${
+      sim.farmEvery > 1 ? ` every ${sim.farmEvery} days` : ''}, ${sim.idleDays} idle`,
     html: `
       <section>
         <div class="card hero">
@@ -105,7 +107,8 @@ export function plan() {
         </section>` : ''}
 
       <section>
-        <div class="section-head"><h2>Farm · ${sim.farmDays} days</h2>
+        <div class="section-head"><h2>Farm · ${sim.farmingDays} ${
+          sim.farmingDays === 1 ? 'harvest' : 'harvests'}</h2>
           <button class="right" data-act="add-plot">+ Add</button></div>
         ${sim.farmLines.map(farmRow).join('')
           || empty(EMOJI.crop, 'No plots yet. Add what you are growing.')}
@@ -148,8 +151,11 @@ function cycleCard(sim) {
   const max = Math.max(l.cap, 1);
   const bars = l.days.map((d) => {
     const h = Math.max(3, (d.focus / max) * 100);
-    const cls = d.focus >= l.cap ? 'over' : d.farming ? 'today' : '';
-    return `<i class="${cls}" style="height:${h}%" title="day ${d.day}"></i>`;
+    const cls = d.focus >= l.cap ? 'over'
+      : d.farming ? 'today' : d.resting ? 'rest' : '';
+    const what = d.farming ? 'farming' : d.resting ? 'resting' : 'idle';
+    return `<i class="${cls}" style="height:${h}%"
+      title="day ${d.day}, ${what}"></i>`;
   }).join('');
 
   const warn = [];
@@ -158,10 +164,19 @@ function cycleCard(sim) {
       ${short(l.wasted)} of regeneration is thrown away. A shorter cycle, or
       watering more plots, would use it.`);
   }
+  if (sim.restDays > 0) {
+    warn.push(`You skip ${sim.restDays} ${sim.restDays === 1 ? 'day' : 'days'} of
+      farming to bank focus, trading ${sim.restDays}
+      ${sim.restDays === 1 ? 'harvest' : 'harvests'} for
+      ${short(sim.restDays * s.focusPerDay)} more focus to water and craft with.`);
+  }
   if (sim.wateringShortfall > 0) {
-    warn.push(`You are watering ${short(sim.wateringPerDay)} focus of plots a day
-      but only regenerate ${short(s.focusPerDay)}. ${short(sim.wateringShortfall)}
-      of watering never happens over the cycle, so those yields are optimistic.`);
+    const pct = Math.round(sim.wateredFraction * 100);
+    warn.push(`Watering every plot would cost ${short(sim.wateringPerDay)} focus a
+      farming day, and you regenerate ${short(s.focusPerDay)}. Only about
+      <b>${pct}%</b> of your plots actually get watered, so only that share earns
+      the extra seeds \u2014 the figures above already account for it. Fewer plots,
+      or farming less often, would water more of them.`);
   }
   if (sim.focusLeft > 0 && sim.craftLines.length) {
     warn.push(`${short(sim.focusLeft)} focus is left unspent \u2014 your crafting
@@ -176,7 +191,7 @@ function cycleCard(sim) {
         <div class="spark">${bars}</div>
         <div class="legend">
           <span>day 1</span>
-          <span>green = farming, amber = at the ${short(l.cap)} cap</span>
+          <span>green = farming${sim.restDays ? ', teal = resting' : ''}, amber = at the ${short(l.cap)} cap</span>
           <span>day ${sim.cycleDays}</span></div>
         <div class="bar-row" style="margin-top:8px">
           <span class="n">Focus banked by craft day</span>

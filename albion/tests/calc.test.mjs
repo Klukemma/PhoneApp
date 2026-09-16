@@ -6,7 +6,8 @@ import { test } from 'node:test';
 import {
   animalCycle, cityBonus, cityFor, craftBatch, farmBonus, farmCityFor,
   focusCostAt, focusLedger, perPeriod, planTotals, plantCycle, productCycle,
-  rankRecipes, returnRate, simulateCycle, specFor, taxRate, TILES_PER_PLOT,
+  farmDayCount, isFarmDay, rankRecipes, returnRate, simulateCycle, specFor,
+  taxRate, TILES_PER_PLOT,
 } from '../js/calc.js';
 
 const data = JSON.parse(
@@ -23,7 +24,7 @@ const ctx = (prices = {}, over = {}) => ({
     cities: data.cities,
     premium: true, watered: false, favouriteFood: true, useFocus: false,
     craftCity: 'martlock', farmCity: 'island', spec: {}, specLevel: 0,
-    cadenceHours: 24, cycleDays: 14, farmDays: 10, startFocus: 0,
+    cadenceHours: 24, cycleDays: 14, farmDays: 10, farmEvery: 1, startFocus: 0,
     stationFeePerCraft: 0, feedItemId: 'T3_WHEAT',
     ...over,
   },
@@ -828,4 +829,143 @@ test('spare seeds show up as produce, not as a negative cost', () => {
   const drySim = simulateCycle(plan, data, cycleCtx({ watered: false }));
   assert.ok(drySim.farmCost > 0);
   assert.ok(!drySim.pool.T6_FARM_FOXGLOVE_SEED);
+});
+
+/* -------------------------------------------------- skipping a day ----- */
+
+test('farming every other day halves the harvests', () => {
+  assert.equal(farmDayCount(12, 1), 12);
+  assert.equal(farmDayCount(12, 2), 6);
+  assert.equal(farmDayCount(12, 3), 4);
+  assert.equal(farmDayCount(0, 2), 0);
+
+  // Days 1, 3, 5 ... are farming days when you skip every other one.
+  assert.equal(isFarmDay(1, 12, 2), true);
+  assert.equal(isFarmDay(2, 12, 2), false);
+  assert.equal(isFarmDay(3, 12, 2), true);
+  assert.equal(isFarmDay(13, 12, 2), false);   // past the farming phase
+});
+
+test('a skipped day banks focus for the next watering', () => {
+  const daily = focusLedger({
+    cycleDays: 12, farmDays: 12, farmEvery: 1,
+    perDay: 10000, cap: 30000, start: 0, wateringPerDay: 30000,
+  });
+  const alternate = focusLedger({
+    cycleDays: 12, farmDays: 12, farmEvery: 2,
+    perDay: 10000, cap: 30000, start: 0, wateringPerDay: 30000,
+  });
+
+  // Same watering bill, but resting means more of it is actually affordable.
+  assert.ok(alternate.shortfall < daily.shortfall);
+  // On a farming day after a rest you arrive with two days of regeneration.
+  assert.equal(alternate.days[0].spent, 10000);
+  assert.equal(alternate.days[2].spent, 20000);
+  assert.equal(daily.days[2].spent, 10000);
+});
+
+test('resting is a real trade: fewer harvests, more focus', () => {
+  const plan = {
+    plots: [{ id: 'f', itemId: 'T6_FARM_FOXGLOVE_SEED', count: 9, mode: 'grow', cityId: 'martlock' }],
+    crafts: [],
+  };
+  const daily = simulateCycle(plan, data, cycleCtx({ farmDays: 12, farmEvery: 1 }));
+  const rested = simulateCycle(plan, data, cycleCtx({ farmDays: 12, farmEvery: 2 }));
+
+  assert.equal(daily.farmingDays, 12);
+  assert.equal(rested.farmingDays, 6);
+  assert.equal(rested.restDays, 6);
+  assert.equal(rested.farmLines[0].harvests, 6);
+  // Half the harvests, so roughly half the crop.
+  assert.equal(round2(rested.pool.T6_FOXGLOVE), round2(daily.pool.T6_FOXGLOVE / 2));
+  // But the watering that does happen is paid for far more often.
+  assert.ok(rested.wateringShortfall < daily.wateringShortfall);
+});
+
+test('you cannot harvest faster than the crop grows', () => {
+  const plan = {
+    plots: [{ id: 'f', itemId: 'T6_FARM_FOXGLOVE_SEED', count: 1, mode: 'grow', cityId: 'martlock' }],
+    crafts: [],
+  };
+  // Even claiming to farm daily, a 22h crop on a 24h login gives 10 in 10 days.
+  const sim = simulateCycle(plan, data, cycleCtx({ farmDays: 10, farmEvery: 1 }));
+  assert.equal(sim.farmLines[0].harvests, 10);
+  // Every third day cannot give more than three harvests in ten days.
+  const slow = simulateCycle(plan, data, cycleCtx({ farmDays: 10, farmEvery: 3 }));
+  assert.equal(slow.farmLines[0].harvests, 4);   // days 1, 4, 7, 10
+});
+
+test('the default rhythm is unchanged, so old plans still read the same', () => {
+  const plan = {
+    plots: [{ id: 'f', itemId: 'T6_FARM_FOXGLOVE_SEED', count: 9, mode: 'grow', cityId: 'martlock' }],
+    crafts: [],
+  };
+  const withSetting = simulateCycle(plan, data, cycleCtx({ farmEvery: 1 }));
+  const withoutSetting = simulateCycle(plan, data, cycleCtx({ farmEvery: undefined }));
+  assert.equal(withoutSetting.farmEvery, 1);
+  assert.equal(withoutSetting.pool.T6_FOXGLOVE, withSetting.pool.T6_FOXGLOVE);
+  assert.equal(withoutSetting.restDays, 0);
+});
+
+/* ------------------------------------------- watering you can afford --- */
+
+test('the watering bonus only applies to the plots you could pay to water', () => {
+  // 9 plots is 81 tiles, so 81,000 focus a day against 10,000 of regeneration.
+  // Only a fraction gets watered, and only that fraction earns the seed bonus.
+  const plan = {
+    plots: [{ id: 'f', itemId: 'T6_FARM_FOXGLOVE_SEED', count: 9, mode: 'grow', cityId: 'martlock' }],
+    crafts: [],
+  };
+  const sim = simulateCycle(plan, data, cycleCtx({ watered: true, farmDays: 10 }));
+
+  assert.equal(sim.wateringPerDay, 81000);
+  assert.ok(sim.wateredFraction > 0 && sim.wateredFraction < 0.2,
+    `only ${(sim.wateredFraction * 100).toFixed(0)}% could be watered`);
+
+  const foxglove = plant('T6_FARM_FOXGLOVE_SEED');
+  const line = sim.farmLines[0];
+  // Seed return sits between the dry rate and the fully watered one.
+  assert.ok(line.cycle.seedsBack > foxglove.seedReturn);
+  assert.ok(line.cycle.seedsBack < foxglove.seedReturn + foxglove.wateredBonus);
+  assert.equal(round2(line.cycle.wateredShare), round2(sim.wateredFraction));
+});
+
+test('a farm small enough to water really does get the full bonus', () => {
+  const plan = {
+    plots: [{ id: 'f', itemId: 'T6_FARM_FOXGLOVE_SEED', count: 1, mode: 'grow', cityId: 'martlock' }],
+    crafts: [],
+  };
+  // 9 tiles is 9,000 focus a day, inside the 10,000 you regenerate.
+  const sim = simulateCycle(plan, data, cycleCtx({ watered: true, farmDays: 10 }));
+  const foxglove = plant('T6_FARM_FOXGLOVE_SEED');
+  assert.equal(sim.wateredFraction, 1);
+  assert.equal(sim.wateringShortfall, 0);
+  assert.equal(round2(sim.farmLines[0].cycle.seedsBack),
+    round2(foxglove.seedReturn + foxglove.wateredBonus));
+});
+
+test('resting raises the share you can water', () => {
+  const plan = {
+    plots: [{ id: 'f', itemId: 'T6_FARM_FOXGLOVE_SEED', count: 2, mode: 'grow', cityId: 'martlock' }],
+    crafts: [],
+  };
+  const daily = simulateCycle(plan, data, cycleCtx({ watered: true, farmDays: 12, farmEvery: 1 }));
+  const rested = simulateCycle(plan, data, cycleCtx({ watered: true, farmDays: 12, farmEvery: 2 }));
+  assert.ok(rested.wateredFraction > daily.wateredFraction);
+  // And that shows up as a better seed return per harvest.
+  assert.ok(rested.farmLines[0].cycle.seedsBack > daily.farmLines[0].cycle.seedsBack);
+});
+
+test('turning watering off costs no focus and grants no bonus', () => {
+  const plan = {
+    plots: [{ id: 'f', itemId: 'T6_FARM_FOXGLOVE_SEED', count: 9, mode: 'grow', cityId: 'martlock' }],
+    crafts: [],
+  };
+  const sim = simulateCycle(plan, data, cycleCtx({ watered: false }));
+  const foxglove = plant('T6_FARM_FOXGLOVE_SEED');
+  assert.equal(sim.wateringPerDay, 0);
+  assert.equal(sim.wateringShortfall, 0);
+  assert.equal(sim.farmLines[0].cycle.seedsBack, foxglove.seedReturn);
+  // All the focus goes to crafting instead.
+  assert.equal(sim.focusAtCraft, sim.ledger.cap);
 });

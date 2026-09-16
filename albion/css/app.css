@@ -259,3 +259,4 @@ nav button[aria-current="page"] .e { filter: none; opacity: 1; }
   display: flex; justify-content: space-between; gap: 8px;
   font-size: 10.5px; color: var(--faint);
 }
+.spark i.rest { background: #2dd4bf; opacity: .7; }   /* a day skipped to bank focus */
