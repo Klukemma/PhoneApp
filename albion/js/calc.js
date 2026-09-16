@@ -331,3 +331,215 @@ export function planTotals(plan, data, ctx) {
     focusOver: focusPerDay > ctx.settings.focusPerDay,
   };
 }
+
+/* ======================================================= the cycle ====== */
+
+/**
+ * Focus day by day across one cycle.
+ *
+ * Focus regenerates a fixed amount daily and stops dead at the cap, so idling
+ * past the cap earns nothing — that wasted regen is the whole reason to know
+ * when you cap. Watering plots spends focus on the days you farm.
+ */
+export function focusLedger({ cycleDays, farmDays, perDay, cap, start = 0, wateringPerDay = 0 }) {
+  let focus = Math.min(cap, Math.max(0, start));
+  let wasted = 0;
+  let shortfall = 0;        // watering you planned but could not pay for
+  let cappedOn = null;
+  const days = [];
+
+  for (let day = 1; day <= cycleDays; day++) {
+    const before = focus;
+    focus = Math.min(cap, focus + perDay);
+    const gained = focus - before;
+    const lost = perDay - gained;
+    wasted += lost;
+    if (focus >= cap && cappedOn === null) cappedOn = day;
+
+    const farming = day <= farmDays;
+    // You cannot water with focus you do not have.
+    const spent = farming ? Math.min(focus, wateringPerDay) : 0;
+    if (farming) shortfall += wateringPerDay - spent;
+    focus -= spent;
+
+    days.push({ day, farming, gained, wasted: lost, spent, focus });
+  }
+  return { days, atCraft: focus, wasted, shortfall, cappedOn, cap };
+}
+
+/** Run craft jobs so that anything feeding another job runs first. */
+function orderByDependency(jobs, recipeOf) {
+  const out = [];
+  const left = [...jobs];
+  const produces = new Map();
+  for (const j of left) {
+    const r = recipeOf(j.recipeId);
+    if (r) produces.set(r.id, j);
+  }
+  const visit = (job, seen) => {
+    if (out.includes(job)) return;
+    if (seen.has(job)) return;               // a cycle in the chain: give up, keep order
+    seen.add(job);
+    const r = recipeOf(job.recipeId);
+    for (const input of r?.inputs || []) {
+      const feeder = produces.get(input.id);
+      if (feeder && feeder !== job) visit(feeder, seen);
+    }
+    if (!out.includes(job)) out.push(job);
+  };
+  for (const job of left) visit(job, new Set());
+  return out;
+}
+
+const add = (pool, id, qty) => { pool[id] = (pool[id] || 0) + qty; };
+
+/**
+ * One whole cycle: farm for a while, let focus build, then craft in a batch.
+ *
+ * This is a single profit and loss for the cycle rather than a sum of daily
+ * rates, so nothing is double counted: what you grow feeds what you craft, and
+ * only what is actually left over gets sold.
+ */
+export function simulateCycle(plan, data, ctx) {
+  const s = ctx.settings;
+  const cycleDays = Math.max(1, s.cycleDays || 14);
+  const farmDays = Math.max(0, Math.min(cycleDays, s.farmDays ?? cycleDays));
+  const cadence = s.cadenceHours || 24;
+
+  const plantOf = Object.fromEntries(data.plants.map((p) => [p.id, p]));
+  const animalOf = Object.fromEntries(data.animals.map((a) => [a.id, a]));
+  const recipeOf = (id) => data.recipes.find((r) => r.id === id);
+
+  /* ---- farm ---- */
+  const pool = {};
+  const farmLines = [];
+  let farmCost = 0;
+  let wateringPerDay = 0;
+
+  for (const row of plan.plots) {
+    const at = { ...ctx, cityId: row.cityId };
+    const plant = plantOf[row.itemId];
+    const animal = animalOf[row.itemId];
+    let cycle = null;
+    if (plant) cycle = plantCycle(plant, at);
+    else if (animal) {
+      cycle = row.mode === 'product' ? productCycle(animal, at) : animalCycle(animal, at);
+    }
+    if (!cycle) continue;
+
+    const every = Math.max(cycle.hours, cadence);
+    const harvests = Math.floor((farmDays * 24) / every);
+    const count = row.count || 0;
+
+    let itemId = null;
+    let perHarvest = 0;
+    if (cycle.kind === 'plant') { itemId = plant.cropId; perHarvest = cycle.yieldPerPlot; }
+    else if (cycle.kind === 'product') { itemId = animal.product.itemId; perHarvest = cycle.perCycle; }
+    else { itemId = animal.grownId; perHarvest = 1; }
+
+    const produced = perHarvest * count * harvests;
+    add(pool, itemId, produced);
+
+    // Every harvest costs its seed, feed or baby again.
+    const costPer = cycle.kind === 'plant' ? cycle.seedCost
+      : cycle.kind === 'product' ? cycle.feedCost
+        : cycle.feedCost + cycle.babyCost;
+    const cost = costPer * count * harvests;
+    farmCost += cost;
+    wateringPerDay += (cycle.focus || 0) * count;
+
+    farmLines.push({ row, cycle, harvests, itemId, produced, cost });
+  }
+
+  /* ---- focus ---- */
+  const ledger = focusLedger({
+    cycleDays, farmDays,
+    perDay: s.focusPerDay, cap: s.focusCap,
+    start: s.startFocus || 0,
+    wateringPerDay,
+  });
+  let focusLeft = ledger.atCraft;
+
+  /* ---- craft ---- */
+  const craftLines = [];
+  let buyCost = 0;
+  let feeCost = 0;
+
+  for (const job of orderByDependency(plan.crafts, recipeOf)) {
+    const recipe = recipeOf(job.recipeId);
+    if (!recipe) continue;
+    const useFocus = job.useFocus ?? s.useFocus;
+    const batch = craftBatch(recipe, {
+      ...ctx, cityId: job.cityId, specLevel: job.specLevel,
+      settings: { ...s, useFocus },
+    });
+
+    // The return rate hands materials straight back, so the same pile makes
+    // more crafts — and each of those still costs focus.
+    const perCraft = recipe.inputs.map((i) => ({
+      ...i, net: i.count * (1 - batch.rrr),
+    }));
+    const byMaterial = Math.min(...perCraft.map((i) =>
+      (i.net > 0 ? Math.floor((pool[i.id] || 0) / i.net) : Infinity)));
+    const byFocus = batch.focus > 0 ? Math.floor(focusLeft / batch.focus) : Infinity;
+
+    let crafts;
+    let limitedBy;
+    if (job.mode === 'fixed') {
+      crafts = Math.max(0, Math.min(job.perCycle || 0, byFocus));
+      limitedBy = crafts < (job.perCycle || 0) ? 'focus' : 'you';
+    } else {
+      crafts = Math.max(0, Math.min(byMaterial, byFocus));
+      limitedBy = byFocus <= byMaterial ? 'focus' : 'materials';
+    }
+    if (!Number.isFinite(crafts)) crafts = 0;
+
+    const consumed = {};
+    for (const i of perCraft) {
+      const need = i.net * crafts;
+      const have = pool[i.id] || 0;
+      const short = Math.max(0, need - have);
+      if (short > 0) buyCost += short * ctx.priceOf(i.id);   // fixed mode tops up
+      pool[i.id] = Math.max(0, have - need);
+      consumed[i.id] = need;
+    }
+    const made = recipe.amount * crafts;
+    add(pool, recipe.id, made);
+    focusLeft -= batch.focus * crafts;
+    feeCost += ((recipe.silver || 0) + (s.stationFeePerCraft || 0)) * crafts;
+
+    craftLines.push({
+      job, recipe, batch, crafts, limitedBy, byMaterial, byFocus,
+      consumed, made, useFocus,
+      focusUsed: batch.focus * crafts,
+    });
+  }
+
+  /* ---- sell whatever is left ---- */
+  const tax = 1 - taxRate(s);
+  const sales = [];
+  let revenue = 0;
+  for (const [id, qty] of Object.entries(pool)) {
+    if (qty <= 0.0001) continue;
+    const value = qty * ctx.priceOf(id) * tax;
+    revenue += value;
+    sales.push({ id, qty, value });
+  }
+  sales.sort((a, b) => b.value - a.value);
+
+  const cost = farmCost + buyCost + feeCost;
+  const profit = revenue - cost;
+
+  return {
+    cycleDays, farmDays, idleDays: cycleDays - farmDays,
+    ledger, focusAtCraft: ledger.atCraft, focusLeft, wateringPerDay,
+    farmLines, craftLines, sales, pool,
+    // Watering you planned but cannot pay for, so those plots are really dry
+    // and their yields above are optimistic.
+    wateringShortfall: ledger.shortfall,
+    farmCost, buyCost, feeCost, cost, revenue, profit,
+    perDay: profit / cycleDays,
+    perMonth: (profit / cycleDays) * 30,
+    focusUsed: ledger.atCraft - focusLeft,
+  };
+}

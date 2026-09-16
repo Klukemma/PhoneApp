@@ -12,11 +12,27 @@ CoinKeep.
 
 ## The three screens
 
-**Plan** — what you are actually running. Add farm plots (crops, herbs,
-animals to raise, animals kept for eggs and milk) and craft jobs, and it totals
-your silver per day and per month. The focus bar shows whether your plan fits
-in the 10,000 focus a day you regenerate — plan more than that and it says so,
-because a plan you cannot fuel is not a plan.
+**Plan** — one whole **cycle**, not a daily rate. Farming and crafting are
+separate phases because that is how focus works: it banks up while you farm,
+caps at 30,000, and is then spent in one batch. So a cycle is *farm for N days,
+idle while focus tops up, craft it all at the end*, and every figure on this
+screen is worked out over one of those.
+
+It is a single profit and loss, so nothing is double counted: what you grow
+feeds what you craft, and only the leftovers get sold. Craft jobs run in
+dependency order automatically — potatoes become alcohol before alcohol becomes
+potions, however you list them.
+
+Three things it tells you that are easy to miss:
+
+- **When your focus caps.** Regeneration stops dead at the cap, so idling past
+  that day throws away 10,000 focus a day. The card names the day and the
+  amount; shortening the cycle to that day wastes none.
+- **Whether you can actually water what you planted.** Watering 18 plots costs
+  18,000 focus a day against 10,000 of regeneration, so most of it never
+  happens and those yields are fiction. It says so.
+- **What is really limiting each craft** — materials or focus. Leftover focus
+  means grow more; leftover materials mean focus is the wall.
 
 **Best** — the "what should I plant" screen. Every crop, herb and animal ranked
 by silver per plot per day, and every recipe ranked by **silver per focus**,
@@ -166,14 +182,25 @@ baby, and the sale of the grown animal is taxed. Kept for eggs or milk instead,
 it produces every 22 hours and keeps eating, so upkeep is charged per harvest.
 
 **A craft.** Materials are charged at `(1 − return rate)`, because the rest
-comes back. The return rate comes from the city you chose for that job plus the
-focus bonus, and the focus cost comes from your mastery in that specific
-recipe. With focus on, the app also reports silver per focus and tells you how
-many crafts a day your focus budget covers.
+comes back — which also means the same pile of herbs makes *more* crafts, and
+every one of those still costs focus. The return rate comes from the city you
+chose for that job plus the focus bonus, and the focus cost from your mastery
+in that specific recipe.
 
-**Per month.** Crops ripen in 22 hours, but the default assumes you harvest
-every 24 — the honest cadence for someone logging in once a day. Set it to 22
-under Setup if you really do harvest the moment it ripens.
+Focus is set per job, not globally, and that matters more than it sounds. A T6
+healing potion needs 18 alcohol, and alcohol is 38 focus each — 684 focus of
+alcohol feeding a 768-focus potion. Brew the alcohol with focus and it eats the
+entire 30,000 before you make a single potion. Turn focus off for the cheap
+intermediate step and the same cycle makes potions instead. There is a test
+pinning exactly that.
+
+**Per cycle.** Crops ripen in 22 hours, but the default assumes you harvest
+every 24 — the honest cadence for someone logging in once a day — so ten
+farming days is ten harvests. Per day and per 30 days are just the cycle figure
+spread out, for comparing against something on a different schedule.
+
+Set the cycle under **⚙️ Setup → Your cycle**: its length, how many of those
+days you actually farm, and how much focus you start with.
 
 Everything is priced **after market tax** on the sell side and at what you
 actually pay on the buy side.
@@ -184,7 +211,7 @@ actually pay on the buy side.
 
 ```bash
 npm start      # http://localhost:8080/albion/
-npm test       # 40 tests over the profit engine and the extracted data
+npm test       # 54 tests over the profit engine and the extracted data
 npm run gamedata
 ```
 

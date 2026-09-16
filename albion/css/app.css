@@ -243,3 +243,19 @@ nav button[aria-current="page"] .e { filter: none; opacity: 1; }
   width: 62px; min-height: 38px; flex: 0 0 62px; padding: 8px 6px;
   text-align: center; font-size: 14px; border-radius: 10px;
 }
+
+/* Focus across the cycle: one bar per day, height = focus banked that day. */
+.spark {
+  display: flex; align-items: flex-end; gap: 2px;
+  height: 74px; margin: 2px 0 8px;
+}
+.spark i {
+  flex: 1; min-width: 3px; min-height: 3px; border-radius: 3px 3px 0 0;
+  background: var(--accent); opacity: .85;
+}
+.spark i.today { background: var(--good); }   /* a farming day */
+.spark i.over { background: var(--warn); }    /* sitting at the cap, wasting regen */
+.legend {
+  display: flex; justify-content: space-between; gap: 8px;
+  font-size: 10.5px; color: var(--faint);
+}

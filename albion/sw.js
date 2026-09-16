@@ -1,7 +1,7 @@
 // Cache-first shell so the app opens instantly and works with no signal.
 // Bump CACHE when the shell or the game data changes.
 
-const CACHE = 'albionfarm-v3';   // v3: city bonuses from the game files
+const CACHE = 'albionfarm-v4';   // v4: batch cycle model
 const SHELL = [
   './', './index.html', './manifest.webmanifest',
   './css/app.css',

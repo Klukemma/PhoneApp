@@ -1,8 +1,8 @@
 // The four screens. Each returns { title, sub, html }.
 
 import {
-  animalCycle, cityFor, craftBatch, farmCityFor, perPeriod, planTotals,
-  plantCycle, productCycle, rankFarmables, rankRecipes, returnRate,
+  animalCycle, cityFor, craftBatch, farmCityFor, perPeriod, plantCycle,
+  productCycle, rankFarmables, rankRecipes, returnRate, simulateCycle,
 } from './calc.js';
 import { DATA, priceOf, state } from './store.js';
 import { serverName } from './prices.js';
@@ -65,97 +65,165 @@ export function missingFor(cycle) {
 
 export function plan() {
   const c = ctx();
-  const totals = planTotals(state.plan, DATA, c);
+  const sim = simulateCycle(state.plan, DATA, c);
+  const s = state.settings;
   const unpriced = missingPrices();
 
-  const focusPct = totals.focusBudget > 0
-    ? Math.min(1, totals.focusPerDay / totals.focusBudget) : 0;
+  const focusPct = sim.ledger.cap > 0
+    ? Math.min(1, sim.focusUsed / sim.ledger.cap) : 0;
 
   return {
     title: 'Plan',
-    sub: state.plan.plots.length || state.plan.crafts.length
-      ? `${state.plan.plots.length} farm ${state.plan.plots.length === 1 ? 'line' : 'lines'}, ${state.plan.crafts.length} craft`
-      : 'Build your farm',
+    sub: `${sim.cycleDays}-day cycle · ${sim.farmDays} farming, ${sim.idleDays} idle`,
     html: `
       <section>
         <div class="card hero">
-          <div class="label">Profit per month</div>
-          <div class="amount ${toneOf(totals.perMonth)} num">${short(totals.perMonth)}</div>
-          <div class="note">${short(totals.perDay)} a day · ${silver(totals.perMonth)} silver</div>
-          <div class="meter"><i class="${totals.focusOver ? 'over' : 'spent'}"
-            style="width:${focusPct * 100}%"></i></div>
+          <div class="label">Profit per cycle</div>
+          <div class="amount ${toneOf(sim.profit)} num">${short(sim.profit)}</div>
+          <div class="note">${short(sim.perDay)} a day · ${short(sim.perMonth)} per 30 days</div>
+          <div class="meter"><i class="spent" style="width:${focusPct * 100}%"></i></div>
           <div class="hero-foot">
-            <span class="num">${short(totals.focusPerDay)} focus/day</span>
-            <span class="num ${totals.focusOver ? 'bad' : ''}">
-              ${totals.focusOver ? 'over budget' : `of ${short(totals.focusBudget)}`}</span>
+            <span class="num">${short(sim.focusUsed)} of ${short(sim.focusAtCraft)} focus spent</span>
+            <span class="num ${sim.focusLeft > 0 ? 'bad' : ''}">${sim.focusLeft > 0
+              ? `${short(sim.focusLeft)} left over` : 'all used'}</span>
           </div>
-          ${totals.focusOver ? `
-            <div class="warn-note">You are planning ${short(totals.focusPerDay - totals.focusBudget)}
-              more focus a day than you regenerate. Water fewer plots, or craft without focus.</div>` : ''}
         </div>
       </section>
+
+      ${cycleCard(sim)}
 
       ${unpriced.length ? `
         <section>
           <button class="row warn" data-act="prices">
-            <span class="ico">⚠️</span>
+            <span class="ico">\u26A0\uFE0F</span>
             <span class="body">
               <span class="title">${unpriced.length} item${unpriced.length === 1 ? '' : 's'} in your plan have no price</span>
               <span class="meta">Profit is understated until you set them</span>
             </span>
-            <span class="amt">›</span>
+            <span class="amt">\u203A</span>
           </button>
         </section>` : ''}
 
       <section>
-        <div class="section-head"><h2>Farm</h2>
+        <div class="section-head"><h2>Farm · ${sim.farmDays} days</h2>
           <button class="right" data-act="add-plot">+ Add</button></div>
-        ${totals.lines.filter((l) => l.cycle.kind !== 'craft').map(planLine).join('')
+        ${sim.farmLines.map(farmRow).join('')
           || empty(EMOJI.crop, 'No plots yet. Add what you are growing.')}
       </section>
 
       <section>
-        <div class="section-head"><h2>Crafting</h2>
+        <div class="section-head"><h2>Craft · end of cycle</h2>
           <button class="right" data-act="add-craft">+ Add</button></div>
-        ${totals.lines.filter((l) => l.cycle.kind === 'craft').map(craftLine).join('')
+        ${sim.craftLines.map(craftRow).join('')
           || empty(EMOJI.potion, 'No craft jobs. This is usually where the money is.')}
-      </section>`,
+      </section>
+
+      ${sim.sales.length ? `
+      <section>
+        <div class="section-head"><h2>Sold at the end</h2>
+          <span class="right num" style="color:var(--dim)">${short(sim.revenue)}</span></div>
+        <div class="card">
+          ${sim.sales.slice(0, 10).map((x) => `
+            <div class="bar-row"><span class="n">${round1(x.qty)} \u00d7 ${esc(nameOf(x.id))}</span>
+              <span class="v num ${x.value ? 'good' : ''}">${short(x.value)}</span></div>`).join('')}
+          <div class="bar-row total">
+            <span class="n">${sim.cost >= 0 ? 'Costs'
+              : 'Seed surplus, beyond what seeds and feed cost'}</span>
+            <span class="v num ${sim.cost >= 0 ? 'bad' : 'good'}">${short(-sim.cost)}</span></div>
+          <div class="bar-row"><span class="n">Profit for the cycle</span>
+            <span class="v num ${toneOf(sim.profit)}">${short(sim.profit)}</span></div>
+        </div>
+      </section>` : ''}`,
   };
 }
 
-function planLine(line) {
-  const { cycle, rate, row } = line;
+/**
+ * The cycle itself: how focus builds, when it caps, and what it is spent on.
+ * The warnings are the point — capped focus and unwaterable plots are both
+ * silent losses otherwise.
+ */
+function cycleCard(sim) {
+  const s = state.settings;
+  const l = sim.ledger;
+  const max = Math.max(l.cap, 1);
+  const bars = l.days.map((d) => {
+    const h = Math.max(3, (d.focus / max) * 100);
+    const cls = d.focus >= l.cap ? 'over' : d.farming ? 'today' : '';
+    return `<i class="${cls}" style="height:${h}%" title="day ${d.day}"></i>`;
+  }).join('');
+
+  const warn = [];
+  if (l.wasted > 0) {
+    warn.push(`Focus hits the ${short(l.cap)} cap on day ${l.cappedOn}, so
+      ${short(l.wasted)} of regeneration is thrown away. A shorter cycle, or
+      watering more plots, would use it.`);
+  }
+  if (sim.wateringShortfall > 0) {
+    warn.push(`You are watering ${short(sim.wateringPerDay)} focus of plots a day
+      but only regenerate ${short(s.focusPerDay)}. ${short(sim.wateringShortfall)}
+      of watering never happens over the cycle, so those yields are optimistic.`);
+  }
+  if (sim.focusLeft > 0 && sim.craftLines.length) {
+    warn.push(`${short(sim.focusLeft)} focus is left unspent \u2014 your crafting
+      ran out of materials first.`);
+  }
+
+  return `
+    <section>
+      <div class="section-head"><h2>The cycle</h2>
+        <button class="right" data-act="cycle">Edit</button></div>
+      <div class="card">
+        <div class="spark">${bars}</div>
+        <div class="legend">
+          <span>day 1</span>
+          <span>green = farming, amber = at the ${short(l.cap)} cap</span>
+          <span>day ${sim.cycleDays}</span></div>
+        <div class="bar-row" style="margin-top:8px">
+          <span class="n">Focus banked by craft day</span>
+          <span class="v num">${short(sim.focusAtCraft)}</span></div>
+        <div class="bar-row"><span class="n">Spent crafting</span>
+          <span class="v num">${short(sim.focusUsed)}</span></div>
+        ${warn.map((w) => `<div class="warn-note">${w}</div>`).join('')}
+      </div>
+    </section>`;
+}
+
+function farmRow(line) {
+  const { cycle, row, harvests, produced, itemId } = line;
   const ref = cycle.ref;
   const emoji = EMOJI[cycle.kind === 'product' ? 'product' : ref.kind] || '\u{1F331}';
   const what = cycle.kind === 'product'
-    ? `${nameOf(ref.product.itemId)} from ${ref.name}`
-    : ref.name;
+    ? `${nameOf(ref.product.itemId)} from ${ref.name}` : ref.name;
   return `
     <button class="row" data-plot="${esc(row.id)}">
       <span class="ico">${emoji}</span>
       <span class="body">
-        <span class="title">T${ref.tier} ${esc(what)} ×${row.count}</span>
-        <span class="meta">${short(rate.perCycle)} per ${hours(rate.every)}${
-          cycle.farmBonusPct ? ` · ${cycle.city.name} +${cycle.farmBonusPct}%` : ''}${
-          cycle.focus ? ` · ${short(rate.focusPerDay)} focus/day` : ''}</span>
+        <span class="title">T${ref.tier} ${esc(what)} \u00d7${row.count}</span>
+        <span class="meta">${short(produced)} ${esc(nameOf(itemId))} over ${harvests} harvests${
+          cycle.farmBonusPct ? ` · ${cycle.city.name} +${cycle.farmBonusPct}%` : ''}</span>
       </span>
-      <span class="amt num ${toneOf(rate.perMonth)}">${short(rate.perMonth)}</span>
+      <span class="amt num ${line.cost > 0 ? 'bad' : 'good'}">${short(-line.cost)}</span>
     </button>`;
 }
 
-function craftLine(line) {
-  const { cycle, rate, row } = line;
-  const where = cycle.city
-    ? `${cycle.city.name}${cycle.bonus.specialises ? ' +bonus' : ''}` : '';
+function craftRow(line) {
+  const { batch, recipe, crafts, made, limitedBy, job, useFocus } = line;
+  const why = limitedBy === 'materials' ? 'materials run out'
+    : limitedBy === 'focus' ? 'focus runs out' : 'you set the number';
+  // Negative means the inputs sell for more than the output, at your prices.
+  const destroys = crafts > 0 && batch.profit < 0;
   return `
-    <button class="row" data-craft="${esc(row.id)}">
-      <span class="ico">${EMOJI[cycle.ref.category] || EMOJI.potion}</span>
+    <button class="row" data-craft="${esc(job.id)}">
+      <span class="ico">${EMOJI[recipe.category] || EMOJI.potion}</span>
       <span class="body">
-        <span class="title">T${cycle.ref.tier} ${esc(cycle.ref.name)} ×${row.craftsPerDay}/day</span>
-        <span class="meta">${esc(where)} · ${pct(cycle.rrr)} returned${cycle.focus
-          ? ` · ${Math.round(cycle.focus)} focus at ${cycle.spec} mastery` : ''}</span>
+        <span class="title">T${recipe.tier} ${esc(recipe.name)} \u00d7${short(made)}</span>
+        <span class="meta">${destroys
+          ? 'inputs sell for more than the output'
+          : `${short(crafts)} crafts · ${why} · ${useFocus
+            ? `${short(line.focusUsed)} focus` : 'no focus'}`}</span>
       </span>
-      <span class="amt num ${toneOf(rate.perMonth)}">${short(rate.perMonth)}</span>
+      <span class="amt num ${crafts ? '' : 'flat'}">${crafts
+        ? `${short(batch.profit * crafts)}` : '\u2014'}</span>
     </button>`;
 }
 

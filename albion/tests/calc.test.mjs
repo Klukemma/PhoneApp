@@ -5,8 +5,8 @@ import { test } from 'node:test';
 
 import {
   animalCycle, cityBonus, cityFor, craftBatch, farmBonus, farmCityFor,
-  focusCostAt, perPeriod, planTotals, plantCycle, productCycle, rankRecipes,
-  returnRate, specFor, taxRate,
+  focusCostAt, focusLedger, perPeriod, planTotals, plantCycle, productCycle,
+  rankRecipes, returnRate, simulateCycle, specFor, taxRate,
 } from '../js/calc.js';
 
 const data = JSON.parse(
@@ -23,7 +23,7 @@ const ctx = (prices = {}, over = {}) => ({
     cities: data.cities,
     premium: true, watered: false, favouriteFood: true, useFocus: false,
     craftCity: 'martlock', farmCity: 'island', spec: {}, specLevel: 0,
-    cadenceHours: 24,
+    cadenceHours: 24, cycleDays: 14, farmDays: 10, startFocus: 0,
     stationFeePerCraft: 0, feedItemId: 'T3_WHEAT',
     ...over,
   },
@@ -537,4 +537,206 @@ test('the city table came out of the game files intact', () => {
       assert.equal(pct, 10, `${c.id} ${key}`);
     }
   }
+});
+
+/* -------------------------------------------------------- focus ledger - */
+
+test('focus banks up daily and stops dead at the cap', () => {
+  const l = focusLedger({ cycleDays: 14, farmDays: 0, perDay: 10000, cap: 30000, start: 0 });
+  assert.equal(l.days[0].focus, 10000);
+  assert.equal(l.days[2].focus, 30000);
+  assert.equal(l.cappedOn, 3);
+  assert.equal(l.atCraft, 30000);
+  // Days 4-14 each throw away a full day of regeneration.
+  assert.equal(l.wasted, 11 * 10000);
+});
+
+test('a cycle that ends the day it caps wastes nothing', () => {
+  const l = focusLedger({ cycleDays: 3, farmDays: 0, perDay: 10000, cap: 30000, start: 0 });
+  assert.equal(l.atCraft, 30000);
+  assert.equal(l.wasted, 0);
+});
+
+test('watering spends the regeneration it is given, and no more', () => {
+  // 18k of plots a day against 10k of regen: you bank nothing while farming.
+  const l = focusLedger({
+    cycleDays: 14, farmDays: 10, perDay: 10000, cap: 30000, start: 0,
+    wateringPerDay: 18000,
+  });
+  assert.equal(l.days[0].spent, 10000);
+  assert.equal(l.days[0].focus, 0);
+  assert.equal(l.days[9].focus, 0);
+  // Then four idle days bank it back up, capping on day 13.
+  assert.equal(l.atCraft, 30000);
+  assert.equal(l.cappedOn, 13);
+  // 8k of watering a day never happens.
+  assert.equal(l.shortfall, 10 * 8000);
+});
+
+test('starting focus carries into the cycle', () => {
+  const l = focusLedger({ cycleDays: 1, farmDays: 0, perDay: 10000, cap: 30000, start: 15000 });
+  assert.equal(l.atCraft, 25000);
+});
+
+/* ------------------------------------------------------ whole cycles --- */
+
+const cyclePrices = {
+  T6_FARM_FOXGLOVE_SEED: 15000, T6_FOXGLOVE: 900,
+  T6_FARM_POTATO_SEED: 15000, T6_POTATO: 420, T6_ALCOHOL: 700,
+  T5_FARM_GOOSE_BABY: 10000, T5_FARM_GOOSE_GROWN: 26000, T5_EGG: 780,
+  T5_CABBAGE: 330, T6_POTION_HEAL: 5400,
+};
+const cycleCtx = (over = {}) => ctx(cyclePrices, {
+  watered: true, useFocus: true, craftCity: 'brecilien', farmCity: 'martlock',
+  feedItemId: 'T5_CABBAGE', ...over,
+});
+const cyclePlan = (crafts) => ({
+  plots: [
+    { id: 'f', itemId: 'T6_FARM_FOXGLOVE_SEED', count: 9, mode: 'grow', cityId: 'martlock' },
+    { id: 'p', itemId: 'T6_FARM_POTATO_SEED', count: 9, mode: 'grow', cityId: 'martlock' },
+    { id: 'g', itemId: 'T5_FARM_GOOSE_BABY', count: 9, mode: 'product', cityId: 'lymhurst' },
+  ],
+  crafts,
+});
+
+test('farming runs only on the farming days', () => {
+  const sim = simulateCycle(cyclePlan([]), data, cycleCtx());
+  const foxglove = sim.farmLines.find((l) => l.itemId === 'T6_FOXGLOVE');
+  assert.equal(foxglove.harvests, 10);              // 10 farm days, 24h cadence
+  assert.equal(sim.idleDays, 4);
+
+  // Half the farming days, half the crop.
+  const half = simulateCycle(cyclePlan([]), data, cycleCtx({ farmDays: 5 }));
+  assert.equal(half.farmLines.find((l) => l.itemId === 'T6_FOXGLOVE').harvests, 5);
+  assert.equal(half.pool.T6_FOXGLOVE, foxglove.produced / 2);
+});
+
+test('a craft chain runs in dependency order however it is listed', () => {
+  // Potions need alcohol, and alcohol is made from potatoes. Listing the
+  // potion first must not starve it.
+  const sim = simulateCycle(cyclePlan([
+    { id: 'c2', recipeId: 'T6_POTION_HEAL', mode: 'auto' },
+    { id: 'c1', recipeId: 'T6_ALCOHOL', mode: 'auto', useFocus: false },
+  ]), data, cycleCtx());
+
+  assert.equal(sim.craftLines[0].recipe.id, 'T6_ALCOHOL');
+  assert.equal(sim.craftLines[1].recipe.id, 'T6_POTION_HEAL');
+  assert.ok(sim.craftLines[1].crafts > 0, 'potions actually got made');
+});
+
+test('a cheap intermediate step can eat the whole focus budget', () => {
+  // Alcohol is 38 focus each and you need a lot of it, so focusing it starves
+  // the potions it exists to feed.
+  const withFocus = simulateCycle(cyclePlan([
+    { id: 'c1', recipeId: 'T6_ALCOHOL', mode: 'auto', useFocus: true },
+    { id: 'c2', recipeId: 'T6_POTION_HEAL', mode: 'auto' },
+  ]), data, cycleCtx());
+  const without = simulateCycle(cyclePlan([
+    { id: 'c1', recipeId: 'T6_ALCOHOL', mode: 'auto', useFocus: false },
+    { id: 'c2', recipeId: 'T6_POTION_HEAL', mode: 'auto' },
+  ]), data, cycleCtx());
+
+  const potions = (sim) => sim.craftLines.find((l) => l.recipe.id === 'T6_POTION_HEAL');
+  assert.equal(potions(withFocus).crafts, 0, 'focus all went on alcohol');
+  assert.ok(potions(without).crafts > 0, 'saving focus leaves some for potions');
+  assert.equal(withFocus.craftLines[0].limitedBy, 'focus');
+  assert.equal(without.craftLines[0].limitedBy, 'materials');
+});
+
+test('the binding constraint is reported honestly', () => {
+  const sim = simulateCycle(cyclePlan([
+    { id: 'c1', recipeId: 'T6_ALCOHOL', mode: 'auto', useFocus: false },
+    { id: 'c2', recipeId: 'T6_POTION_HEAL', mode: 'auto' },
+  ]), data, cycleCtx());
+  const potions = sim.craftLines.find((l) => l.recipe.id === 'T6_POTION_HEAL');
+
+  assert.equal(potions.limitedBy, 'materials');
+  assert.ok(potions.byMaterial < potions.byFocus);
+  assert.ok(sim.focusLeft > 0, 'focus is left over when materials bind');
+
+  // Growing more foxglove should lift the ceiling.
+  const more = simulateCycle({
+    ...cyclePlan([
+      { id: 'c1', recipeId: 'T6_ALCOHOL', mode: 'auto', useFocus: false },
+      { id: 'c2', recipeId: 'T6_POTION_HEAL', mode: 'auto' },
+    ]),
+    plots: [
+      { id: 'f', itemId: 'T6_FARM_FOXGLOVE_SEED', count: 27, mode: 'grow', cityId: 'martlock' },
+      { id: 'p', itemId: 'T6_FARM_POTATO_SEED', count: 9, mode: 'grow', cityId: 'martlock' },
+      { id: 'g', itemId: 'T5_FARM_GOOSE_BABY', count: 9, mode: 'product', cityId: 'lymhurst' },
+    ],
+  }, data, cycleCtx());
+  const morePotions = more.craftLines.find((l) => l.recipe.id === 'T6_POTION_HEAL');
+  assert.ok(morePotions.crafts > potions.crafts);
+});
+
+test('the return rate stretches materials into more crafts, each costing focus', () => {
+  // Alcohol has to be in the plan or the potion has no alcohol at all and both
+  // cities are equally stuck at zero.
+  const plan = cyclePlan([
+    { id: 'c1', recipeId: 'T6_ALCOHOL', mode: 'auto', useFocus: false },
+    { id: 'c', recipeId: 'T6_POTION_HEAL', mode: 'auto' },
+  ]);
+  // Same materials, better return rate: more crafts out of the same pile.
+  const brecilien = simulateCycle(plan, data, cycleCtx({ craftCity: 'brecilien' }));
+  const martlock = simulateCycle(plan, data, cycleCtx({ craftCity: 'martlock' }));
+  const potions = (sim) => sim.craftLines.find((l) => l.recipe.id === 'T6_POTION_HEAL');
+  assert.ok(potions(brecilien).byMaterial > potions(martlock).byMaterial);
+  assert.ok(potions(brecilien).crafts > potions(martlock).crafts);
+});
+
+test('a fixed number of crafts buys in what was not farmed', () => {
+  const grown = simulateCycle(cyclePlan([
+    { id: 'a', recipeId: 'T6_ALCOHOL', mode: 'auto', useFocus: false },
+    { id: 'c', recipeId: 'T6_POTION_HEAL', mode: 'auto' },
+  ]), data, cycleCtx());
+  const bought = simulateCycle(cyclePlan([
+    { id: 'a', recipeId: 'T6_ALCOHOL', mode: 'auto', useFocus: false },
+    { id: 'c', recipeId: 'T6_POTION_HEAL', mode: 'fixed', perCycle: 30 },
+  ]), data, cycleCtx());
+
+  const potionsOf = (sim) => sim.craftLines.find((l) => l.recipe.id === 'T6_POTION_HEAL');
+  assert.ok(potionsOf(bought).crafts > potionsOf(grown).crafts);
+  assert.ok(bought.buyCost > 0, 'the shortfall was purchased');
+  assert.equal(grown.buyCost, 0);
+});
+
+test('a fixed number is still capped by the focus you have', () => {
+  const sim = simulateCycle(cyclePlan([
+    { id: 'c', recipeId: 'T6_POTION_HEAL', mode: 'fixed', perCycle: 9999 },
+  ]), data, cycleCtx());
+  const line = sim.craftLines[0];
+  assert.equal(line.limitedBy, 'focus');
+  assert.ok(line.crafts < 9999);
+  assert.ok(line.focusUsed <= sim.focusAtCraft + 1);
+});
+
+test('nothing is double counted: crops eaten by crafting are not also sold', () => {
+  const raw = simulateCycle(cyclePlan([]), data, cycleCtx());
+  const crafted = simulateCycle(cyclePlan([
+    { id: 'c1', recipeId: 'T6_ALCOHOL', mode: 'auto', useFocus: false },
+    { id: 'c2', recipeId: 'T6_POTION_HEAL', mode: 'auto' },
+  ]), data, cycleCtx());
+
+  assert.equal(Math.round(raw.pool.T6_FOXGLOVE), 891);
+  assert.ok(crafted.pool.T6_FOXGLOVE < raw.pool.T6_FOXGLOVE, 'foxglove was consumed');
+  const soldFoxglove = crafted.sales.find((x) => x.id === 'T6_FOXGLOVE');
+  assert.ok(!soldFoxglove || soldFoxglove.qty < 891);
+});
+
+test('per day and per month are just the cycle spread out', () => {
+  const sim = simulateCycle(cyclePlan([
+    { id: 'a', recipeId: 'T6_ALCOHOL', mode: 'auto', useFocus: false },
+    { id: 'c', recipeId: 'T6_POTION_HEAL', mode: 'auto' },
+  ]), data, cycleCtx());
+  assert.equal(round2(sim.perDay), round2(sim.profit / 14));
+  assert.equal(round2(sim.perMonth), round2(sim.perDay * 30));
+});
+
+test('an empty plan produces zeroes, not NaN', () => {
+  const sim = simulateCycle({ plots: [], crafts: [] }, data, ctx({}));
+  for (const k of ['profit', 'revenue', 'cost', 'perDay', 'perMonth', 'focusAtCraft']) {
+    assert.ok(Number.isFinite(sim[k]), `${k} is ${sim[k]}`);
+  }
+  assert.equal(sim.profit, 0);
 });

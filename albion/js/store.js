@@ -26,6 +26,11 @@ function defaults() {
       farmCity: 'martlock',    // where your farm or island is; a plot can override
       specLevel: 0,            // default mastery, when a recipe has none of its own
       cadenceHours: 24,        // how often you actually log in to harvest
+      // One batch cycle: farm for a while, let focus build to the cap, then
+      // craft it all in one go.
+      cycleDays: 14,
+      farmDays: 10,
+      startFocus: 0,           // focus in hand when a cycle begins
       hideMounts: false,
       stationFeePerCraft: 0,
       feedItemId: 'T3_WHEAT',
@@ -180,8 +185,13 @@ export function removePlot(id) {
   return gone;
 }
 
-export function addCraft(recipeId, craftsPerDay = 10) {
-  state.plan.crafts.push({ id: uid(), recipeId, craftsPerDay, ownInputs: true });
+export function addCraft(recipeId) {
+  state.plan.crafts.push({
+    id: uid(), recipeId,
+    mode: 'auto',              // craft as much as materials and focus allow
+    perCycle: 0,               // used when mode is 'fixed'
+    cityId: state.settings.craftCity,
+  });
   commit();
 }
 

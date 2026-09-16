@@ -1,7 +1,8 @@
 // Bottom sheets: pickers, editors, settings.
 
 import {
-  cityBonus, cityFor, craftBatch, farmBonus, farmCityFor, perPeriod, specFor,
+  cityBonus, cityFor, craftBatch, farmBonus, farmCityFor, perPeriod,
+  simulateCycle, specFor,
 } from './calc.js';
 import { explain, fetchPrices, serverName, CITIES, SERVERS } from './prices.js';
 import {
@@ -235,11 +236,23 @@ export function openCraft(job) {
   const s = state.settings;
   const cityId = job.cityId || s.craftCity;
   const spec = Number.isFinite(job.specLevel) ? job.specLevel : specFor(s, recipe.id);
-  const batch = craftBatch(recipe, { ...ctx(), cityId, specLevel: spec });
-  const rate = {
-    perMonth: batch.profit * job.craftsPerDay * 30,
-    focusPerDay: batch.focus * job.craftsPerDay,
-  };
+  const mode = job.mode || 'auto';
+  const useFocus = job.useFocus ?? s.useFocus;
+  const base = ctx();
+  const batch = craftBatch(recipe, {
+    ...base, cityId, specLevel: spec,
+    settings: { ...s, useFocus },
+  });
+  const rawFocus = craftBatch(recipe, {
+    ...base, cityId, specLevel: spec, settings: { ...s, useFocus: true },
+  }).focus;
+
+  // How this job actually plays out inside the whole cycle.
+  const sim = simulateCycle(state.plan, DATA, base);
+  const line = sim.craftLines.find((l) => l.job.id === job.id);
+  const rate = line
+    ? { perMonth: batch.profit * line.crafts * (30 / sim.cycleDays) }
+    : null;
 
   openSheet(`
     <h2>T${recipe.tier} ${esc(recipe.name)}</h2>
@@ -250,21 +263,37 @@ export function openCraft(job) {
       <div class="hint" id="cityHint">${esc(cityHint(cityId, recipe.category))}</div>
     </div>
 
-    <div class="two">
-      <div class="field">
-        <label>Crafts per day</label>
-        <input type="number" id="perDay" inputmode="numeric" min="0" max="9999"
-          value="${job.craftsPerDay}">
-      </div>
-      <div class="field">
-        <label>Mastery for this item</label>
-        <input type="number" id="specLevel" inputmode="numeric" min="0" max="120" value="${spec}">
+    <div class="field">
+      <label>How many this cycle</label>
+      <div class="seg">
+        <button type="button" data-mode="auto" aria-pressed="${mode === 'auto'}">
+          As many as I can</button>
+        <button type="button" data-mode="fixed" aria-pressed="${mode === 'fixed'}">
+          A set number</button>
       </div>
     </div>
-    <div class="hint" style="margin:-4px 0 12px">${batch.focus
-      ? `${Math.round(batch.focus)} focus each, so ${Math.floor(s.focusPerDay / batch.focus)} a day fits your budget. Mastery halves focus cost at 100.`
-      : 'No focus used, so only materials limit you.'}</div>
+    <div class="field ${mode === 'fixed' ? '' : 'hide'}" id="fixedWrap">
+      <label>Crafts per cycle</label>
+      <input type="number" id="perCycle" inputmode="numeric" min="0" max="99999"
+        value="${job.perCycle || 0}">
+      <div class="hint">Anything you have not farmed is bought at market price.</div>
+    </div>
 
+    <div class="toggle" style="margin-bottom:12px">
+      <div class="body"><div class="t">Use focus on this</div>
+        <div class="d">${Math.round(batch.focus || rawFocus)} focus each. Cheap
+          intermediate steps are often better done without it, to save focus for
+          what actually pays.</div></div>
+      <button class="switch" data-jobfocus aria-pressed="${useFocus}"></button>
+    </div>
+
+    <div class="field">
+      <label>Mastery for this item</label>
+      <input type="number" id="specLevel" inputmode="numeric" min="0" max="120" value="${spec}">
+      <div class="hint">Halves focus cost at 100.</div>
+    </div>
+
+    ${line ? cycleOutcome(line, sim) : ''}
     ${detailHTML(batch, rate)}
     <div class="sheet-actions">
       <button class="btn primary" id="save">Save</button>
@@ -272,27 +301,26 @@ export function openCraft(job) {
     </div>
   `, {
     onMount(root) {
-      // Re-render live so the effect of a city or mastery change is visible
-      // before you commit to it.
-      const refresh = () => {
-        updateCraft(job.id, {
-          cityId: $('#cityId', root).value,
-          specLevel: Math.max(0, Number($('#specLevel', root).value) || 0),
-          craftsPerDay: Math.max(0, Number($('#perDay', root).value) || 0),
-        });
+      const read = () => ({
+        cityId: $('#cityId', root).value,
+        specLevel: Math.max(0, Number($('#specLevel', root).value) || 0),
+        perCycle: Math.max(0, Number($('#perCycle', root)?.value) || 0),
+      });
+      // Re-render live, so the effect of every switch is visible before you
+      // commit to it.
+      const refresh = (patch = {}) => {
+        updateCraft(job.id, { ...read(), ...patch });
         openCraft(state.plan.crafts.find((c) => c.id === job.id));
       };
-      $('#cityId', root).onchange = refresh;
-      $('#specLevel', root).onchange = refresh;
+      $('#cityId', root).onchange = () => refresh();
+      $('#specLevel', root).onchange = () => refresh();
+      $('#perCycle', root)?.addEventListener('change', () => refresh());
+      for (const b of $$('[data-mode]', root)) {
+        b.onclick = () => refresh({ mode: b.dataset.mode });
+      }
+      $('[data-jobfocus]', root).onclick = () => refresh({ useFocus: !useFocus });
 
-      $('#save', root).onclick = () => {
-        updateCraft(job.id, {
-          craftsPerDay: Math.max(0, Number($('#perDay', root).value) || 0),
-          cityId: $('#cityId', root).value,
-          specLevel: Math.max(0, Number($('#specLevel', root).value) || 0),
-        });
-        closeSheet();
-      };
+      $('#save', root).onclick = () => { updateCraft(job.id, read()); closeSheet(); };
       $('#del', root).onclick = () => { removeCraft(job.id); closeSheet(); toast('Removed'); };
     },
   });
@@ -476,6 +504,14 @@ export function openSettings() {
     ${toggle('ownInputsAtCost', 'Value inputs at my farm cost', 'Instead of what they would sell for.')}
     ${toggle('hideMounts', 'Hide mounts', 'Only show livestock and plants.')}
 
+    <div class="section-head"><h2>Your cycle</h2></div>
+    <button class="row" data-act="open-cycle" style="margin-bottom:12px">
+      <span class="ico">\u{1F504}</span>
+      <span class="body"><span class="title">${s.cycleDays}-day cycle</span>
+        <span class="meta">${s.farmDays} farming, ${s.cycleDays - s.farmDays} idle, then craft</span></span>
+      <span class="amt">\u203A</span>
+    </button>
+
     <div class="section-head"><h2>Farming</h2></div>
     <button class="row" data-act="open-farm-city" style="margin-bottom:12px">
       <span class="ico">\u{1F33E}</span>
@@ -504,7 +540,7 @@ export function openSettings() {
         <div class="hint">Halves focus cost at 100.</div></div>
       <div class="field"><label>Harvest every (hours)</label>
         <input type="number" id="cadenceHours" inputmode="numeric" min="1" max="72" value="${s.cadenceHours}">
-        <div class="hint">Crops ripen in 22h.</div></div>
+        <div class="hint">Crops ripen in 22h; 24 means once a day.</div></div>
     </div>
     <div class="field"><label>Station fee per craft (silver)</label>
       <input type="number" id="stationFeePerCraft" inputmode="numeric" min="0" value="${s.stationFeePerCraft}">
@@ -564,6 +600,7 @@ export function openSettings() {
         closeSheet();
         toast('Saved');
       };
+      $('[data-act="open-cycle"]', root).onclick = openCycle;
       $('[data-act="open-farm-city"]', root).onclick = openFarmCity;
       $('[data-act="open-city"]', root).onclick = openCraftCity;
       $('[data-act="open-mastery"]', root).onclick = () => openMastery();
@@ -650,6 +687,103 @@ export function openMastery(filter = '') {
       const find = $('#find', root);
       find.onchange = () => openMastery(find.value);
       $('#done', root).onclick = () => openSettings();
+    },
+  });
+}
+
+/** What this job actually managed inside the cycle, and what held it back. */
+function cycleOutcome(line, sim) {
+  const cap = line.limitedBy === 'materials'
+    ? `Materials run out first \u2014 they allow ${Math.floor(line.byMaterial)} crafts,
+       focus would allow ${Number.isFinite(line.byFocus) ? Math.floor(line.byFocus) : 'any number'}.`
+    : line.limitedBy === 'focus'
+      ? `Focus runs out first \u2014 it allows ${Math.floor(line.byFocus)} crafts,
+         materials would allow ${Math.floor(line.byMaterial)}.`
+      : 'Set by you.';
+  const short_ = (n) => Math.round(n).toLocaleString();
+  return `
+    <div class="card" style="margin-bottom:12px">
+      <div class="bar-row"><span class="n">Crafts this cycle</span>
+        <span class="v num">${short_(line.crafts)}</span></div>
+      <div class="bar-row"><span class="n">Items made</span>
+        <span class="v num">${short_(line.made)}</span></div>
+      <div class="bar-row"><span class="n">Focus used</span>
+        <span class="v num">${short_(line.focusUsed)} of ${short_(sim.focusAtCraft)}</span></div>
+      <div class="warn-note" style="color:var(--dim);border-color:var(--line);background:var(--card-2)">
+        ${cap}</div>
+    </div>`;
+}
+
+/* ------------------------------------------------------------- cycle -- */
+
+/**
+ * The shape of one batch cycle. Farming and crafting are separate phases
+ * because focus banks up to a cap while you farm and is then spent in one go.
+ */
+export function openCycle() {
+  const s = state.settings;
+  const sim = simulateCycle(state.plan, DATA, ctx());
+  const l = sim.ledger;
+
+  openSheet(`
+    <h2>Your cycle</h2>
+    <p class="muted">Farm for a stretch, let focus bank up, then spend it all
+      crafting. Everything on the Plan screen is worked out over one of these.</p>
+
+    <div class="two">
+      <div class="field"><label>Cycle length (days)</label>
+        <input type="number" id="cycleDays" inputmode="numeric" min="1" max="60"
+          value="${s.cycleDays}"></div>
+      <div class="field"><label>Of which farming</label>
+        <input type="number" id="farmDays" inputmode="numeric" min="0" max="60"
+          value="${s.farmDays}"></div>
+    </div>
+    <div class="field"><label>Focus in hand at the start</label>
+      <input type="number" id="startFocus" inputmode="numeric" min="0" max="${s.focusCap}"
+        value="${s.startFocus || 0}">
+      <div class="hint">Zero if you emptied it on the last batch.</div></div>
+
+    <div class="card" style="margin-bottom:12px">
+      <div class="bar-row"><span class="n">Focus banked by craft day</span>
+        <span class="v num">${Math.round(sim.focusAtCraft).toLocaleString()}</span></div>
+      <div class="bar-row"><span class="n">Regeneration wasted at the cap</span>
+        <span class="v num ${l.wasted ? 'bad' : ''}">${Math.round(l.wasted).toLocaleString()}</span></div>
+      ${l.cappedOn ? `<div class="bar-row"><span class="n">Hits the cap on</span>
+        <span class="v num">day ${l.cappedOn}</span></div>` : ''}
+      <div class="bar-row"><span class="n">Watering costs</span>
+        <span class="v num">${Math.round(sim.wateringPerDay).toLocaleString()} a day</span></div>
+    </div>
+
+    ${l.wasted > 0 ? `<div class="warn-note" style="margin-bottom:12px">
+      Focus caps on day ${l.cappedOn}. Every day after that throws away
+      ${Math.round(s.focusPerDay).toLocaleString()} focus. Shortening the cycle to
+      ${l.cappedOn} days would waste none.</div>` : ''}
+
+    <div class="sheet-actions">
+      <button class="btn primary" id="save">Save</button>
+    </div>
+  `, {
+    onMount(root) {
+      const refresh = () => {
+        setSettings({
+          cycleDays: Math.max(1, Number($('#cycleDays', root).value) || 14),
+          farmDays: Math.max(0, Number($('#farmDays', root).value) || 0),
+          startFocus: Math.max(0, Number($('#startFocus', root).value) || 0),
+        });
+        openCycle();
+      };
+      for (const id of ['#cycleDays', '#farmDays', '#startFocus']) {
+        $(id, root).onchange = refresh;
+      }
+      $('#save', root).onclick = () => {
+        setSettings({
+          cycleDays: Math.max(1, Number($('#cycleDays', root).value) || 14),
+          farmDays: Math.max(0, Number($('#farmDays', root).value) || 0),
+          startFocus: Math.max(0, Number($('#startFocus', root).value) || 0),
+        });
+        closeSheet();
+        toast('Cycle saved');
+      };
     },
   });
 }

@@ -15,6 +15,7 @@ export function short(n) {
   if (a >= 1e6) return `${sign}${trim(a / 1e6)}m`;
   if (a >= 1e4) return `${sign}${trim(a / 1e3)}k`;
   if (a >= 1) return `${sign}${Math.round(a).toLocaleString()}`;
+  if (a === 0) return '0';
   return `${sign}${a.toFixed(2)}`;
 }
 
