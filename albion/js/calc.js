@@ -541,10 +541,19 @@ export function simulateCycle(plan, data, ctx) {
   };
 
   const tilesOf = (row) => (row.count || 0) * (s.tilesPerPlot || TILES_PER_PLOT);
+
+  /**
+   * Rest days exist to bank focus, so a row that spends none has no reason to
+   * pause: collecting eggs costs nothing, and you collect them every day even
+   * on a day you skip watering the herbs.
+   */
+  const restsWith = (cycle) => (cycle.focus || 0) > 0;
+
   const harvestsOf = (cycle) => {
-    const rhythmHours = Math.max(cadence, farmEvery * 24);
+    const every = restsWith(cycle) ? farmEvery : 1;
+    const rhythmHours = Math.max(cadence, every * 24);
     return rhythmHours >= cycle.hours
-      ? farmDayCount(farmDays, farmEvery)
+      ? farmDayCount(farmDays, every)
       : Math.floor((farmDays * 24) / cycle.hours);
   };
 
@@ -602,7 +611,10 @@ export function simulateCycle(plan, data, ctx) {
     const cost = costPer * tiles * harvests;
     farmCost += cost;
 
-    farmLines.push({ row, cycle, harvests, itemId, produced, cost, plots, tiles });
+    farmLines.push({
+      row, cycle, harvests, itemId, produced, cost, plots, tiles,
+      rests: restsWith(cycle),
+    });
   }
 
   let focusLeft = ledger.atCraft;
@@ -711,16 +723,22 @@ export function simulateCycle(plan, data, ctx) {
       consumed[id] = (consumed[id] || 0) + qty;
     }
   }
+  const stockCap = Number(s.stockCap) > 0 ? Number(s.stockCap) : Infinity;
   const balance = farmLines.map((l) => {
     const used = consumed[l.itemId] || 0;
     const made = l.produced;
     // How many plots would match what the crafting can actually get through.
     const perPlot = l.plots > 0 ? made / l.plots : 0;
+    const leftover = Math.max(0, made - used);
     return {
-      itemId: l.itemId, plots: l.plots, made, used,
-      leftover: Math.max(0, made - used),
+      itemId: l.itemId, plots: l.plots, made, used, leftover,
       ratio: used > 0 ? made / used : (made > 0 ? Infinity : 1),
       balancedPlots: perPlot > 0 ? used / perPlot : 0,
+      // Cycles before the pile passes what you are willing to sit on, starting
+      // from empty. One means it happens within a single cycle.
+      cyclesToCap: leftover > 0 && Number.isFinite(stockCap)
+        ? Math.max(1, Math.ceil(stockCap / leftover)) : null,
+      overCapNow: leftover >= stockCap,
     };
   }).filter((b) => b.made > 0);
 
@@ -732,7 +750,7 @@ export function simulateCycle(plan, data, ctx) {
     farmingDays: farmDayCount(farmDays, farmEvery),
     restDays: farmDays - farmDayCount(farmDays, farmEvery),
     ledger, focusAtCraft: ledger.atCraft, focusLeft,
-    farmLines, craftLines, sales, stock, stockValue, balance, pool,
+    farmLines, craftLines, sales, stock, stockValue, balance, pool, stockCap,
     // Watering asked for, paid for, and the share that decides how much of the
     // seed bonus the farm above actually earned.
     wateringPerDay, wateringAsked, wateringPaid, wateredFraction,

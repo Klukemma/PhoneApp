@@ -25,7 +25,7 @@ const ctx = (prices = {}, over = {}) => ({
     premium: true, watered: false, favouriteFood: true, useFocus: false,
     craftCity: 'martlock', farmCity: 'island', spec: {}, specLevel: 0,
     cadenceHours: 24, cycleDays: 14, farmDays: 10, farmEvery: 1, startFocus: 0,
-    focusNodes: data.focusNodes, nodeLevels: {},
+    focusNodes: data.focusNodes, nodeLevels: {}, stockCap: 5000,
     stationFeePerCraft: 0, feedItemId: 'T3_WHEAT',
     ...over,
   },
@@ -1233,4 +1233,70 @@ test('a farm sized to its crafting leaves nothing on the pile', () => {
   assert.ok(small.stockValue < big.stockValue, 'less piles up');
   // And the smaller farm costs less to run, so realised profit can be better.
   assert.ok(small.cost < big.cost);
+});
+
+/* ----------------------------------- rows that cost no focus ----------- */
+
+test('collecting eggs costs no focus, so it needs no rest days', () => {
+  const geese = { id: 'g', itemId: 'T5_FARM_GOOSE_BABY', count: 4, mode: 'product', cityId: 'lymhurst' };
+  const herbs = { id: 'f', itemId: 'T6_FARM_FOXGLOVE_SEED', count: 9, mode: 'grow', cityId: 'martlock' };
+  const plan = { plots: [herbs, geese], crafts: [] };
+
+  const rested = simulateCycle(plan, data, cycleCtx({ farmDays: 12, farmEvery: 2 }));
+  const eggs = rested.farmLines.find((l) => l.itemId === 'T5_EGG');
+  const foxglove = rested.farmLines.find((l) => l.itemId === 'T6_FOXGLOVE');
+
+  assert.equal(eggs.cycle.focus, 0, 'eggs cost nothing to collect');
+  assert.equal(eggs.rests, false);
+  assert.equal(foxglove.rests, true);
+  // The herbs halve with the rhythm; the geese carry on every day.
+  assert.equal(foxglove.harvests, 6);
+  assert.equal(eggs.harvests, 12);
+
+  // And they add nothing to the watering bill.
+  const onlyGeese = simulateCycle({ plots: [geese], crafts: [] }, data, cycleCtx());
+  assert.equal(onlyGeese.wateringPerDay, 0);
+  assert.equal(onlyGeese.wateringShortfall, 0);
+});
+
+test('raising goslings does cost focus, so it does rest', () => {
+  const plan = {
+    plots: [{ id: 'g', itemId: 'T5_FARM_GOOSE_BABY', count: 4, mode: 'grow', cityId: 'lymhurst' }],
+    crafts: [],
+  };
+  const sim = simulateCycle(plan, data, cycleCtx({ farmDays: 12, farmEvery: 2, watered: true }));
+  assert.ok(sim.wateringPerDay > 0);
+  assert.equal(sim.farmLines[0].rests, true);
+});
+
+/* ------------------------------------------ the stock threshold -------- */
+
+test('a pile is measured against the stock you will sit on', () => {
+  const sim = simulateCycle(chainPlan(HIS_PLOTS), data, cycleCtx({ nodeLevels: BOARD }));
+  const eggs = sim.balance.find((b) => b.itemId === 'T5_EGG');
+
+  assert.equal(sim.stockCap, 5000);
+  assert.ok(eggs.leftover > 0);
+  // Starting empty, this many cycles before the pile passes the cap.
+  assert.equal(eggs.cyclesToCap, Math.max(1, Math.ceil(5000 / eggs.leftover)));
+  assert.ok(eggs.cyclesToCap >= 1 && eggs.cyclesToCap < 10);
+});
+
+test('a bigger tolerance means more cycles before you pause', () => {
+  const tight = simulateCycle(chainPlan(HIS_PLOTS), data,
+    cycleCtx({ nodeLevels: BOARD, stockCap: 1000 }));
+  const loose = simulateCycle(chainPlan(HIS_PLOTS), data,
+    cycleCtx({ nodeLevels: BOARD, stockCap: 20000 }));
+  const eggsOf = (sim) => sim.balance.find((b) => b.itemId === 'T5_EGG');
+  assert.ok(loose.cyclesToCap === undefined);           // it is per item, not global
+  assert.ok(eggsOf(loose).cyclesToCap > eggsOf(tight).cyclesToCap);
+  assert.equal(eggsOf(tight).overCapNow, true);         // 3.6k a cycle clears 1k at once
+  assert.equal(eggsOf(loose).overCapNow, false);
+});
+
+test('a balanced crop never reaches the cap', () => {
+  const sim = simulateCycle(chainPlan(HIS_PLOTS), data, cycleCtx({ nodeLevels: BOARD }));
+  const potato = sim.balance.find((b) => b.itemId === 'T6_POTATO');
+  assert.ok(potato.leftover < 5, 'potatoes are consumed as fast as they grow');
+  assert.equal(potato.overCapNow, false);
 });

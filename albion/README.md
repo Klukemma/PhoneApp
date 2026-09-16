@@ -43,10 +43,14 @@ Three things it tells you that are easy to miss:
 - **What skipping a day buys you.** Farming every other day halves your
   harvests but doubles the focus waiting for each watering, so a bigger share
   of the farm gets watered. Set the rhythm under *Your cycle* and compare.
+  Rows that cost no focus ignore the rhythm entirely — collecting eggs is free,
+  so there is nothing to rest for and the geese keep laying through the skipped
+  days.
 - **Whether the farm is outrunning the crafting.** Each crop is scored against
   what your crafting actually gets through — "6.8× what you use" — with the
-  plot count that would match it. A farm running well ahead of its focus is one
-  you will have to stop and let drain, and this is where you see it coming.
+  plot count that would match it, and how many cycles before the pile passes
+  the spare stock you are willing to sit on (5,000 by default, under Setup).
+  That is the point at which you stop farming it and let the pile drain.
 - **What is really limiting each craft** — and *which* material, by name.
   "Short on Elusive Foxglove" tells you what to plant; "no Potato Schnapps at
   all" tells you that you forgot a step, and offers to add it. Leftover focus
@@ -280,7 +284,7 @@ actually pay on the buy side.
 
 ```bash
 npm start      # http://localhost:8080/albion/
-npm test       # 84 tests over the profit engine and the extracted data
+npm test       # 89 tests over the profit engine and the extracted data
 npm run gamedata
 ```
 

@@ -34,6 +34,7 @@ function defaults() {
       startFocus: 0,           // focus in hand when a cycle begins
       hideMounts: false,
       sellSurplus: false,      // true = sell leftover ingredients instead of keeping them
+      stockCap: 5000,          // spare units you are willing to sit on before pausing
       stationFeePerCraft: 0,
       feedItemId: 'T3_WHEAT',
       server: 'americas',      // Albion Americas, Asia or Europe

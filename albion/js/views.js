@@ -110,7 +110,7 @@ export function plan() {
         <div class="section-head"><h2>Farm · ${sim.farmingDays} ${
           sim.farmingDays === 1 ? 'harvest' : 'harvests'}</h2>
           <button class="right" data-act="add-plot">+ Add</button></div>
-        ${sim.farmLines.map(farmRow).join('')
+        ${sim.farmLines.map((l) => farmRow(l, sim)).join('')
           || empty(EMOJI.crop, 'No plots yet. Add what you are growing.')}
       </section>
 
@@ -167,10 +167,12 @@ function cycleCard(sim) {
       watering more plots, would use it.`);
   }
   if (sim.restDays > 0) {
+    const free = sim.farmLines.filter((l) => !l.rests).length;
     warn.push(`You skip ${sim.restDays} ${sim.restDays === 1 ? 'day' : 'days'} of
-      farming to bank focus, trading ${sim.restDays}
-      ${sim.restDays === 1 ? 'harvest' : 'harvests'} for
-      ${short(sim.restDays * s.focusPerDay)} more focus to water and craft with.`);
+      farming to bank focus, worth ${short(sim.restDays * s.focusPerDay)} more to
+      water and craft with.${free
+        ? ` ${free} of your rows cost no focus, so they keep producing through
+            the rest days anyway.` : ''}`);
   }
   if (sim.wateringShortfall > 0) {
     const pct = Math.round(sim.wateredFraction * 100);
@@ -205,7 +207,7 @@ function cycleCard(sim) {
     </section>`;
 }
 
-function farmRow(line) {
+function farmRow(line, sim) {
   const { cycle, row, harvests, produced, itemId } = line;
   const ref = cycle.ref;
   const emoji = EMOJI[cycle.kind === 'product' ? 'product' : ref.kind] || '\u{1F331}';
@@ -219,6 +221,7 @@ function farmRow(line) {
           line.plots === 1 ? 'plot' : 'plots'}</span>
         <span class="meta">${line.tiles} tiles \u2192 ${short(produced)} ${esc(nameOf(itemId))}
           over ${harvests} ${harvests === 1 ? 'harvest' : 'harvests'}${
+          !line.rests && sim.restDays ? ' · no focus, so no rest days' : ''}${
           cycle.farmBonusPct ? ` · ${cycle.city.name} +${cycle.farmBonusPct}%` : ''}</span>
       </span>
       <span class="amt num ${line.cost > 0 ? 'bad' : 'good'}">${short(-line.cost)}</span>
@@ -641,12 +644,17 @@ function stockCard(sim) {
           }).join('')}
           ${over.map((b) => `
             <div class="warn-note">${esc(nameOf(b.itemId))}: ${short(b.made)} grown,
-              ${short(b.used)} used. ${b.balancedPlots >= 0.5
+              ${short(b.used)} used, <b>${short(b.leftover)} left over a cycle</b>.
+              ${b.balancedPlots >= 0.5
                 ? `About <b>${b.balancedPlots.toFixed(1)} plots</b> would match your
                    crafting, against the ${b.plots} you run.`
                 : `Less than half a plot would match your crafting, against the
                    ${b.plots} you run.`}
-              The rest piles up until you stop farming to clear it.</div>`).join('')}
+              ${b.cyclesToCap
+                ? `At that rate you pass ${short(sim.stockCap)} spare
+                   ${b.cyclesToCap === 1 ? 'within one cycle' : `after ${b.cyclesToCap} cycles`},
+                   which is when you would pause it.`
+                : ''}</div>`).join('')}
           ${unused.map((b) => `
             <div class="warn-note">Nothing in your plan uses ${esc(nameOf(b.itemId))},
               so all ${short(b.made)} of it just accumulates. Sell it, craft with it,

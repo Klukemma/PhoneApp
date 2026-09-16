@@ -555,6 +555,13 @@ export function openSettings() {
         <input type="number" id="cadenceHours" inputmode="numeric" min="1" max="72" value="${s.cadenceHours}">
         <div class="hint">Crops ripen in 22h; 24 means once a day.</div></div>
     </div>
+    <div class="field"><label>Spare stock you will sit on</label>
+      <input type="number" id="stockCap" inputmode="numeric" min="0" step="500"
+        value="${s.stockCap}">
+      <div class="hint">Past this many spare units of an ingredient you would
+        stop farming it and let the pile drain. Used to warn you how many cycles
+        that is away.</div></div>
+
     <div class="field"><label>Station fee per craft (silver)</label>
       <input type="number" id="stationFeePerCraft" inputmode="numeric" min="0" value="${s.stationFeePerCraft}">
       <div class="hint">The usage fee the station owner charges. 0 on your own island.</div></div>
@@ -601,7 +608,7 @@ export function openSettings() {
       }
       const NUM = ['specLevel', 'cadenceHours', 'stationFeePerCraft', 'focusCraftBonus',
         'premiumYieldMultiplier', 'focusPerDay', 'marketSetupFee',
-        'marketTransactionTax'];
+        'marketTransactionTax', 'stockCap'];
 
       $('#save', root).onclick = () => {
         const patch = { ...flags };
