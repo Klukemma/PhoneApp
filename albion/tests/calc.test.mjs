@@ -5,9 +5,9 @@ import { test } from 'node:test';
 
 import {
   animalCycle, cityBonus, cityFor, craftBatch, farmBonus, farmCityFor,
-  focusCostAt, focusLedger, perPeriod, planTotals, plantCycle, productCycle,
-  farmDayCount, isFarmDay, rankRecipes, returnRate, simulateCycle, specFor,
-  taxRate, TILES_PER_PLOT,
+  focusCostAt, focusEfficiency, focusLedger, perPeriod, planTotals, plantCycle, productCycle,
+  farmDayCount, isFarmDay, rankRecipes, returnRate, ruleCovers,
+  simulateCycle, specFor, taxRate, TILES_PER_PLOT,
 } from '../js/calc.js';
 
 const data = JSON.parse(
@@ -25,6 +25,7 @@ const ctx = (prices = {}, over = {}) => ({
     premium: true, watered: false, favouriteFood: true, useFocus: false,
     craftCity: 'martlock', farmCity: 'island', spec: {}, specLevel: 0,
     cadenceHours: 24, cycleDays: 14, farmDays: 10, farmEvery: 1, startFocus: 0,
+    focusNodes: data.focusNodes, nodeLevels: {},
     stationFeePerCraft: 0, feedItemId: 'T3_WHEAT',
     ...over,
   },
@@ -968,4 +969,105 @@ test('turning watering off costs no focus and grants no bonus', () => {
   assert.equal(sim.farmLines[0].cycle.seedsBack, foxglove.seedReturn);
   // All the focus goes to crafting instead.
   assert.equal(sim.focusAtCraft, sim.ledger.cap);
+});
+
+/* ------------------------------------------------- the destiny board --- */
+
+test('node patterns match the right items and respect tier limits', () => {
+  const rule = { bonus: 2.5, minTier: 1, maxTier: 8, patterns: ['T?_POTION_HEAL'] };
+  assert.equal(ruleCovers(rule, 'T6_POTION_HEAL'), true);
+  assert.equal(ruleCovers(rule, 'T4_POTION_HEAL'), true);
+  assert.equal(ruleCovers(rule, 'T6_POTION_ENERGY'), false);
+
+  const wild = { bonus: 0.225, minTier: 1, maxTier: 8, patterns: ['T?_POTION*', 'T?_ALCOHOL'] };
+  assert.equal(ruleCovers(wild, 'T6_POTION_ENERGY'), true);
+  assert.equal(ruleCovers(wild, 'T6_ALCOHOL'), true);
+  assert.equal(ruleCovers(wild, 'T6_MEAL_SOUP'), false);
+
+  const capped = { bonus: 1, minTier: 1, maxTier: 4, patterns: ['T?_POTION_HEAL'] };
+  assert.equal(ruleCovers(capped, 'T4_POTION_HEAL'), true);
+  assert.equal(ruleCovers(capped, 'T6_POTION_HEAL'), false);
+});
+
+test('both the mastery node and the specialisation count', () => {
+  const at = (nodeLevels) => focusEfficiency('T6_POTION_HEAL', ctx({}, { nodeLevels }).settings);
+
+  // From achievements.xml: Heal gives +2.5 to itself and +0.225 to the branch,
+  // and the Alchemist mastery gives +0.3 to everything under it.
+  assert.equal(at({}).total, 0);
+  assert.equal(round2(at({ FARM_ALCHEMIST_HEAL: 100 }).total), 272.5);
+  assert.equal(round2(at({ FARM_ALCHEMIST: 100 }).total), 30);
+  assert.equal(round2(at({ FARM_ALCHEMIST_HEAL: 100, FARM_ALCHEMIST: 100 }).total), 302.5);
+});
+
+test('levelling one potion cheapens the others', () => {
+  const settings = (nodeLevels) => ctx({}, { nodeLevels }).settings;
+  const alone = focusEfficiency('T6_POTION_HEAL', settings({ FARM_ALCHEMIST_HEAL: 100 }));
+  const sibling = focusEfficiency('T6_POTION_HEAL',
+    settings({ FARM_ALCHEMIST_HEAL: 100, FARM_ALCHEMIST_ALCOHOL: 100 }));
+
+  // Potato Schnapps contributes +0.225 a level to every potion in the branch.
+  assert.equal(round2(sibling.total - alone.total), 22.5);
+  assert.ok(sibling.parts.some((p) => p.node.id === 'FARM_ALCHEMIST_ALCOHOL'));
+});
+
+test('a hundred points of efficiency halves the focus cost', () => {
+  const c = data.constants.focusCostConstant;
+  assert.equal(Math.round(focusCostAt(768, 0, c)), 768);
+  assert.equal(Math.round(focusCostAt(768, 100, c)), 384);
+  assert.equal(Math.round(focusCostAt(768, 200, c)), 192);
+});
+
+test('the board drives what a craft actually costs', () => {
+  const r = recipe('T6_POTION_HEAL');
+  // Priced so the craft actually turns a profit, or silver per focus is
+  // negative and dividing by a smaller focus cost makes it look worse.
+  const p = { T6_FOXGLOVE: 900, T5_EGG: 780, T6_ALCOHOL: 700, T6_POTION_HEAL: 15000 };
+
+  const raw = craftBatch(r, ctx(p, { useFocus: true }));
+  assert.ok(raw.profit > 0, 'the fixture has to be profitable to compare');
+  const maxed = craftBatch(r, ctx(p, {
+    useFocus: true,
+    nodeLevels: { FARM_ALCHEMIST_HEAL: 100, FARM_ALCHEMIST: 100 },
+  }));
+  assert.equal(Math.round(raw.focus), 768);
+  assert.equal(Math.round(maxed.focus), 94);
+  assert.ok(maxed.silverPerFocus > raw.silverPerFocus * 7);
+});
+
+test('farming nodes make watering cheaper too', () => {
+  const foxglove = plant('T6_FARM_FOXGLOVE_SEED');
+  const at = (nodeLevels) =>
+    plantCycle(foxglove, cycleCtx({ watered: true, nodeLevels })).focus;
+
+  assert.equal(Math.round(at({})), 1000);
+  // Herbs mastery gives +1 a level, the foxglove specialisation +2.
+  assert.equal(Math.round(at({ FARM_HERBS: 100 })), 500);
+  assert.equal(Math.round(at({ FARM_HERBS_FOXGLOVE: 100 })), 250);
+  assert.equal(Math.round(at({ FARM_HERBS: 100, FARM_HERBS_FOXGLOVE: 100 })), 125);
+});
+
+test('cheaper watering means more of the farm actually gets watered', () => {
+  const plan = {
+    plots: [{ id: 'f', itemId: 'T6_FARM_FOXGLOVE_SEED', count: 9, mode: 'grow', cityId: 'martlock' }],
+    crafts: [],
+  };
+  const none = simulateCycle(plan, data, cycleCtx({ watered: true }));
+  const maxed = simulateCycle(plan, data, cycleCtx({
+    watered: true, nodeLevels: { FARM_HERBS: 100, FARM_HERBS_FOXGLOVE: 100 },
+  }));
+
+  assert.equal(none.wateringPerDay, 81000);
+  assert.equal(Math.round(maxed.wateringPerDay), 81000 / 8);
+  assert.ok(maxed.wateredFraction > none.wateredFraction * 7);
+  assert.ok(maxed.farmLines[0].cycle.seedsBack > none.farmLines[0].cycle.seedsBack);
+});
+
+test('a per-recipe override still wins over the board', () => {
+  const s = ctx({}, {
+    nodeLevels: { FARM_ALCHEMIST_HEAL: 100 },
+    spec: { T6_POTION_HEAL: 50 },
+  }).settings;
+  assert.equal(specFor(s, 'T6_POTION_HEAL'), 50);
+  assert.equal(round2(specFor(s, 'T6_POTION_ENERGY')), 22.5);   // board only
 });

@@ -42,7 +42,8 @@ function defaults() {
       ...{},
     },
     prices: {},
-    spec: {},                  // recipe id -> mastery level
+    spec: {},                  // recipe id -> a flat efficiency override
+    nodeLevels: {},            // destiny board node id -> level
     plan: { plots: [], crafts: [] },
   };
 }
@@ -52,8 +53,10 @@ function withConstants(state, data) {
   for (const [k, v] of Object.entries(data.constants)) {
     if (state.settings[k] === undefined) state.settings[k] = v;
   }
-  // calc reads per-recipe mastery through settings, so keep the two joined.
+  // calc reads these through settings, so keep them joined.
   state.settings.spec = state.spec;
+  state.settings.nodeLevels = state.nodeLevels;
+  state.settings.focusNodes = data.focusNodes;
   // Cities live outside constants and are always taken fresh from the game
   // data, never from a saved copy.
   state.settings.cities = data.cities;
@@ -74,6 +77,7 @@ function normalize(raw) {
     settings: { ...base.settings, ...(raw.settings || {}) },
     prices: { ...(raw.prices || {}) },
     spec: { ...(raw.spec || {}) },
+    nodeLevels: { ...(raw.nodeLevels || {}) },
     plan: {
       plots: Array.isArray(raw.plan?.plots) ? raw.plan.plots : [],
       crafts: Array.isArray(raw.plan?.crafts) ? raw.plan.crafts : [],
@@ -83,9 +87,11 @@ function normalize(raw) {
     const n = Number(v);
     if (!Number.isFinite(n) || n < 0) delete s.prices[k];
   }
-  for (const [k, v] of Object.entries(s.spec)) {
-    const n = Number(v);
-    if (!Number.isFinite(n) || n < 0) delete s.spec[k];
+  for (const map of [s.spec, s.nodeLevels]) {
+    for (const [k, v] of Object.entries(map)) {
+      const n = Number(v);
+      if (!Number.isFinite(n) || n < 0) delete map[k];
+    }
   }
   // Older saves carried one global "am I in a bonus city" flag, which applied
   // the specialty to every recipe. The city now decides, per item.
@@ -215,12 +221,21 @@ export function setSettings(patch) {
   commit();
 }
 
-/** Mastery for one recipe. Clearing it falls back to your default level. */
+/** A flat efficiency override for one recipe, instead of the board. */
 export function setSpec(recipeId, level) {
   const n = Number(level);
   if (!Number.isFinite(n) || n <= 0) delete state.spec[recipeId];
-  else state.spec[recipeId] = Math.min(120, Math.round(n));
+  else state.spec[recipeId] = Math.round(n);
   state.settings.spec = state.spec;
+  commit();
+}
+
+/** Your level on one destiny board node. */
+export function setNodeLevel(nodeId, level) {
+  const n = Number(level);
+  if (!Number.isFinite(n) || n <= 0) delete state.nodeLevels[nodeId];
+  else state.nodeLevels[nodeId] = Math.min(100, Math.round(n));
+  state.settings.nodeLevels = state.nodeLevels;
   commit();
 }
 

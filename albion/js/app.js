@@ -2,8 +2,9 @@
 
 import { loadGameData, hydrate, state, subscribe } from './store.js';
 import {
-  openAddCraft, openAddPlot, openCraft, openCraftCity, openCycle, openFarmCity,
-  openMastery, openPlot, openPrice, openPriceSource, openSettings, runPriceFetch,
+  openAddCraft, openAddPlot, openBoard, openCraft, openCraftCity, openCycle,
+  openFarmCity, openMastery, openPlot, openPrice, openPriceSource, openSettings,
+  runPriceFetch,
 } from './sheets.js';
 import { $, closeSheet, sheetIsOpen } from './ui.js';
 import {
@@ -90,6 +91,8 @@ function wire() {
       openCycle();
     } else if (d.act === 'mastery') {
       openMastery();
+    } else if (d.act === 'board') {
+      openBoard();
     }
   });
 

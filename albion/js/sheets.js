@@ -1,14 +1,14 @@
 // Bottom sheets: pickers, editors, settings.
 
 import {
-  cityBonus, cityFor, craftBatch, farmBonus, farmCityFor, perPeriod,
-  simulateCycle, specFor,
+  cityBonus, cityFor, craftBatch, farmBonus, farmCityFor, focusCostAt,
+  focusEfficiency, perPeriod, simulateCycle, specFor,
 } from './calc.js';
 import { explain, fetchPrices, serverName, CITIES, SERVERS } from './prices.js';
 import {
   addCraft, addPlot, DATA, exportJSON, importJSON, priceOf, pricedItemIds,
-  commit, removeCraft, removePlot, setPrice, setPrices, setSettings, setSpec,
-  state, updateCraft, updatePlot, wipe,
+  commit, removeCraft, removePlot, setNodeLevel, setPrice, setPrices,
+  setSettings, setSpec, state, updateCraft, updatePlot, wipe,
 } from './store.js';
 import { $, $$, closeSheet, esc, openSheet, toast } from './ui.js';
 import { hours, short, silver } from './util.js';
@@ -529,10 +529,19 @@ export function openSettings() {
         <span class="meta">Only Brecilien boosts potions, only Caerleon boosts cooked food</span></span>
       <span class="amt">\u203A</span>
     </button>
+    <button class="row" data-act="open-board" style="margin-bottom:12px">
+      <span class="ico">\u{1F31F}</span>
+      <span class="body"><span class="title">Destiny board</span>
+        <span class="meta">${Object.keys(state.nodeLevels || {}).length || 'no'}
+          ${Object.keys(state.nodeLevels || {}).length === 1 ? 'node' : 'nodes'} set
+          \u00b7 drives every focus cost</span></span>
+      <span class="amt">\u203A</span>
+    </button>
     <button class="row" data-act="open-mastery" style="margin-bottom:12px">
       <span class="ico">\u{1F4DA}</span>
-      <span class="body"><span class="title">Mastery per recipe</span>
-        <span class="meta">${Object.keys(state.spec || {}).length || 'none'} set, rest use the default</span></span>
+      <span class="body"><span class="title">Per-recipe overrides</span>
+        <span class="meta">${Object.keys(state.spec || {}).length || 'none'} set
+          \u00b7 only if you would rather type the number yourself</span></span>
       <span class="amt">\u203A</span>
     </button>
 
@@ -605,6 +614,7 @@ export function openSettings() {
       $('[data-act="open-cycle"]', root).onclick = openCycle;
       $('[data-act="open-farm-city"]', root).onclick = openFarmCity;
       $('[data-act="open-city"]', root).onclick = openCraftCity;
+      $('[data-act="open-board"]', root).onclick = () => openBoard();
       $('[data-act="open-mastery"]', root).onclick = () => openMastery();
       $('#export', root).onclick = () => {
         const blob = new Blob([exportJSON()], { type: 'application/json' });
@@ -805,6 +815,106 @@ export function openCycle() {
         closeSheet();
         toast('Cycle saved');
       };
+    },
+  });
+}
+
+/* ------------------------------------------------------ destiny board -- */
+
+const BRANCH_LABEL = {
+  CROPS: 'Crops', HERBS: 'Herbs', ANIMALS: 'Animals',
+  ALCHEMIST: 'Alchemist', COOK: 'Cook',
+};
+
+/**
+ * Your destiny board levels, which is where every focus cost really comes from.
+ *
+ * Both halves matter and the mastery half is easy to forget: the branch node
+ * covers everything under it, and each specialisation also quietly cheapens its
+ * siblings. Levels are shown against the things you actually farm and brew.
+ */
+export function openBoard(branch = null) {
+  const s = state.settings;
+  const nodes = s.focusNodes || [];
+  const branches = [...new Set(nodes.map((n) => n.branch))];
+  const open = branch || branches[0];
+  const mine = nodes.filter((n) => n.branch === open);
+
+  // What your current levels do to the things on your plan.
+  const examples = [];
+  for (const job of state.plan.crafts.slice(0, 3)) {
+    const r = DATA.recipes.find((x) => x.id === job.recipeId);
+    if (r) examples.push({ id: r.id, name: r.name, base: r.focus });
+  }
+  for (const row of state.plan.plots.slice(0, 2)) {
+    const pl = DATA.plants.find((x) => x.id === row.itemId);
+    if (pl) examples.push({ id: pl.id, name: `${pl.name} (watering)`, base: pl.focusCost });
+  }
+
+  const nodeRow = (n) => {
+    const level = state.nodeLevels[n.id] || '';
+    const own = n.rules.find((r) => r.patterns.length <= 2);
+    const shared = n.rules.find((r) => r !== own);
+    const what = [
+      own ? `+${own.bonus} to its own` : null,
+      shared ? `+${shared.bonus} to the whole branch` : null,
+    ].filter(Boolean).join(', ');
+    return `
+      <div class="row" style="gap:8px">
+        <span class="ico">${n.kind === 'mastery' ? '\u2B50' : '\u2022'}</span>
+        <span class="body"><span class="title">${esc(n.name)}</span>
+          <span class="meta">${esc(what)} per level</span></span>
+        <input type="number" class="spec-input" data-node="${esc(n.id)}"
+          inputmode="numeric" min="0" max="100" placeholder="0"
+          value="${level}" aria-label="Level for ${esc(n.name)}">
+      </div>`;
+  };
+
+  openSheet(`
+    <h2>Destiny board</h2>
+    <p class="muted">Focus cost comes from these. The branch node counts for
+      everything under it, and every specialisation also cheapens its siblings
+      a little \u2014 so levelling Potato Schnapps makes healing potions cheaper too.</p>
+
+    <div class="seg" style="margin-bottom:12px">
+      ${branches.map((b) => `
+        <button type="button" data-branch="${esc(b)}" aria-pressed="${b === open}">
+          ${esc(BRANCH_LABEL[b] || b)}</button>`).join('')}
+    </div>
+
+    ${mine.filter((n) => n.kind === 'mastery').map(nodeRow).join('')}
+    ${mine.some((n) => n.kind === 'spec')
+      ? `<div class="section-head" style="margin-top:14px"><h2>Specialisations</h2></div>` : ''}
+    ${mine.filter((n) => n.kind === 'spec').map(nodeRow).join('')}
+
+    ${examples.length ? `
+      <div class="section-head" style="margin-top:16px"><h2>What that costs you</h2></div>
+      <div class="card">
+        ${examples.map((e) => {
+          const eff = focusEfficiency(e.id, s).total;
+          const cost = focusCostAt(e.base, eff, s.focusCostConstant);
+          return `<div class="bar-row">
+            <span class="n">${esc(e.name)}</span>
+            <span class="v num">${Math.round(cost)} focus${eff > 0
+              ? ` <small>was ${Math.round(e.base)}</small>` : ''}</span></div>`;
+        }).join('')}
+        <div class="bar-row" style="border-top:1px solid var(--line);padding-top:10px">
+          <span class="n">Every 100 efficiency</span>
+          <span class="v num">halves the cost</span></div>
+      </div>` : ''}
+
+    <div class="sheet-actions">
+      <button class="btn primary" id="done">Done</button>
+    </div>
+  `, {
+    onMount(root) {
+      for (const b of $$('[data-branch]', root)) {
+        b.onclick = () => openBoard(b.dataset.branch);
+      }
+      for (const input of $$('[data-node]', root)) {
+        input.onchange = () => { setNodeLevel(input.dataset.node, input.value); openBoard(open); };
+      }
+      $('#done', root).onclick = () => openSettings();
     },
   });
 }

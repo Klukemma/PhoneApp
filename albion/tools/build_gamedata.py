@@ -13,6 +13,7 @@ Source: https://github.com/ao-data/ao-bin-dumps
   craftingmodifiers.xml  city crafting bonuses
   farmingmodifiers.xml   city farming bonuses
   localization.xml       the real in-game item names (large: ~76 MB, cached)
+  achievements.xml       destiny board nodes and their focus cost reductions
 Stdlib only - no packages to install.
 """
 
@@ -183,6 +184,73 @@ def build_cities() -> list:
     return out
 
 
+# Destiny board branches this app cares about. Everything else on the board
+# (weapons, armour, gathering) has no bearing on farming or brewing.
+FOCUS_BRANCHES = ("FARM_CROPS", "FARM_HERBS", "FARM_ANIMALS",
+                  "FARM_ALCHEMIST", "FARM_COOK")
+
+
+def build_focus_nodes() -> list:
+    """Destiny board nodes that reduce focus cost, with what each one covers.
+
+    Every node gives a fixed number of efficiency points per level to items
+    matching its patterns. A specialisation gives a lot to its own item and a
+    little to everything in its branch, so levelling one potion quietly makes
+    every other potion cheaper too. Total efficiency for an item is the sum
+    over every matching rule of level x bonus.
+    """
+    root = parse("achievements.xml")
+    out = []
+    for el in root.iter():
+        nid = el.get("id")
+        if not nid or not nid.startswith(FOCUS_BRANCHES):
+            continue
+        rewards = el.find("baserewards")
+        if rewards is None:
+            continue
+        rules = []
+        # Direct rewards only - a parent must not inherit its children's.
+        for b in rewards.findall("bonus"):
+            kind = b.get("type") or ""
+            if "focuscostreduction" not in kind:
+                continue
+            rules.append({
+                "bonus": float(b.get("bonus")),
+                "minTier": int(b.get("mintier", 1)),
+                "maxTier": int(b.get("maxtier", 8)),
+                "patterns": [p.get("pattern") for p in b.findall("itempattern")],
+            })
+        if not rules:
+            continue
+        parent = el.find(".//parentachievements/achievement")
+        parent_id = parent.get("id") if parent is not None else None
+        out.append({
+            "id": nid,
+            "name": node_name(nid),
+            "branch": nid.split("_")[1] if "_" in nid else nid,
+            "kind": "spec" if parent_id in FOCUS_BRANCHES else "mastery",
+            "parent": parent_id,
+            "rules": rules,
+        })
+    # Deduplicate: the same node can appear as a template and an instance.
+    seen = {}
+    for n in out:
+        seen.setdefault(n["id"], n)
+    return sorted(seen.values(), key=lambda n: (n["branch"], n["kind"] != "mastery", n["id"]))
+
+
+def node_name(nid: str) -> str:
+    """A readable label, e.g. FARM_HERBS_FOXGLOVE -> 'Foxglove'."""
+    label = NAMES_BY_ID.get(f"@DESTINYBOARD_TITLE_{nid}")
+    if label:
+        return label
+    body = nid.replace("FARM_", "", 1)
+    for branch in ("CROPS_", "HERBS_", "ANIMALS_", "ALCHEMIST_", "COOK_"):
+        if body.startswith(branch):
+            return body[len(branch):].replace("_", " ").title()
+    return body.replace("_", " ").title()
+
+
 def main() -> None:
     print("Reading Albion dumps...", file=sys.stderr)
     global NAMES_BY_ID
@@ -203,6 +271,7 @@ def main() -> None:
     txn_tax = taxes.get("transactiontax", 0.08)
 
     cities = build_cities()
+    focus_nodes = build_focus_nodes()
 
     simple = {s.get("uniquename"): s for s in items.findall(".//simpleitem")}
     farm_out = {
@@ -356,6 +425,7 @@ def main() -> None:
             "premiumYieldMultiplier": 2,
         },
         "cities": cities,
+        "focusNodes": focus_nodes,
         "plants": plants,
         "animals": animals,
         "recipes": recipes,
@@ -371,6 +441,7 @@ def main() -> None:
           f"(from gamedata.xml)")
     print(f"  {len(cities)} crafting/farming locations (from craftingmodifiers.xml "
           f"+ farmingmodifiers.xml)")
+    print(f"  {len(focus_nodes)} destiny board focus nodes (from achievements.xml)")
 
 
 if __name__ == "__main__":

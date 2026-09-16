@@ -84,6 +84,7 @@ typed in from a guide:
 | Animals | baby price, grow time, offspring rate, nutrition needed, favourite food, egg/milk output |
 | Recipes | every potion and food recipe that uses something you farm — inputs, output count, focus cost |
 | Cities | crafting bonus per category, the island value, farming bonus per item |
+| Destiny board | every node that reduces focus cost, what it covers, and by how much per level |
 | Market | 2.5% setup fee, 8% transaction tax |
 | Focus | crafting bonus **+59%**, and the cost constant that halves focus at specialisation 100 |
 
@@ -154,11 +155,42 @@ override either per plot or per craft job by tapping it on the Plan screen.
 
 ### Mastery
 
-Albion specialises per item line, not globally, so mastery is set per recipe:
-**⚙️ Setup → Mastery per recipe**, or on a job directly. Focus cost falls by the
-constant from the game files and is exactly halved at mastery 100 — a T4
-healing potion drops from 210 focus to 105, which doubles the silver you get
-per point of focus. Recipes you have not set use your default level.
+Focus cost is driven by the **destiny board**, under **⚙️ Setup → Destiny
+board**, and both halves of it count:
+
+| Node | Per level | Covers |
+| --- | --- | --- |
+| `Herbs` (branch mastery) | **+1.0** | every herb seed |
+| `Foxglove` (specialisation) | **+2.0** | foxglove only |
+| `Alchemist` (branch mastery) | **+0.3** | all potions and schnapps |
+| `Major Healing Potion` (spec) | **+2.5** own item, **+0.225** whole branch |
+
+Those numbers come from `achievements.xml`, so they are the game's, not a
+guess. Add them up for an item and you get its **focus cost efficiency**; every
+100 points halves the cost, using the same constant the game publishes.
+
+Two things fall out that are easy to miss, and the app makes both visible:
+
+- **Specialisations help their siblings.** Levelling Potato Schnapps gives
+  +0.225 a level to *every* potion, so it quietly cheapens your healing
+  potions. Board editor shows the breakdown line by line.
+- **Farming nodes cut watering, not just crafting.** Herbs mastery and the
+  foxglove specialisation at 100 take a tile from 1,000 focus to 125. On a
+  90-tile farm that lifts the share you can actually water from 11% to 52%,
+  which changes the seed return on every plot.
+
+Worked example, a T6 Major Healing Potion at 768 focus:
+
+| Board | Efficiency | Focus each |
+| --- | --- | --- |
+| nothing levelled | 0 | 768 |
+| Heal spec 100 | 272.5 | 116 |
+| + Alchemist mastery 100 | 302.5 | 94 |
+| + Potato Schnapps spec 100 | 325 | 81 |
+
+If you would rather just type the number your game screen shows, there is a
+per-recipe override under **Setup → Per-recipe overrides** which wins over the
+board.
 
 **Not everything is published in the dumps.** Focus regeneration (10,000 a day,
 capped at 30,000) and premium doubling the farm yield are community-sourced and
@@ -235,7 +267,7 @@ actually pay on the buy side.
 
 ```bash
 npm start      # http://localhost:8080/albion/
-npm test       # 68 tests over the profit engine and the extracted data
+npm test       # 76 tests over the profit engine and the extracted data
 npm run gamedata
 ```
 

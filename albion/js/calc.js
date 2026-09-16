@@ -18,9 +18,72 @@ export const round = (n, dp = 2) => {
  */
 export const returnRate = (bonusTotal) => 1 - 100 / (100 + Math.max(0, bonusTotal));
 
-/** Focus cost falls with specialisation — exactly halved at spec 100. */
-export const focusCostAt = (base, specLevel, constant = 1.00695555005672) =>
-  base / constant ** Math.max(0, specLevel);
+/**
+ * Focus cost falls as focus cost efficiency rises. The constant is the 100th
+ * root of 2, so every 100 points of efficiency halves the cost.
+ */
+export const focusCostAt = (base, efficiency, constant = 1.00695555005672) =>
+  base / constant ** Math.max(0, efficiency);
+
+/* ------------------------------------------- destiny board efficiency -- */
+
+/** `T?_POTION*` -> a regex. `?` is the tier digit, `*` matches the rest. */
+function patternToRegex(pattern) {
+  const body = pattern
+    .split('')
+    .map((ch) => (ch === '?' ? '\\d' : ch === '*' ? '.*' : ch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
+    .join('');
+  return new RegExp(`^${body}$`);
+}
+
+const regexCache = new Map();
+const regexFor = (pattern) => {
+  if (!regexCache.has(pattern)) regexCache.set(pattern, patternToRegex(pattern));
+  return regexCache.get(pattern);
+};
+
+const tierOfId = (id) => {
+  const m = /^T(\d)_/.exec(id || '');
+  return m ? Number(m[1]) : 0;
+};
+
+/** Does one rule on a destiny board node cover this item? */
+export function ruleCovers(rule, itemId) {
+  const tier = tierOfId(itemId);
+  if (tier && (tier < rule.minTier || tier > rule.maxTier)) return false;
+  return rule.patterns.some((p) => regexFor(p).test(itemId));
+}
+
+/**
+ * Total focus cost efficiency for one item.
+ *
+ * Every destiny board node you have levelled contributes, not just the item's
+ * own specialisation: the branch mastery covers everything under it, and each
+ * specialisation also gives a smaller bonus to its siblings. So levelling
+ * Potato Schnapps genuinely makes Major Healing Potions cheaper to brew.
+ *
+ * Returns the total and the parts, so a figure can be explained rather than
+ * just asserted.
+ */
+export function focusEfficiency(itemId, settings) {
+  const levels = settings.nodeLevels || {};
+  const nodes = settings.focusNodes || [];
+  const parts = [];
+  let total = 0;
+
+  for (const node of nodes) {
+    const level = Number(levels[node.id]) || 0;
+    if (level <= 0) continue;
+    for (const rule of node.rules) {
+      if (!ruleCovers(rule, itemId)) continue;
+      const points = level * rule.bonus;
+      total += points;
+      parts.push({ node, level, bonus: rule.bonus, points, own: rule.patterns.length <= 2 });
+    }
+  }
+  parts.sort((a, b) => b.points - a.points);
+  return { total, parts };
+}
 
 /**
  * What the market keeps when you sell: a setup fee plus a transaction tax,
@@ -70,14 +133,18 @@ export function plantCycle(plant, { priceOf, settings, cityId, wateredFraction }
   const seedCost = netSeeds * seedPrice;
   const revenue = yieldPerTile * cropPrice * (1 - taxRate(settings));
   // The full ask, not the discounted one: the ledger decides what gets paid.
-  const focus = settings.watered ? plant.focusCost : 0;
+  // Farming nodes on the destiny board make watering cheaper, same as crafting
+  // nodes make brewing cheaper.
+  const focusEff = focusEfficiency(plant.id, settings).total;
+  const focus = settings.watered
+    ? focusCostAt(plant.focusCost, focusEff, settings.focusCostConstant) : 0;
 
   const hours = plant.growSeconds / HOUR;
   const profit = revenue - seedCost;
 
   return {
     kind: 'plant', ref: plant, hours, focus, city, farmBonusPct: bonusPct,
-    wateredShare: share,
+    wateredShare: share, focusEfficiency: focusEff,
     yieldPerTile, seedsBack, netSeeds, seedsBought, seedSurplus, seedCost,
     revenue, profit,
     // What a unit actually cost you to grow — used when a craft eats your own crops.
@@ -109,12 +176,14 @@ export function animalCycle(animal, { priceOf, settings, cityId, wateredFraction
 
   const revenue = priceOf(animal.grownId) * (1 - taxRate(settings));
   const hours = animal.growSeconds / HOUR;
-  const focus = settings.watered ? animal.focusCost : 0;
+  const focusEff = focusEfficiency(animal.babyId, settings).total;
+  const focus = settings.watered
+    ? focusCostAt(animal.focusCost, focusEff, settings.focusCostConstant) : 0;
   const profit = revenue - feedCost - babyCost;
 
   return {
     kind: 'animal', ref: animal, hours, focus, city, farmBonusPct: 0,
-    wateredShare: share,
+    wateredShare: share, focusEfficiency: focusEff,
     plantsNeeded, feedId, feedCost, babiesBack, netBabies, babyCost,
     revenue, profit,
   };
@@ -187,10 +256,17 @@ export function cityBonus(city, category, settings) {
   return { base, specialty, specialises: specialty > 0, total: base + specialty };
 }
 
-/** Mastery for one recipe: its own level if set, otherwise your default. */
+/**
+ * Focus efficiency for a recipe. The destiny board is the real source; a flat
+ * per-recipe override stays available for anyone who would rather just type
+ * the number their game screen shows.
+ */
 export function specFor(settings, recipeId) {
   const own = settings.spec?.[recipeId];
-  return Number.isFinite(own) ? own : (Number(settings.specLevel) || 0);
+  if (Number.isFinite(own)) return own;
+  const board = focusEfficiency(recipeId, settings).total;
+  if (board > 0) return board;
+  return Number(settings.specLevel) || 0;
 }
 
 /**
