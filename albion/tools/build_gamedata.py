@@ -130,6 +130,16 @@ CITY_IDS = {
 }
 
 
+def _eaten(food, seconds: int) -> int:
+    """Nutrition an animal actually consumes over a span of seconds."""
+    if food is None:
+        return 0
+    per = float(food.get("secondspernutrition") or 0)
+    if per <= 0:
+        return int(float(food.get("nutritionmax") or 0))
+    return int(round(seconds / per))
+
+
 def build_cities() -> list:
     """City crafting and farming bonuses, read from the game's own tables.
 
@@ -328,6 +338,10 @@ def main() -> None:
             "seedReturn": round(float(seed.get("chance")), 4),
             "wateredBonus": round(float(f.get("activefarmbonus", 0)), 4),
             "focusCost": int(float(f.get("activefarmfocuscost", 0))),
+            # How many times focus may be spent on one growth, and how often.
+            # Every plant is 1 per 22h growth; mounts allow up to 14.
+            "maxCycles": int(f.get("activefarmmaxcycles", 1) or 1),
+            "careSeconds": int(float(f.get("activefarmcyclelengthseconds", 0) or 0)),
             "yieldMin": drop.get("min", 3), "yieldMax": drop.get("max", 6),
         })
         register(f.get("uniquename"), "seed")
@@ -365,6 +379,8 @@ def main() -> None:
                 product = {
                     "itemId": drop["item"], "min": drop["min"], "max": drop["max"],
                     "seconds": int(p.get("productiontime")),
+                    # A grown animal keeps eating while it produces.
+                    "nutrition": _eaten(f.find(".//food"), int(p.get("productiontime"))),
                 }
                 register(drop["item"], "product")
 
@@ -382,7 +398,18 @@ def main() -> None:
             "offspring": round(float(offspring.get("chance")), 4) if offspring is not None else 0,
             "wateredBonus": round(float(f.get("activefarmbonus", 0)), 4),
             "focusCost": int(float(f.get("activefarmfocuscost", 0))),
+            # activefarmbonus is the bonus PER nurture and activefarmmaxcycles
+            # caps how many nurtures one growth allows. A T8 ox takes six, and
+            # only all six together bring its offspring above 1.0 - reading it
+            # as a single nurture makes mounts look like a loss.
+            "maxCycles": int(f.get("activefarmmaxcycles", 1) or 1),
+            "careSeconds": int(float(f.get("activefarmcyclelengthseconds", 0) or 0)),
+            # nutritionmax is the size of the food bar, not the food eaten. An
+            # animal eats one nutrition every secondspernutrition for the whole
+            # of growtime, refilling the bar once per nurture. For livestock the
+            # two coincide; a T8 ox eats six bars' worth.
             "nutrition": int(float(food.get("nutritionmax"))) if food is not None else 0,
+            "nutritionTotal": _eaten(food, int(grown_el.get("growtime"))),
             "favouriteFood": accepted.get("favorite") if accepted is not None else None,
             "favouriteBonus": float(accepted.get("favoritebonus", 0)) if accepted is not None else 0,
             "product": product,
@@ -403,10 +430,16 @@ def main() -> None:
             continue
 
         def add_recipe(rid, rreq, enchant):
-            inputs = [
-                {"id": c.get("uniquename"), "count": int(c.get("count"))}
-                for c in rreq.findall("craftresource")
-            ]
+            inputs = []
+            for c in rreq.findall("craftresource"):
+                item = {"id": c.get("uniquename"), "count": int(c.get("count"))}
+                # The game marks the inputs its return rate must never touch:
+                # artefacts, Avalonian energy, and the like. 0 is the only value
+                # the dumps ever use, so it reads as a flag. Enchantment
+                # materials carry no such mark and genuinely do come back.
+                if c.get("maxreturnamount") == "0":
+                    item["noReturn"] = True
+                inputs.append(item)
             if not any(i["id"] in farm_out for i in inputs):
                 return
             for i in inputs:

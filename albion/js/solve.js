@@ -8,9 +8,9 @@
 // simulator always scores.
 
 import {
-  PLOTS, TILES_PER_PLOT, cityBonus, cityFor, focusCostAt, focusLedger,
-  harvestsFor, plotKindOf, returnRate, rowCycle, rowOutput, simulateCycle,
-  specFor,
+  PLOTS, TILES_PER_PLOT, cityBonus, cityFor, farmDayCount, focusCostAt,
+  focusLedger, harvestsFor, plotKindOf, returnRate, rowCycle, rowOutput,
+  simulateCycle, specFor,
 } from './calc.js';
 import { uid } from './util.js';
 
@@ -152,7 +152,9 @@ export function requirements(chain, assign, settings) {
     if (already) already.multiplier += multiplier;
     else jobs.push({ recipeId: r.id, useFocus: useFocusHere, multiplier });
     for (const inp of node.inputs) {
-      const need = multiplier * inp.count * (1 - rrr);
+      // An input the game never returns is needed in full, however much focus
+      // goes into the craft.
+      const need = multiplier * inp.count * (inp.noReturn ? 1 : 1 - rrr);
       const mode = assign[inp.itemId] || 'buy';
       if ((mode === 'craft' || mode === 'craftNoFocus') && inp.sub) {
         walk(inp.sub, need / inp.sub.recipe.amount, mode === 'craft');
@@ -395,10 +397,14 @@ export function buildPlan(chain, assign, data, ctx, sched, budget, withFiller = 
   let focusAvail = ledgerAt(0);
   let spent = spread(focusAvail);
   if (s.watered && farmed.length) {
-    const wateringPerDay = farmed.reduce((t, f, i) => t
-      + (f.cycle.focus || 0) * tiles
+    // A row's focus is the cost of one growth, so bill it per growth the row
+    // completes and spread that over the days you actually farm \u2014 the same
+    // measure simulateCycle uses.
+    const careDays = Math.max(1, farmDayCount(sched.farmDays, sched.farmEvery));
+    const careTotal = farmed.reduce((t, f, i) => t
+      + (f.cycle.focus || 0) * tiles * harvestsFor(f.cycle, sched)
         * Object.values(spent.got[i]).reduce((a, b) => a + b, 0), 0);
-    focusAvail = ledgerAt(wateringPerDay);
+    focusAvail = ledgerAt(careTotal / careDays);
     spent = spread(focusAvail);
   }
 
@@ -488,6 +494,8 @@ const REJECTED = { score: -Infinity, rank: -Infinity };
  * is worth doing, anything that does not was noise.
  */
 const FUSS_MARGIN = 0.005;
+/** Enough to sink any plan that makes none of what you asked for. */
+const MISSES_TARGET = 1e12;
 const fuss = (sched) => (sched.watered ? 1 : 0) + (sched.farmEvery > 1 ? 1 : 0);
 const rankOf = (perDay, sched) =>
   perDay - fuss(sched) * Math.abs(perDay) * FUSS_MARGIN;
@@ -497,9 +505,17 @@ function attempt(chain, assign, sched, data, ctx, budget, withFiller = false, ca
   const built = buildPlan(chain, assign, data, c, sched, budget, withFiller, cap);
   if (!built) return REJECTED;
   const sim = simulateCycle(built.plan, data, c);
+  /* You asked how best to make a thing. A plan that makes none of it is not an
+   * answer, however much silver it earns selling the half-built intermediate:
+   * left to maximise profit alone the search will happily grow potatoes, brew
+   * them into schnapps and sell the schnapps. Penalise those below every plan
+   * that does make it, without discarding them, so a question with no good
+   * answer still comes back with something to explain. */
+  const line = sim.craftLines.find((l) => l.recipe.id === chain.recipe.id);
+  const idle = !line || line.crafts <= 0 ? MISSES_TARGET : 0;
   return {
     assign, sched, built, plan: built.plan, sim,
-    score: sim.perDay, rank: rankOf(sim.perDay, sched),
+    score: sim.perDay, rank: rankOf(sim.perDay, sched) - idle,
   };
 }
 
@@ -795,7 +811,11 @@ function describe(best, chain, data, ctx, budget, opts = {}, grid = null) {
       // unadjusted would have it appear to beat the very plan it lost to.
       if (fuss(alt) > fuss(sched)) continue;
       const r = attempt(chain, best.assign, alt, data, ctx, budget, false, grid?.cap);
-      if (Number.isFinite(r.score)) alternatives.push({ sched: alt, perDay: r.score });
+      // Same constraint as the search itself: a calendar that brews none of
+      // the thing is not on the table, whatever it earns selling the pieces.
+      if (Number.isFinite(r.score) && r.rank > -MISSES_TARGET / 2) {
+        alternatives.push({ sched: alt, perDay: r.score });
+      }
     }
   }
   alternatives.sort((a, b) => b.perDay - a.perDay);

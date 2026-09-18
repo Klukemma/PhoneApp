@@ -4,10 +4,10 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
 import {
-  animalCycle, cityBonus, cityFor, craftBatch, farmBonus, farmCityFor,
-  focusCostAt, focusEfficiency, focusLedger, perPeriod, planTotals, plantCycle, productCycle,
-  farmDayCount, isFarmDay, rankRecipes, returnRate, ruleCovers,
-  simulateCycle, specFor, taxRate, TILES_PER_PLOT,
+  TILES_PER_PLOT, animalCycle, cityBonus, cityFor, craftBatch, farmBonus,
+  farmCityFor, farmDayCount, focusCostAt, focusEfficiency, focusLedger,
+  harvestsFor, isFarmDay, perPeriod, planTotals, plantCycle, productCycle,
+  rankRecipes, returnRate, ruleCovers, simulateCycle, specFor, taxRate,
 } from '../js/calc.js';
 
 const data = JSON.parse(
@@ -237,8 +237,14 @@ test('a plan adds up its lines and flags going over focus', () => {
   const totals = planTotals(plan, data, c);
   assert.equal(totals.lines.length, 2);
   assert.equal(round2(totals.perMonth), round2(totals.perDay * 30));
-  // 9 plots watered = 9000 focus, plus 20 potions at 210 = 4200. Over 10k/day.
-  assert.equal(totals.focusPerDay, 9000 + 20 * 210);
+  /* Nine PLOTS is eighty-one tiles, and the game charges the focus per tile:
+   * activefarmfocuscost="1000" sits on the seed, not on the building. This
+   * line used to read 9000 and was the origin of a nine-fold understatement
+   * on the whole ranking screen. */
+  const tiles = 9 * TILES_PER_PLOT;
+  const potion = recipe('T4_POTION_HEAL');
+  const perCraft = focusCostAt(potion.focus, 0, data.constants.focusCostConstant);
+  assert.equal(round2(totals.focusPerDay), round2(tiles * 1000 + 20 * perCraft));
   assert.equal(totals.focusOver, true);
 });
 
@@ -1390,7 +1396,10 @@ test('the costs break down into the three things they are made of', () => {
   assert.ok(sim.farmCost > 0, 'seeds cost something');
   assert.ok(sim.buyCost > 0, 'the market bill is real');
   assert.ok(sim.feeCost > 0, 'the station takes its cut');
-  assert.equal(Math.round(sim.cost), Math.round(sim.farmCost + sim.buyCost + sim.feeCost));
+  assert.equal(Math.round(sim.spend), Math.round(sim.farmCost + sim.buyCost + sim.feeCost));
+  // What you are still holding is carried, not expensed, so the bill for the
+  // cycle is what you spent less the cost of the stock still in the barn.
+  assert.equal(Math.round(sim.cost), Math.round(sim.spend - sim.heldBasis));
   assert.equal(Math.round(sim.profit), Math.round(sim.revenue - sim.cost));
 });
 
@@ -1503,4 +1512,139 @@ test('with no separate buy price the two collapse back into one', () => {
   });
   assert.equal(Math.round(split.profit), Math.round(single.profit));
   assert.equal(Math.round(split.buyCost), Math.round(single.buyCost));
+});
+
+/* ============================ what the game actually does ============== */
+
+test('an input the game never returns is charged in full', () => {
+  // items.xml marks artefacts and Avalonian energy maxreturnamount="0". The
+  // return rate is not a discount on the basket: it skips those entirely.
+  const avalon = recipe('T8_MEAL_STEW_AVALON');
+  const token = avalon.inputs.find((i) => i.id === 'QUESTITEM_TOKEN_AVALON');
+  assert.equal(token.noReturn, true, 'the generator carried the flag');
+  assert.ok(avalon.inputs.some((i) => !i.noReturn), 'and only on the right inputs');
+
+  const prices = Object.fromEntries(avalon.inputs.map((i) => [i.id, 100]));
+  prices[avalon.id] = 100000;
+  const b = craftBatch(avalon, ctx(prices, { useFocus: true, craftCity: 'caerleon' }));
+  assert.ok(b.rrr > 0.4, 'focus and a specialty city, so a big return rate');
+
+  const tokenLine = b.inputs.find((i) => i.id === 'QUESTITEM_TOKEN_AVALON');
+  assert.equal(tokenLine.net, token.count, 'all 90 consumed, none returned');
+  assert.equal(tokenLine.back, 0);
+  const corn = b.inputs.find((i) => i.id === 'T7_CORN');
+  assert.ok(corn.net < corn.count, 'ordinary inputs still come back');
+  // And the basket is the sum of the parts, not one flat discount.
+  assert.equal(
+    round2(b.materialsAfterReturn),
+    round2(b.inputs.reduce((t, i) => t + i.unit * i.net, 0)));
+  assert.ok(b.materialsAfterReturn > b.materials * (1 - b.rrr));
+});
+
+test('the destiny board reaches enchanted items through their base name', () => {
+  // achievements.xml writes every pattern against the plain item — 709 of
+  // them and not one carries an enchantment suffix. So levelling Major
+  // Healing Potion has to cheapen its .1, .2 and .3 as well.
+  const s = ctx().settings;
+  const levels = Object.fromEntries((s.focusNodes || []).map((n) => [n.id, 100]));
+  const at = { ...s, nodeLevels: levels };
+
+  const plain = focusEfficiency('T6_POTION_HEAL', at).total;
+  assert.ok(plain > 0);
+  for (const lvl of [1, 2, 3]) {
+    assert.equal(focusEfficiency(`T6_POTION_HEAL@${lvl}`, at).total, plain,
+      `T6.${lvl} lost its specialisation`);
+  }
+  // The tier gate still reads the base tier rather than tripping over the @.
+  assert.ok(ruleCovers({ bonus: 1, minTier: 6, maxTier: 6, patterns: ['T?_POTION_HEAL'] },
+    'T6_POTION_HEAL@2'));
+  assert.ok(!ruleCovers({ bonus: 1, minTier: 1, maxTier: 5, patterns: ['T?_POTION_HEAL'] },
+    'T6_POTION_HEAL@2'));
+});
+
+test('a nurture is per nurture, and a growth allows several', () => {
+  // activefarmbonus is the bonus for ONE nurture and activefarmmaxcycles caps
+  // how many a growth allows. Only all six together take a T8 ox above 1.0;
+  // counting one turns the best animal in the game into a loss.
+  const ox = animal('T8_FARM_OX_BABY');
+  assert.equal(ox.maxCycles, 6);
+  const c = animalCycle(ox, ctx({ T8_FARM_OX_BABY: 100000, T8_FARM_OX_GROWN: 200000 },
+    { watered: true }));
+  assert.equal(round2(c.babiesBack), round2(ox.offspring + ox.wateredBonus * 6));
+  assert.ok(c.babiesBack > 1, 'it more than replaces itself');
+  assert.ok(c.babyCost < 0, 'which is a credit, not a cost');
+  assert.equal(c.focus, 6 * 1000, 'and six nurtures cost six times the focus');
+
+  // Livestock allow one, so nothing about them moves.
+  const goose = animal('T5_FARM_GOOSE_BABY');
+  assert.equal(goose.maxCycles, 1);
+  const g = animalCycle(goose, ctx({}, { watered: true }));
+  assert.equal(round2(g.babiesBack), round2(goose.offspring + goose.wateredBonus));
+  assert.equal(g.focus, 1000);
+});
+
+test('an animal eats for as long as it takes, not one food bar', () => {
+  // nutritionmax is the size of the bar; it is refilled once per nurture.
+  const ox = animal('T8_FARM_OX_BABY');
+  assert.ok(ox.nutritionTotal > ox.nutrition * 5, 'a T8 ox eats about six bars');
+  const goose = animal('T5_FARM_GOOSE_BABY');
+  assert.equal(goose.nutritionTotal, goose.nutrition, 'livestock eat exactly one');
+
+  // And a laying goose eats for the laying cycle, not for a whole growth.
+  assert.ok(goose.product.nutrition < goose.nutrition);
+  const laying = productCycle(goose, ctx({ T5_CABBAGE: 100 }));
+  const raising = animalCycle(goose, ctx({ T5_CABBAGE: 100 }));
+  assert.ok(laying.plantsNeeded < raising.plantsNeeded,
+    'laying was being charged a full growth of feed');
+});
+
+test('you harvest no faster than you log in', () => {
+  const fox = plant('T6_FARM_FOXGLOVE_SEED');
+  const c = plantCycle(fox, ctx({ T6_FOXGLOVE: 300 }));
+  const over = (cadenceHours) => harvestsFor(c, { farmDays: 14, farmEvery: 1, cadenceHours });
+  assert.equal(over(24), 14);
+  assert.equal(over(48), 7, 'a two-day rhythm halves the harvests');
+  assert.equal(over(72), 5, 'days 1, 4, 7, 10, 13');
+
+  // A 44-hour animal gives five raisings in ten days however often you visit.
+  const cow = animalCycle(animal('T8_FARM_COW_BABY'), ctx());
+  assert.equal(harvestsFor(cow, { farmDays: 10, farmEvery: 1, cadenceHours: 24 }), 5);
+});
+
+test('stock you are holding is carried, not expensed', () => {
+  // A cycle that grows more than it brews is not a loss: the herbs are in the
+  // barn. Booking their cost while refusing to book their value reported a
+  // farm with two million silver of produce as a dead loss.
+  const prices = {
+    T6_POTION_HEAL: 2400, T6_FOXGLOVE: 260, T6_FARM_FOXGLOVE_SEED: 2200,
+    T5_EGG: 320, T6_ALCOHOL: 900,
+  };
+  const c = ctx(prices, { useFocus: true, cycleDays: 14, farmDays: 14 });
+  const sim = simulateCycle({
+    plots: [{ id: 'p', itemId: 'T6_FARM_FOXGLOVE_SEED', mode: 'grow', count: 6 }],
+    crafts: [{ id: 'c', recipeId: 'T6_POTION_HEAL', mode: 'auto' }],
+  }, data, c);
+
+  assert.ok(sim.stock.length > 0, 'there is something in the barn');
+  assert.ok(sim.heldBasis > 0, 'and it cost something to put there');
+  assert.equal(round2(sim.cost), round2(sim.spend - sim.heldBasis));
+  assert.equal(round2(sim.profit), round2(sim.revenue - sim.cost));
+  // Every silver that went in is either expensed or still on the shelf.
+  const shelved = sim.stock.reduce((t, x) => t + x.cost, 0);
+  assert.equal(round2(shelved), round2(sim.heldBasis));
+});
+
+test("the NPC's asking price is a ceiling on cost, never a sale price", () => {
+  // The merchant sells seeds at a fixed price and does not buy them back, and
+  // the dumps publish no bid at all. Crediting a surplus seed at the shop's
+  // ask invented 42% of the profit on a foxglove plot.
+  const fox = plant('T6_FARM_FOXGLOVE_SEED');
+  assert.ok(fox.seedNpc > 0, 'the ask is still in the data');
+  const c = plantCycle(fox, {
+    priceOf: (id) => (id === 'T6_FOXGLOVE' ? 300 : 0),   // no market price for seeds
+    costOf: (id) => (id === fox.seedId ? fox.seedNpc : 0),
+    settings: { ...ctx().settings, watered: true },
+  });
+  assert.ok(c.seedSurplus > 0, 'watering leaves seeds over');
+  assert.equal(c.seedCost, 0, 'worth nothing until you price them');
 });

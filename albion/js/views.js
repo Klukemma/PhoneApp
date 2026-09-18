@@ -682,12 +682,20 @@ function costLines(sim) {
   const rows = parts.map(([label, v]) => `
     <div class="bar-row"><span class="n">${esc(label)}</span>
       <span class="v num ${v > 0 ? 'bad' : 'good'}">${short(-v)}</span></div>`).join('');
-  // A subtotal only earns its place when there is more than one thing in it.
-  const sum = parts.length > 1 ? `
+
+  /* What you grew and did not brew is still yours. Its cost comes back out of
+   * the bill rather than being written off, because you are holding the goods,
+   * not losing them \u2014 otherwise a cycle that got ahead of its crafting reads
+   * as a disaster. */
+  const held = sim.heldBasis > 0.5 ? `
+    <div class="bar-row"><span class="n">Less what is still in the barn</span>
+      <span class="v num good">${short(sim.heldBasis)}</span></div>` : '';
+
+  const sum = (parts.length > 1 || held) ? `
     <div class="bar-row"><span class="n">${sim.cost >= 0 ? 'Costs in all'
       : 'Seed surplus, beyond what the farm cost'}</span>
       <span class="v num ${sim.cost >= 0 ? 'bad' : 'good'}">${short(-sim.cost)}</span></div>` : '';
-  return rows + sum;
+  return rows + held + sum;
 }
 
 function missingPrices() {
@@ -1071,7 +1079,10 @@ function stockCard(sim) {
               <span class="v num">${short(x.value)}</span></div>`).join('')
           : '<div class="bar-row"><span class="n">Nothing left over, the crafting kept up.</span></div>'}
         <div style="font-size:11.5px;color:var(--faint);margin-top:8px">
-          Ingredients your own crafting uses are not sold. They stay on the pile
+          Held, not sold \u2014 and not written off either: what these cost to grow
+          comes back out of the cycle's bill, so the profit above is what you
+          really made rather than a farm penalised for getting ahead of its
+          crafting. They stay on the pile
           and get worked through later, so they are held here rather than
           counted as profit.
         </div>

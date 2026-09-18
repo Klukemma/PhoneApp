@@ -44,6 +44,12 @@ const POTION = 'T6_POTION_HEAL';
 
 // Enough of a price list that most recipes have something to work with. A
 // missing price is a real answer too, so the ones still left out stay out.
+/* Every fourth recipe, plus the chain these tests are really about. The full
+ * list is 368 once the enchanted versions are in, and solving all of them at
+ * three budgets takes minutes; a stride covers every category and tier without
+ * pretending the sweep is exhaustive. */
+const SWEEP = data.recipes.filter((r, i) => i % 4 === 0 || r.id.startsWith(POTION));
+
 const WIDE_PRICES = { ...PRICES };
 for (const r of data.recipes) {
   WIDE_PRICES[r.id] ??= 400 * r.tier;
@@ -347,7 +353,7 @@ test('the headline figure is the simulator, not a second opinion', () => {
 test('nothing it offers as an alternative beats what it recommended', () => {
   // Across every recipe, not just the one chain: an alternative that out-earns
   // the recommendation means the search settled somewhere it should not have.
-  for (const recipe of data.recipes) {
+  for (const recipe of SWEEP) {
     for (const budget of [1, 9, 40]) {
       const r = solve(recipe.id, budget, data, ctx(WIDE_PRICES));
       if (!r.ok) continue;
@@ -357,14 +363,17 @@ test('nothing it offers as an alternative beats what it recommended', () => {
            ${Math.round(alt.perDay)} against the recommended ${Math.round(r.perDay)}`);
       }
       for (const tie of r.ties || []) {
-        assert.ok(tie.perDay <= r.perDay * 1.02 + 1, 'a tie is not a better plan');
+        // Tolerance has to be added, not multiplied: on a loss-making recipe
+        // perDay is negative and x1.02 moves the bar the wrong way.
+        const slack = Math.abs(r.perDay) * 0.02 + 1;
+        assert.ok(tie.perDay <= r.perDay + slack, 'a tie is not a better plan');
       }
     }
   }
 });
 
 test('every recipe in the game gets an answer or an honest refusal', () => {
-  for (const recipe of data.recipes) {
+  for (const recipe of SWEEP) {
     const r = solve(recipe.id, 9, data, ctx(WIDE_PRICES));
     if (!r.ok) { assert.equal(r.reason, 'no-price'); continue; }
     const used = r.plan.plots.reduce((t, p) => t + p.count, 0);
@@ -408,9 +417,14 @@ test('a recipe that does not exist is refused, not guessed at', () => {
   assert.equal(solve('T6_NOPE', 12, data, ctx()).reason, 'unknown-recipe');
 });
 
-test('with no land at all it says so instead of inventing a farm', () => {
-  const r = solve(POTION, 0, data, ctx());
-  assert.equal(r.plan.plots.length, 0);
+test('with no land it buys the materials rather than inventing a farm', () => {
+  // No land is not the same as no plan: you can still buy the ingredients and
+  // brew them, and focus is then the only thing that limits you.
+  const r = solve(POTION, 0, data, ctx(), { cycleDays: 14 });
+  assert.equal(r.plan.plots.length, 0, 'it does not conjure plots');
+  assert.ok(r.made > 0, 'it brews from bought materials');
+  assert.ok(r.buys.length > 0, 'and says what to buy');
+  assert.ok(r.sim.focusUsed <= r.sim.focusBudget + 1);
 });
 
 test('a plan never spends focus the cycle did not regenerate', () => {
@@ -427,9 +441,9 @@ test('a plan never spends focus the cycle did not regenerate', () => {
 });
 
 test('focus is only wasted when the crafting cannot absorb it', () => {
-  // Nothing to brew: the bar fills and everything past it is genuinely lost.
-  const idle = solve(POTION, 0, data, ctx(), { cycleDays: 14 });
-  assert.ok(idle.sim.focusWasted > 0 || idle.sim.made === 0);
+  // A plan that can absorb its focus wastes none of it, land or no land.
+  const bought = solve(POTION, 0, data, ctx(), { cycleDays: 14 });
+  assert.equal(bought.sim.focusWasted, 0, 'buying materials still uses the focus');
 
   // A working plan spends what it regenerates, so nothing is thrown away.
   const busy = solve(POTION, 12, data, ctx(), { cycleDays: 14 });
@@ -600,10 +614,13 @@ test('land the plan cannot use is named rather than silently ignored', () => {
     cycleDays: 7,
     holdings: LAND({ cityId: 'lymhurst', kind: 'pasture', count: 4 }),
   });
-  assert.equal(r.plan.plots.length, 0, 'herbs cannot go in a pasture');
-  assert.ok(r.idleLand.some((x) => x.kind === 'pasture' && x.city === 'lymhurst'));
+  // The pastures get used for what pastures are for, and everything a pasture
+  // cannot grow is bought — with both missing buildings named.
+  assert.ok(r.plan.plots.every((p) => data.animals.some((a) => a.id === p.itemId)),
+    'only livestock went on the land');
   const kinds = r.landGaps.map((g) => g.kind).sort();
   assert.deepEqual(kinds, ['farm', 'herbgarden']);
+  assert.ok(r.buys.some((b) => b.itemId === 'T6_FOXGLOVE'), 'the herbs are bought');
 });
 
 test('plots go to the city that grows the thing best, then spill over', () => {

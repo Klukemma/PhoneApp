@@ -1,8 +1,8 @@
 // Bottom sheets: pickers, editors, settings.
 
 import {
-  cityBonus, cityFor, craftBatch, farmBonus, farmCityFor, focusCostAt,
-  focusEfficiency, perPeriod, simulateCycle, specFor,
+  TILES_PER_PLOT, cityBonus, cityFor, craftBatch, farmBonus, farmCityFor,
+  focusCostAt, focusEfficiency, perPeriod, simulateCycle, specFor,
 } from './calc.js';
 import {
   explain, fetchItem, fetchPrices, serverName, CITIES, SERVERS,
@@ -393,7 +393,11 @@ export function openAddPlot() {
 export function openPlot(row) {
   const cycle = cycleFor(row.itemId, row.mode, row.cityId);
   if (!cycle) return;
-  const rate = perPeriod(cycle, { count: row.count, cadenceHours: state.settings.cadenceHours });
+  // A cycle is priced per tile; this sheet is about plots.
+  const rate = perPeriod(cycle, {
+    count: (row.count || 0) * (state.settings.tilesPerPlot || TILES_PER_PLOT),
+    cadenceHours: state.settings.cadenceHours,
+  });
   const ref = cycle.ref;
   const heading = cycle.kind === 'product'
     ? `${nameOf(ref.product.itemId)} from ${ref.name}` : ref.name;

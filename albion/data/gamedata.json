@@ -1499,6 +1499,8 @@
    "seedReturn": 0.0,
    "wateredBonus": 2.0,
    "focusCost": 1000,
+   "maxCycles": 1,
+   "careSeconds": 79200,
    "yieldMin": 3,
    "yieldMax": 6
   },
@@ -1515,6 +1517,8 @@
    "seedReturn": 0.3333,
    "wateredBonus": 1.3333,
    "focusCost": 1000,
+   "maxCycles": 1,
+   "careSeconds": 79200,
    "yieldMin": 3,
    "yieldMax": 6
   },
@@ -1531,6 +1535,8 @@
    "seedReturn": 0.6,
    "wateredBonus": 0.8,
    "focusCost": 1000,
+   "maxCycles": 1,
+   "careSeconds": 79200,
    "yieldMin": 3,
    "yieldMax": 6
   },
@@ -1547,6 +1553,8 @@
    "seedReturn": 0.7333,
    "wateredBonus": 0.5333,
    "focusCost": 1000,
+   "maxCycles": 1,
+   "careSeconds": 79200,
    "yieldMin": 3,
    "yieldMax": 6
   },
@@ -1563,6 +1571,8 @@
    "seedReturn": 0.8,
    "wateredBonus": 0.4,
    "focusCost": 1000,
+   "maxCycles": 1,
+   "careSeconds": 79200,
    "yieldMin": 3,
    "yieldMax": 6
   },
@@ -1579,6 +1589,8 @@
    "seedReturn": 0.8667,
    "wateredBonus": 0.2667,
    "focusCost": 1000,
+   "maxCycles": 1,
+   "careSeconds": 79200,
    "yieldMin": 3,
    "yieldMax": 6
   },
@@ -1595,6 +1607,8 @@
    "seedReturn": 0.9111,
    "wateredBonus": 0.1778,
    "focusCost": 1000,
+   "maxCycles": 1,
+   "careSeconds": 79200,
    "yieldMin": 3,
    "yieldMax": 6
   },
@@ -1611,6 +1625,8 @@
    "seedReturn": 0.9333,
    "wateredBonus": 0.1333,
    "focusCost": 1000,
+   "maxCycles": 1,
+   "careSeconds": 79200,
    "yieldMin": 3,
    "yieldMax": 6
   },
@@ -1627,6 +1643,8 @@
    "seedReturn": 0.3333,
    "wateredBonus": 1.3333,
    "focusCost": 1000,
+   "maxCycles": 1,
+   "careSeconds": 79200,
    "yieldMin": 3,
    "yieldMax": 6
   },
@@ -1643,6 +1661,8 @@
    "seedReturn": 0.6,
    "wateredBonus": 0.8,
    "focusCost": 1000,
+   "maxCycles": 1,
+   "careSeconds": 79200,
    "yieldMin": 3,
    "yieldMax": 6
   },
@@ -1659,6 +1679,8 @@
    "seedReturn": 0.7333,
    "wateredBonus": 0.5333,
    "focusCost": 1000,
+   "maxCycles": 1,
+   "careSeconds": 79200,
    "yieldMin": 3,
    "yieldMax": 6
   },
@@ -1675,6 +1697,8 @@
    "seedReturn": 0.8,
    "wateredBonus": 0.4,
    "focusCost": 1000,
+   "maxCycles": 1,
+   "careSeconds": 79200,
    "yieldMin": 3,
    "yieldMax": 6
   },
@@ -1691,6 +1715,8 @@
    "seedReturn": 0.8667,
    "wateredBonus": 0.2667,
    "focusCost": 1000,
+   "maxCycles": 1,
+   "careSeconds": 79200,
    "yieldMin": 3,
    "yieldMax": 6
   },
@@ -1707,6 +1733,8 @@
    "seedReturn": 0.9111,
    "wateredBonus": 0.1778,
    "focusCost": 1000,
+   "maxCycles": 1,
+   "careSeconds": 79200,
    "yieldMin": 3,
    "yieldMax": 6
   },
@@ -1723,6 +1751,8 @@
    "seedReturn": 0.9333,
    "wateredBonus": 0.1333,
    "focusCost": 1000,
+   "maxCycles": 1,
+   "careSeconds": 79200,
    "yieldMin": 3,
    "yieldMax": 6
   }
@@ -1741,14 +1771,18 @@
    "offspring": 0.6,
    "wateredBonus": 0.8,
    "focusCost": 1000,
+   "maxCycles": 1,
+   "careSeconds": 79200,
    "nutrition": 864,
+   "nutritionTotal": 864,
    "favouriteFood": "T3_WHEAT",
    "favouriteBonus": 1.0,
    "product": {
     "itemId": "T3_EGG",
     "min": 7,
     "max": 11,
-    "seconds": 79200
+    "seconds": 79200,
+    "nutrition": 432
    }
   },
   {
@@ -1764,14 +1798,18 @@
    "offspring": 0.7333,
    "wateredBonus": 0.5333,
    "focusCost": 1000,
+   "maxCycles": 1,
+   "careSeconds": 79200,
    "nutrition": 864,
+   "nutritionTotal": 864,
    "favouriteFood": "T4_TURNIP",
    "favouriteBonus": 1.0,
    "product": {
     "itemId": "T4_MILK",
     "min": 7,
     "max": 11,
-    "seconds": 79200
+    "seconds": 79200,
+    "nutrition": 432
    }
   },
   {
@@ -1787,14 +1825,18 @@
    "offspring": 0.8,
    "wateredBonus": 0.4,
    "focusCost": 1000,
+   "maxCycles": 1,
+   "careSeconds": 79200,
    "nutrition": 864,
+   "nutritionTotal": 864,
    "favouriteFood": "T5_CABBAGE",
    "favouriteBonus": 1.0,
    "product": {
     "itemId": "T5_EGG",
     "min": 7,
     "max": 11,
-    "seconds": 79200
+    "seconds": 79200,
+    "nutrition": 432
    }
   },
   {
@@ -1810,14 +1852,18 @@
    "offspring": 0.8667,
    "wateredBonus": 0.2667,
    "focusCost": 1000,
+   "maxCycles": 1,
+   "careSeconds": 79200,
    "nutrition": 864,
+   "nutritionTotal": 864,
    "favouriteFood": "T6_POTATO",
    "favouriteBonus": 1.0,
    "product": {
     "itemId": "T6_MILK",
     "min": 7,
     "max": 11,
-    "seconds": 79200
+    "seconds": 79200,
+    "nutrition": 432
    }
   },
   {
@@ -1833,7 +1879,10 @@
    "offspring": 0.9111,
    "wateredBonus": 0.1778,
    "focusCost": 1000,
+   "maxCycles": 1,
+   "careSeconds": 79200,
    "nutrition": 864,
+   "nutritionTotal": 864,
    "favouriteFood": "T7_CORN",
    "favouriteBonus": 1.0,
    "product": null
@@ -1851,14 +1900,18 @@
    "offspring": 0.9333,
    "wateredBonus": 0.1333,
    "focusCost": 1000,
+   "maxCycles": 1,
+   "careSeconds": 79200,
    "nutrition": 864,
+   "nutritionTotal": 864,
    "favouriteFood": "T8_PUMPKIN",
    "favouriteBonus": 1.0,
    "product": {
     "itemId": "T8_MILK",
     "min": 7,
     "max": 11,
-    "seconds": 79200
+    "seconds": 79200,
+    "nutrition": 432
    }
   },
   {
@@ -1874,7 +1927,10 @@
    "offspring": 0.84,
    "wateredBonus": 0.2,
    "focusCost": 1000,
+   "maxCycles": 1,
+   "careSeconds": 79200,
    "nutrition": 480,
+   "nutritionTotal": 480,
    "favouriteFood": null,
    "favouriteBonus": 0.0,
    "product": null
@@ -1892,7 +1948,10 @@
    "offspring": 0.84,
    "wateredBonus": 0.2,
    "focusCost": 1000,
+   "maxCycles": 1,
+   "careSeconds": 79200,
    "nutrition": 480,
+   "nutritionTotal": 480,
    "favouriteFood": null,
    "favouriteBonus": 0.0,
    "product": null
@@ -1910,7 +1969,10 @@
    "offspring": 0.7867,
    "wateredBonus": 0.1333,
    "focusCost": 1000,
+   "maxCycles": 2,
+   "careSeconds": 79200,
    "nutrition": 768,
+   "nutritionTotal": 1440,
    "favouriteFood": null,
    "favouriteBonus": 0.0,
    "product": null
@@ -1928,7 +1990,10 @@
    "offspring": 0.7867,
    "wateredBonus": 0.1333,
    "focusCost": 1000,
+   "maxCycles": 2,
+   "careSeconds": 79200,
    "nutrition": 768,
+   "nutritionTotal": 1440,
    "favouriteFood": null,
    "favouriteBonus": 0.0,
    "product": null
@@ -1946,7 +2011,10 @@
    "offspring": 0.0,
    "wateredBonus": 0.175,
    "focusCost": 1000,
+   "maxCycles": 2,
+   "careSeconds": 79200,
    "nutrition": 768,
+   "nutritionTotal": 1440,
    "favouriteFood": null,
    "favouriteBonus": 0.0,
    "product": null
@@ -1964,7 +2032,10 @@
    "offspring": 0.7867,
    "wateredBonus": 0.0889,
    "focusCost": 1000,
+   "maxCycles": 3,
+   "careSeconds": 79200,
    "nutrition": 1488,
+   "nutritionTotal": 4320,
    "favouriteFood": null,
    "favouriteBonus": 0.0,
    "product": null
@@ -1982,7 +2053,10 @@
    "offspring": 0.7867,
    "wateredBonus": 0.0889,
    "focusCost": 1000,
+   "maxCycles": 3,
+   "careSeconds": 79200,
    "nutrition": 1488,
+   "nutritionTotal": 4320,
    "favouriteFood": null,
    "favouriteBonus": 0.0,
    "product": null
@@ -2000,7 +2074,10 @@
    "offspring": 0.0,
    "wateredBonus": 0.1,
    "focusCost": 1000,
+   "maxCycles": 3,
+   "careSeconds": 79200,
    "nutrition": 1488,
+   "nutritionTotal": 4320,
    "favouriteFood": null,
    "favouriteBonus": 0.0,
    "product": null
@@ -2018,7 +2095,10 @@
    "offspring": 0.8104,
    "wateredBonus": 0.0593,
    "focusCost": 1000,
+   "maxCycles": 4,
+   "careSeconds": 79200,
    "nutrition": 3312,
+   "nutritionTotal": 12961,
    "favouriteFood": null,
    "favouriteBonus": 0.0,
    "product": null
@@ -2036,7 +2116,10 @@
    "offspring": 0.8104,
    "wateredBonus": 0.0593,
    "focusCost": 1000,
+   "maxCycles": 4,
+   "careSeconds": 79200,
    "nutrition": 3312,
+   "nutritionTotal": 12961,
    "favouriteFood": null,
    "favouriteBonus": 0.0,
    "product": null
@@ -2054,7 +2137,10 @@
    "offspring": 0.0,
    "wateredBonus": 0.06,
    "focusCost": 1000,
+   "maxCycles": 4,
+   "careSeconds": 79200,
    "nutrition": 3312,
+   "nutritionTotal": 12961,
    "favouriteFood": null,
    "favouriteBonus": 0.0,
    "product": null
@@ -2072,7 +2158,10 @@
    "offspring": 0.0,
    "wateredBonus": 0.06,
    "focusCost": 1000,
+   "maxCycles": 4,
+   "careSeconds": 79200,
    "nutrition": 3312,
+   "nutritionTotal": 12961,
    "favouriteFood": null,
    "favouriteBonus": 0.0,
    "product": null
@@ -2090,7 +2179,10 @@
    "offspring": 0.842,
    "wateredBonus": 0.0395,
    "focusCost": 1000,
+   "maxCycles": 5,
+   "careSeconds": 79200,
    "nutrition": 7920,
+   "nutritionTotal": 38883,
    "favouriteFood": null,
    "favouriteBonus": 0.0,
    "product": null
@@ -2108,7 +2200,10 @@
    "offspring": 0.842,
    "wateredBonus": 0.0395,
    "focusCost": 1000,
+   "maxCycles": 5,
+   "careSeconds": 79200,
    "nutrition": 7920,
+   "nutritionTotal": 38883,
    "favouriteFood": null,
    "favouriteBonus": 0.0,
    "product": null
@@ -2126,7 +2221,10 @@
    "offspring": 0.0,
    "wateredBonus": 0.04,
    "focusCost": 1000,
+   "maxCycles": 5,
+   "careSeconds": 79200,
    "nutrition": 7920,
+   "nutritionTotal": 38883,
    "favouriteFood": null,
    "favouriteBonus": 0.0,
    "product": null
@@ -2144,7 +2242,10 @@
    "offspring": 0.0,
    "wateredBonus": 0.04,
    "focusCost": 1000,
+   "maxCycles": 5,
+   "careSeconds": 79200,
    "nutrition": 7920,
+   "nutritionTotal": 38883,
    "favouriteFood": null,
    "favouriteBonus": 0.0,
    "product": null
@@ -2162,7 +2263,10 @@
    "offspring": 0.0,
    "wateredBonus": 0.004,
    "focusCost": 1000,
+   "maxCycles": 14,
+   "careSeconds": 79200,
    "nutrition": 147696,
+   "nutritionTotal": 2055385,
    "favouriteFood": null,
    "favouriteBonus": 0.0,
    "product": null
@@ -2180,7 +2284,10 @@
    "offspring": 0.8736,
    "wateredBonus": 0.0263,
    "focusCost": 1000,
+   "maxCycles": 6,
+   "careSeconds": 79200,
    "nutrition": 19728,
+   "nutritionTotal": 116579,
    "favouriteFood": null,
    "favouriteBonus": 0.0,
    "product": null
@@ -2198,7 +2305,10 @@
    "offspring": 0.8736,
    "wateredBonus": 0.0263,
    "focusCost": 1000,
+   "maxCycles": 6,
+   "careSeconds": 79200,
    "nutrition": 19728,
+   "nutritionTotal": 116579,
    "favouriteFood": null,
    "favouriteBonus": 0.0,
    "product": null
@@ -2216,7 +2326,10 @@
    "offspring": 0.0,
    "wateredBonus": 0.025,
    "focusCost": 1000,
+   "maxCycles": 6,
+   "careSeconds": 79200,
    "nutrition": 19728,
+   "nutritionTotal": 116579,
    "favouriteFood": null,
    "favouriteBonus": 0.0,
    "product": null
@@ -2234,7 +2347,10 @@
    "offspring": 0.0,
    "wateredBonus": 0.025,
    "focusCost": 1000,
+   "maxCycles": 6,
+   "careSeconds": 79200,
    "nutrition": 19728,
+   "nutritionTotal": 116579,
    "favouriteFood": null,
    "favouriteBonus": 0.0,
    "product": null
@@ -2252,7 +2368,10 @@
    "offspring": 0.0,
    "wateredBonus": 0.025,
    "focusCost": 1000,
+   "maxCycles": 6,
+   "careSeconds": 79200,
    "nutrition": 19728,
+   "nutritionTotal": 116579,
    "favouriteFood": null,
    "favouriteBonus": 0.0,
    "product": null
@@ -2283,7 +2402,8 @@
     },
     {
      "id": "QUESTITEM_TOKEN_AVALON",
-     "count": 90
+     "count": 90,
+     "noReturn": true
     }
    ]
   },
@@ -2311,7 +2431,8 @@
     },
     {
      "id": "QUESTITEM_TOKEN_AVALON",
-     "count": 90
+     "count": 90,
+     "noReturn": true
     },
     {
      "id": "T1_FISHSAUCE_LEVEL1",
@@ -2343,7 +2464,8 @@
     },
     {
      "id": "QUESTITEM_TOKEN_AVALON",
-     "count": 90
+     "count": 90,
+     "noReturn": true
     },
     {
      "id": "T1_FISHSAUCE_LEVEL2",
@@ -2375,7 +2497,8 @@
     },
     {
      "id": "QUESTITEM_TOKEN_AVALON",
-     "count": 90
+     "count": 90,
+     "noReturn": true
     },
     {
      "id": "T1_FISHSAUCE_LEVEL3",
@@ -2407,7 +2530,8 @@
     },
     {
      "id": "QUESTITEM_TOKEN_AVALON",
-     "count": 10
+     "count": 10,
+     "noReturn": true
     }
    ]
   },
@@ -2435,7 +2559,8 @@
     },
     {
      "id": "QUESTITEM_TOKEN_AVALON",
-     "count": 10
+     "count": 10,
+     "noReturn": true
     },
     {
      "id": "T1_FISHSAUCE_LEVEL1",
@@ -2467,7 +2592,8 @@
     },
     {
      "id": "QUESTITEM_TOKEN_AVALON",
-     "count": 10
+     "count": 10,
+     "noReturn": true
     },
     {
      "id": "T1_FISHSAUCE_LEVEL2",
@@ -2499,7 +2625,8 @@
     },
     {
      "id": "QUESTITEM_TOKEN_AVALON",
-     "count": 10
+     "count": 10,
+     "noReturn": true
     },
     {
      "id": "T1_FISHSAUCE_LEVEL3",
@@ -2531,7 +2658,8 @@
     },
     {
      "id": "QUESTITEM_TOKEN_AVALON",
-     "count": 10
+     "count": 10,
+     "noReturn": true
     }
    ]
   },
@@ -2559,7 +2687,8 @@
     },
     {
      "id": "QUESTITEM_TOKEN_AVALON",
-     "count": 10
+     "count": 10,
+     "noReturn": true
     },
     {
      "id": "T1_FISHSAUCE_LEVEL1",
@@ -2591,7 +2720,8 @@
     },
     {
      "id": "QUESTITEM_TOKEN_AVALON",
-     "count": 10
+     "count": 10,
+     "noReturn": true
     },
     {
      "id": "T1_FISHSAUCE_LEVEL2",
@@ -2623,7 +2753,8 @@
     },
     {
      "id": "QUESTITEM_TOKEN_AVALON",
-     "count": 10
+     "count": 10,
+     "noReturn": true
     },
     {
      "id": "T1_FISHSAUCE_LEVEL3",
@@ -2655,7 +2786,8 @@
     },
     {
      "id": "QUESTITEM_TOKEN_AVALON",
-     "count": 30
+     "count": 30,
+     "noReturn": true
     }
    ]
   },
@@ -2683,7 +2815,8 @@
     },
     {
      "id": "QUESTITEM_TOKEN_AVALON",
-     "count": 30
+     "count": 30,
+     "noReturn": true
     },
     {
      "id": "T1_FISHSAUCE_LEVEL1",
@@ -2715,7 +2848,8 @@
     },
     {
      "id": "QUESTITEM_TOKEN_AVALON",
-     "count": 30
+     "count": 30,
+     "noReturn": true
     },
     {
      "id": "T1_FISHSAUCE_LEVEL2",
@@ -2747,7 +2881,8 @@
     },
     {
      "id": "QUESTITEM_TOKEN_AVALON",
-     "count": 30
+     "count": 30,
+     "noReturn": true
     },
     {
      "id": "T1_FISHSAUCE_LEVEL3",
@@ -2779,7 +2914,8 @@
     },
     {
      "id": "QUESTITEM_TOKEN_AVALON",
-     "count": 30
+     "count": 30,
+     "noReturn": true
     }
    ]
   },
@@ -2807,7 +2943,8 @@
     },
     {
      "id": "QUESTITEM_TOKEN_AVALON",
-     "count": 30
+     "count": 30,
+     "noReturn": true
     },
     {
      "id": "T1_FISHSAUCE_LEVEL1",
@@ -2839,7 +2976,8 @@
     },
     {
      "id": "QUESTITEM_TOKEN_AVALON",
-     "count": 30
+     "count": 30,
+     "noReturn": true
     },
     {
      "id": "T1_FISHSAUCE_LEVEL2",
@@ -2871,7 +3009,8 @@
     },
     {
      "id": "QUESTITEM_TOKEN_AVALON",
-     "count": 30
+     "count": 30,
+     "noReturn": true
     },
     {
      "id": "T1_FISHSAUCE_LEVEL3",
@@ -2903,7 +3042,8 @@
     },
     {
      "id": "QUESTITEM_TOKEN_AVALON",
-     "count": 90
+     "count": 90,
+     "noReturn": true
     }
    ]
   },
@@ -2931,7 +3071,8 @@
     },
     {
      "id": "QUESTITEM_TOKEN_AVALON",
-     "count": 90
+     "count": 90,
+     "noReturn": true
     },
     {
      "id": "T1_FISHSAUCE_LEVEL1",
@@ -2963,7 +3104,8 @@
     },
     {
      "id": "QUESTITEM_TOKEN_AVALON",
-     "count": 90
+     "count": 90,
+     "noReturn": true
     },
     {
      "id": "T1_FISHSAUCE_LEVEL2",
@@ -2995,7 +3137,8 @@
     },
     {
      "id": "QUESTITEM_TOKEN_AVALON",
-     "count": 90
+     "count": 90,
+     "noReturn": true
     },
     {
      "id": "T1_FISHSAUCE_LEVEL3",
@@ -7835,7 +7978,8 @@
    "inputs": [
     {
      "id": "T5_ALCHEMY_RARE_DIREBEAR",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T5_TEASEL",
@@ -7863,7 +8007,8 @@
    "inputs": [
     {
      "id": "T5_ALCHEMY_RARE_DIREBEAR",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T5_TEASEL",
@@ -7895,7 +8040,8 @@
    "inputs": [
     {
      "id": "T5_ALCHEMY_RARE_DIREBEAR",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T5_TEASEL",
@@ -7927,7 +8073,8 @@
    "inputs": [
     {
      "id": "T5_ALCHEMY_RARE_DIREBEAR",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T5_TEASEL",
@@ -7959,7 +8106,8 @@
    "inputs": [
     {
      "id": "T5_ALCHEMY_RARE_WEREWOLF",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T6_FOXGLOVE",
@@ -7987,7 +8135,8 @@
    "inputs": [
     {
      "id": "T5_ALCHEMY_RARE_WEREWOLF",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T6_FOXGLOVE",
@@ -8019,7 +8168,8 @@
    "inputs": [
     {
      "id": "T5_ALCHEMY_RARE_WEREWOLF",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T6_FOXGLOVE",
@@ -8051,7 +8201,8 @@
    "inputs": [
     {
      "id": "T5_ALCHEMY_RARE_WEREWOLF",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T6_FOXGLOVE",
@@ -8083,7 +8234,8 @@
    "inputs": [
     {
      "id": "T5_ALCHEMY_RARE_PANTHER",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T5_TEASEL",
@@ -8111,7 +8263,8 @@
    "inputs": [
     {
      "id": "T5_ALCHEMY_RARE_PANTHER",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T5_TEASEL",
@@ -8143,7 +8296,8 @@
    "inputs": [
     {
      "id": "T5_ALCHEMY_RARE_PANTHER",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T5_TEASEL",
@@ -8175,7 +8329,8 @@
    "inputs": [
     {
      "id": "T5_ALCHEMY_RARE_PANTHER",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T5_TEASEL",
@@ -8207,7 +8362,8 @@
    "inputs": [
     {
      "id": "T5_ALCHEMY_RARE_ENT",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T5_TEASEL",
@@ -8235,7 +8391,8 @@
    "inputs": [
     {
      "id": "T5_ALCHEMY_RARE_ENT",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T5_TEASEL",
@@ -8267,7 +8424,8 @@
    "inputs": [
     {
      "id": "T5_ALCHEMY_RARE_ENT",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T5_TEASEL",
@@ -8299,7 +8457,8 @@
    "inputs": [
     {
      "id": "T5_ALCHEMY_RARE_ENT",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T5_TEASEL",
@@ -8423,7 +8582,8 @@
    "inputs": [
     {
      "id": "T5_ALCHEMY_RARE_ELEMENTAL",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T6_BUTTER",
@@ -8451,7 +8611,8 @@
    "inputs": [
     {
      "id": "T5_ALCHEMY_RARE_ELEMENTAL",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T6_BUTTER",
@@ -8483,7 +8644,8 @@
    "inputs": [
     {
      "id": "T5_ALCHEMY_RARE_ELEMENTAL",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T6_BUTTER",
@@ -8515,7 +8677,8 @@
    "inputs": [
     {
      "id": "T5_ALCHEMY_RARE_ELEMENTAL",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T6_BUTTER",
@@ -8747,7 +8910,8 @@
    "inputs": [
     {
      "id": "T5_ALCHEMY_RARE_IMP",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T6_MILK",
@@ -8775,7 +8939,8 @@
    "inputs": [
     {
      "id": "T5_ALCHEMY_RARE_IMP",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T6_MILK",
@@ -8807,7 +8972,8 @@
    "inputs": [
     {
      "id": "T5_ALCHEMY_RARE_IMP",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T6_MILK",
@@ -8839,7 +9005,8 @@
    "inputs": [
     {
      "id": "T5_ALCHEMY_RARE_IMP",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T6_MILK",
@@ -9011,7 +9178,8 @@
    "inputs": [
     {
      "id": "T6_ALCHEMY_RARE_DRAGONAREA",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T6_FOXGLOVE",
@@ -9039,7 +9207,8 @@
    "inputs": [
     {
      "id": "T6_ALCHEMY_RARE_DRAGONAREA",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T6_FOXGLOVE",
@@ -9071,7 +9240,8 @@
    "inputs": [
     {
      "id": "T6_ALCHEMY_RARE_DRAGONAREA",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T6_FOXGLOVE",
@@ -9103,7 +9273,8 @@
    "inputs": [
     {
      "id": "T6_ALCHEMY_RARE_DRAGONAREA",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T6_FOXGLOVE",
@@ -9135,7 +9306,8 @@
    "inputs": [
     {
      "id": "T7_ALCHEMY_RARE_DIREBEAR",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T7_MULLEIN",
@@ -9171,7 +9343,8 @@
    "inputs": [
     {
      "id": "T7_ALCHEMY_RARE_DIREBEAR",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T7_MULLEIN",
@@ -9211,7 +9384,8 @@
    "inputs": [
     {
      "id": "T7_ALCHEMY_RARE_DIREBEAR",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T7_MULLEIN",
@@ -9251,7 +9425,8 @@
    "inputs": [
     {
      "id": "T7_ALCHEMY_RARE_DIREBEAR",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T7_MULLEIN",
@@ -9291,7 +9466,8 @@
    "inputs": [
     {
      "id": "T7_ALCHEMY_RARE_WEREWOLF",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T8_YARROW",
@@ -9327,7 +9503,8 @@
    "inputs": [
     {
      "id": "T7_ALCHEMY_RARE_WEREWOLF",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T8_YARROW",
@@ -9367,7 +9544,8 @@
    "inputs": [
     {
      "id": "T7_ALCHEMY_RARE_WEREWOLF",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T8_YARROW",
@@ -9407,7 +9585,8 @@
    "inputs": [
     {
      "id": "T7_ALCHEMY_RARE_WEREWOLF",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T8_YARROW",
@@ -9447,7 +9626,8 @@
    "inputs": [
     {
      "id": "T7_ALCHEMY_RARE_PANTHER",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T7_MULLEIN",
@@ -9483,7 +9663,8 @@
    "inputs": [
     {
      "id": "T7_ALCHEMY_RARE_PANTHER",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T7_MULLEIN",
@@ -9523,7 +9704,8 @@
    "inputs": [
     {
      "id": "T7_ALCHEMY_RARE_PANTHER",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T7_MULLEIN",
@@ -9563,7 +9745,8 @@
    "inputs": [
     {
      "id": "T7_ALCHEMY_RARE_PANTHER",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T7_MULLEIN",
@@ -9603,7 +9786,8 @@
    "inputs": [
     {
      "id": "T7_ALCHEMY_RARE_ENT",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T7_MULLEIN",
@@ -9639,7 +9823,8 @@
    "inputs": [
     {
      "id": "T7_ALCHEMY_RARE_ENT",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T7_MULLEIN",
@@ -9679,7 +9864,8 @@
    "inputs": [
     {
      "id": "T7_ALCHEMY_RARE_ENT",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T7_MULLEIN",
@@ -9719,7 +9905,8 @@
    "inputs": [
     {
      "id": "T7_ALCHEMY_RARE_ENT",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T7_MULLEIN",
@@ -9867,7 +10054,8 @@
    "inputs": [
     {
      "id": "T7_ALCHEMY_RARE_ELEMENTAL",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T8_BUTTER",
@@ -9903,7 +10091,8 @@
    "inputs": [
     {
      "id": "T7_ALCHEMY_RARE_ELEMENTAL",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T8_BUTTER",
@@ -9943,7 +10132,8 @@
    "inputs": [
     {
      "id": "T7_ALCHEMY_RARE_ELEMENTAL",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T8_BUTTER",
@@ -9983,7 +10173,8 @@
    "inputs": [
     {
      "id": "T7_ALCHEMY_RARE_ELEMENTAL",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T8_BUTTER",
@@ -10255,7 +10446,8 @@
    "inputs": [
     {
      "id": "T7_ALCHEMY_RARE_IMP",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T8_MILK",
@@ -10291,7 +10483,8 @@
    "inputs": [
     {
      "id": "T7_ALCHEMY_RARE_IMP",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T8_MILK",
@@ -10331,7 +10524,8 @@
    "inputs": [
     {
      "id": "T7_ALCHEMY_RARE_IMP",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T8_MILK",
@@ -10371,7 +10565,8 @@
    "inputs": [
     {
      "id": "T7_ALCHEMY_RARE_IMP",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T8_MILK",
@@ -10411,7 +10606,8 @@
    "inputs": [
     {
      "id": "T8_ALCHEMY_RARE_DRAGONAREA",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T8_YARROW",
@@ -10447,7 +10643,8 @@
    "inputs": [
     {
      "id": "T8_ALCHEMY_RARE_DRAGONAREA",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T8_YARROW",
@@ -10487,7 +10684,8 @@
    "inputs": [
     {
      "id": "T8_ALCHEMY_RARE_DRAGONAREA",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T8_YARROW",
@@ -10527,7 +10725,8 @@
    "inputs": [
     {
      "id": "T8_ALCHEMY_RARE_DRAGONAREA",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T8_YARROW",
@@ -10987,7 +11186,8 @@
    "inputs": [
     {
      "id": "T7_ALCHEMY_RARE_EAGLE",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T8_YARROW",
@@ -11023,7 +11223,8 @@
    "inputs": [
     {
      "id": "T7_ALCHEMY_RARE_EAGLE",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T8_YARROW",
@@ -11063,7 +11264,8 @@
    "inputs": [
     {
      "id": "T7_ALCHEMY_RARE_EAGLE",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T8_YARROW",
@@ -11103,7 +11305,8 @@
    "inputs": [
     {
      "id": "T7_ALCHEMY_RARE_EAGLE",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T8_YARROW",
@@ -11143,7 +11346,8 @@
    "inputs": [
     {
      "id": "T3_ALCHEMY_RARE_DIREBEAR",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T3_COMFREY",
@@ -11163,7 +11367,8 @@
    "inputs": [
     {
      "id": "T3_ALCHEMY_RARE_DIREBEAR",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T3_COMFREY",
@@ -11187,7 +11392,8 @@
    "inputs": [
     {
      "id": "T3_ALCHEMY_RARE_DIREBEAR",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T3_COMFREY",
@@ -11211,7 +11417,8 @@
    "inputs": [
     {
      "id": "T3_ALCHEMY_RARE_DIREBEAR",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T3_COMFREY",
@@ -11235,7 +11442,8 @@
    "inputs": [
     {
      "id": "T3_ALCHEMY_RARE_WEREWOLF",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T4_BURDOCK",
@@ -11255,7 +11463,8 @@
    "inputs": [
     {
      "id": "T3_ALCHEMY_RARE_WEREWOLF",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T4_BURDOCK",
@@ -11279,7 +11488,8 @@
    "inputs": [
     {
      "id": "T3_ALCHEMY_RARE_WEREWOLF",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T4_BURDOCK",
@@ -11303,7 +11513,8 @@
    "inputs": [
     {
      "id": "T3_ALCHEMY_RARE_WEREWOLF",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T4_BURDOCK",
@@ -11327,7 +11538,8 @@
    "inputs": [
     {
      "id": "T3_ALCHEMY_RARE_PANTHER",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T3_COMFREY",
@@ -11347,7 +11559,8 @@
    "inputs": [
     {
      "id": "T3_ALCHEMY_RARE_PANTHER",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T3_COMFREY",
@@ -11371,7 +11584,8 @@
    "inputs": [
     {
      "id": "T3_ALCHEMY_RARE_PANTHER",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T3_COMFREY",
@@ -11395,7 +11609,8 @@
    "inputs": [
     {
      "id": "T3_ALCHEMY_RARE_PANTHER",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T3_COMFREY",
@@ -11419,7 +11634,8 @@
    "inputs": [
     {
      "id": "T3_ALCHEMY_RARE_ENT",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T3_COMFREY",
@@ -11439,7 +11655,8 @@
    "inputs": [
     {
      "id": "T3_ALCHEMY_RARE_ENT",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T3_COMFREY",
@@ -11463,7 +11680,8 @@
    "inputs": [
     {
      "id": "T3_ALCHEMY_RARE_ENT",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T3_COMFREY",
@@ -11487,7 +11705,8 @@
    "inputs": [
     {
      "id": "T3_ALCHEMY_RARE_ENT",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T3_COMFREY",
@@ -11739,7 +11958,8 @@
    "inputs": [
     {
      "id": "T3_ALCHEMY_RARE_IMP",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T4_MILK",
@@ -11759,7 +11979,8 @@
    "inputs": [
     {
      "id": "T3_ALCHEMY_RARE_IMP",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T4_MILK",
@@ -11783,7 +12004,8 @@
    "inputs": [
     {
      "id": "T3_ALCHEMY_RARE_IMP",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T4_MILK",
@@ -11807,7 +12029,8 @@
    "inputs": [
     {
      "id": "T3_ALCHEMY_RARE_IMP",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T4_MILK",
@@ -11831,7 +12054,8 @@
    "inputs": [
     {
      "id": "T4_ALCHEMY_RARE_DRAGONAREA",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T4_BURDOCK",
@@ -11851,7 +12075,8 @@
    "inputs": [
     {
      "id": "T4_ALCHEMY_RARE_DRAGONAREA",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T4_BURDOCK",
@@ -11875,7 +12100,8 @@
    "inputs": [
     {
      "id": "T4_ALCHEMY_RARE_DRAGONAREA",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T4_BURDOCK",
@@ -11899,7 +12125,8 @@
    "inputs": [
     {
      "id": "T4_ALCHEMY_RARE_DRAGONAREA",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T4_BURDOCK",
@@ -12167,7 +12394,8 @@
    "inputs": [
     {
      "id": "T3_ALCHEMY_RARE_EAGLE",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T4_BURDOCK",
@@ -12187,7 +12415,8 @@
    "inputs": [
     {
      "id": "T3_ALCHEMY_RARE_EAGLE",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T4_BURDOCK",
@@ -12211,7 +12440,8 @@
    "inputs": [
     {
      "id": "T3_ALCHEMY_RARE_EAGLE",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T4_BURDOCK",
@@ -12235,7 +12465,8 @@
    "inputs": [
     {
      "id": "T3_ALCHEMY_RARE_EAGLE",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T4_BURDOCK",
@@ -12599,7 +12830,8 @@
    "inputs": [
     {
      "id": "T5_ALCHEMY_RARE_EAGLE",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T6_FOXGLOVE",
@@ -12627,7 +12859,8 @@
    "inputs": [
     {
      "id": "T5_ALCHEMY_RARE_EAGLE",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T6_FOXGLOVE",
@@ -12659,7 +12892,8 @@
    "inputs": [
     {
      "id": "T5_ALCHEMY_RARE_EAGLE",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T6_FOXGLOVE",
@@ -12691,7 +12925,8 @@
    "inputs": [
     {
      "id": "T5_ALCHEMY_RARE_EAGLE",
-     "count": 1
+     "count": 1,
+     "noReturn": true
     },
     {
      "id": "T6_FOXGLOVE",

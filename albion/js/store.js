@@ -7,6 +7,9 @@ const KEY = 'albionfarm.v1';
 
 export let DATA = null;          // gamedata.json, loaded once at boot
 
+// Fixed merchant asks for seeds and babies, filled in from the game data.
+let NPC_PRICE = {};
+
 export async function loadGameData() {
   const res = await fetch('data/gamedata.json');
   if (!res.ok) throw new Error(`Could not load game data (${res.status})`);
@@ -72,13 +75,18 @@ function withConstants(state, data) {
   // Cities live outside constants and are always taken fresh from the game
   // data, never from a saved copy.
   state.settings.cities = data.cities;
-  // Seeds have a fixed NPC price — a sane starting value for every seed.
-  for (const p of data.plants) {
-    if (state.prices[p.seedId] === undefined) state.prices[p.seedId] = p.seedNpc;
-  }
-  for (const a of data.animals) {
-    if (state.prices[a.babyId] === undefined) state.prices[a.babyId] = a.babyNpc;
-  }
+  /* The NPC sells seeds and babies at a fixed price. That is a ceiling on what
+   * one can ever cost you — you can always walk to the merchant — and it is
+   * not a saved price of yours, so it lives apart from both price maps.
+   *
+   * It is emphatically not what a seed is WORTH: the merchant does not buy
+   * them back and the dumps publish no bid at all. Using it as the sell price
+   * credited every surplus seed at the shop's asking rate, which on T6
+   * foxglove was 2,001 silver a tile — 42% of the profit the app reported,
+   * invented out of nothing. A surplus is worth zero until you price it. */
+  NPC_PRICE = {};
+  for (const p of data.plants) NPC_PRICE[p.seedId] = p.seedNpc;
+  for (const a of data.animals) NPC_PRICE[a.babyId] = a.babyNpc;
   return state;
 }
 
@@ -213,7 +221,18 @@ export const priceOf = (id) => Number(state.prices[id]) || 0;
  * both numbers move. Where no separate buy price is kept the two collapse into
  * one, which is what most items want and what every old save has.
  */
-export const costOf = (id) => Number(state.buyPrices[id]) || priceOf(id);
+/** What the merchant charges, where there is a merchant. Never a sale price. */
+export const npcPriceOf = (id) => Number(NPC_PRICE[id]) || 0;
+
+export function costOf(id) {
+  const own = Number(state.buyPrices[id]) || 0;
+  const market = own || priceOf(id);
+  const npc = npcPriceOf(id);
+  // Never pay more than the merchant asks, and where there is no market price
+  // at all the merchant's ask is the only number there is.
+  if (!market) return npc;
+  return npc ? Math.min(market, npc) : market;
+}
 
 /** True when this item is being costed differently from how it is sold. */
 export const hasOwnCost = (id) => Number(state.buyPrices[id]) > 0;

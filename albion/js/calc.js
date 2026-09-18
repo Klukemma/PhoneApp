@@ -49,9 +49,20 @@ const tierOfId = (id) => {
 
 /** Does one rule on a destiny board node cover this item? */
 export function ruleCovers(rule, itemId) {
-  const tier = tierOfId(itemId);
+  /* Match the base item, not the enchanted id.
+   *
+   * Nothing in achievements.xml carries an enchantment suffix: all 709 item
+   * patterns are written against the plain item, and several specialisations
+   * name it exactly with no wildcard \u2014 "T?_POTION_HEAL". The game strips the
+   * suffix before matching, which is why levelling Major Healing Potion also
+   * cheapens its .1, .2 and .3. Testing the raw "T6_POTION_HEAL@1" against
+   * ^T\\d_POTION_HEAL$ silently threw away 2.5 efficiency points per level on
+   * every enchanted potion, which at mastery 100 is a factor of 5.66 on focus.
+   */
+  const base = (itemId || '').split('@')[0];
+  const tier = tierOfId(base);
   if (tier && (tier < rule.minTier || tier > rule.maxTier)) return false;
-  return rule.patterns.some((p) => regexFor(p).test(itemId));
+  return rule.patterns.some((p) => regexFor(p).test(base));
 }
 
 /**
@@ -122,7 +133,11 @@ export function plantCycle(plant, {
     (settings.premium ? settings.premiumYieldMultiplier : 1) *
     (1 + bonusPct / 100);
 
-  const seedsBack = plant.seedReturn + plant.wateredBonus * share;
+  // activefarmbonus is per nurture and activefarmmaxcycles caps how many one
+  // growth allows. Every plant allows exactly one, so this is a no-op here and
+  // the whole story for mounts.
+  const nurtures = Math.max(1, plant.maxCycles || 1);
+  const seedsBack = plant.seedReturn + plant.wateredBonus * share * nurtures;
   const netSeeds = 1 - seedsBack;
 
   const cropPrice = priceOf(plant.cropId);
@@ -139,15 +154,16 @@ export function plantCycle(plant, {
   // Farming nodes on the destiny board make watering cheaper, same as crafting
   // nodes make brewing cheaper.
   const focusEff = focusEfficiency(plant.id, settings).total;
+  // Focus for a whole growth, not for a day: one charge per nurture allowed.
   const focus = settings.watered
-    ? focusCostAt(plant.focusCost, focusEff, settings.focusCostConstant) : 0;
+    ? nurtures * focusCostAt(plant.focusCost, focusEff, settings.focusCostConstant) : 0;
 
   const hours = plant.growSeconds / HOUR;
   const profit = revenue - seedCost;
 
   return {
     kind: 'plant', ref: plant, hours, focus, city, farmBonusPct: bonusPct,
-    wateredShare: share, focusEfficiency: focusEff,
+    wateredShare: share, focusEfficiency: focusEff, nurtures,
     yieldPerTile, seedsBack, netSeeds, seedsBought, seedSurplus, seedCost,
     revenue, profit,
     // What a unit actually cost you to grow — used when a craft eats your own crops.
@@ -170,12 +186,21 @@ export function animalCycle(animal, {
   const city = farmCityFor(settings, cityId);
   const useFav = settings.favouriteFood && animal.favouriteFood;
 
-  const plantsNeeded = animal.nutrition / NUTRITION_PER_PLANT /
+  /* What it eats over the whole growth, not one bar of it. The bar refills
+   * once per nurture, so a T8 ox gets through nearly six of them; livestock
+   * eat exactly one, which is why a single bar looked right for so long. */
+  const eaten = animal.nutritionTotal || animal.nutrition;
+  const plantsNeeded = eaten / NUTRITION_PER_PLANT /
     (useFav ? 1 + animal.favouriteBonus : 1);
   const feedId = useFav ? animal.favouriteFood : settings.feedItemId;
   const feedCost = plantsNeeded * costOf(feedId);
 
-  const babiesBack = animal.offspring + animal.wateredBonus * share;
+  /* A nurture's bonus is per nurture, and a growth allows activefarmmaxcycles
+   * of them. A T8 ox takes six: 0.8736 + 6 x 0.0263 = 1.0314, so it pays for
+   * its own replacement and leaves a surplus. Counting one nurture gives
+   * 0.8999 and turns the best animal in the game into a loss. */
+  const nurtures = Math.max(1, animal.maxCycles || 1);
+  const babiesBack = animal.offspring + animal.wateredBonus * share * nurtures;
   const netBabies = 1 - babiesBack;
   const babiesBought = Math.max(0, netBabies);
   const babySurplus = Math.max(0, -netBabies);
@@ -185,13 +210,13 @@ export function animalCycle(animal, {
   const hours = animal.growSeconds / HOUR;
   const focusEff = focusEfficiency(animal.babyId, settings).total;
   const focus = settings.watered
-    ? focusCostAt(animal.focusCost, focusEff, settings.focusCostConstant) : 0;
+    ? nurtures * focusCostAt(animal.focusCost, focusEff, settings.focusCostConstant) : 0;
   const profit = revenue - feedCost - babyCost;
 
   return {
     kind: 'animal', ref: animal, hours, focus, city, farmBonusPct: 0,
-    wateredShare: share, focusEfficiency: focusEff,
-    plantsNeeded, feedId, feedCost, babiesBack, netBabies,
+    wateredShare: share, focusEfficiency: focusEff, nurtures,
+    plantsNeeded, eaten, feedId, feedCost, babiesBack, netBabies,
     babiesBought, babySurplus, babyCost,
     revenue, profit,
   };
@@ -213,16 +238,19 @@ export function productCycle(animal, { priceOf, costOf = priceOf, settings, city
     (1 + bonusPct / 100);
   const revenue = perCycle * priceOf(p.itemId) * (1 - taxRate(settings));
 
-  // Upkeep: the grown animal eats its full nutrition over each cycle.
+  /* Upkeep: what it eats during one production cycle, which is not a whole
+   * food bar. A goose lays every 22 hours and eats 432 nutrition doing it, so
+   * charging the full 864 doubled the feed bill on every egg. */
   const useFav = settings.favouriteFood && animal.favouriteFood;
-  const plantsNeeded = animal.nutrition / NUTRITION_PER_PLANT /
+  const eaten = p.nutrition || animal.nutrition;
+  const plantsNeeded = eaten / NUTRITION_PER_PLANT /
     (useFav ? 1 + animal.favouriteBonus : 1);
   const feedId = useFav ? animal.favouriteFood : settings.feedItemId;
   const feedCost = plantsNeeded * costOf(feedId);
 
   return {
     kind: 'product', ref: animal, hours, focus: 0, city, farmBonusPct: bonusPct,
-    perCycle, feedId, plantsNeeded, feedCost,
+    perCycle, feedId, plantsNeeded, feedCost, eaten,
     revenue, profit: revenue - feedCost,
   };
 }
@@ -311,12 +339,17 @@ export function craftBatch(recipe, {
   const bonusTotal = bonus.total + (useFocus ? settings.focusCraftBonus : 0);
   const rrr = returnRate(bonusTotal);
 
+  /* The return rate is not a discount on the basket: the game refuses to give
+   * some inputs back at all, and those are usually the expensive ones. An
+   * artefact or a lump of Avalonian energy is consumed outright however much
+   * focus you spend, so it is charged in full while the rest comes back. */
   const inputs = recipe.inputs.map((i) => {
     const unit = inputCostOf ? inputCostOf(i.id) : costOf(i.id);
-    return { ...i, unit, total: unit * i.count };
+    const back = i.noReturn ? 0 : rrr;
+    return { ...i, unit, back, total: unit * i.count, net: i.count * (1 - back) };
   });
   const materials = inputs.reduce((t, i) => t + i.total, 0);
-  const materialsAfterReturn = materials * (1 - rrr);
+  const materialsAfterReturn = inputs.reduce((t, i) => t + i.unit * i.net, 0);
 
   const focus = useFocus
     ? focusCostAt(recipe.focus, spec, settings.focusCostConstant)
@@ -345,6 +378,8 @@ export function craftBatch(recipe, {
  * honestly lost rather than quietly counted as profit.
  */
 export function perPeriod(cycle, { count = 1, cadenceHours, daysPerMonth = 30 }) {
+  // `count` is tiles, because that is what a cycle is priced in. Callers that
+  // think in plots must multiply by TILES_PER_PLOT before they get here.
   const every = Math.max(cycle.hours, cadenceHours || cycle.hours);
   const cyclesPerDay = 24 / every;
   return {
@@ -358,20 +393,27 @@ export function perPeriod(cycle, { count = 1, cadenceHours, daysPerMonth = 30 })
   };
 }
 
-/** Rank every plant and animal by what one plot earns per day. */
+/**
+ * Rank every plant and animal by what one plot earns per day.
+ *
+ * A cycle is priced per tile and a plot is a 3x3 grid, so a ranking that
+ * forgot to multiply was quoting a ninth of the real figure under a per-plot
+ * heading — and quoting a ninth of the focus with it.
+ */
 export function rankFarmables(data, ctx) {
   const rows = [];
   const cadenceHours = ctx.settings.cadenceHours;
+  const count = ctx.settings.tilesPerPlot || TILES_PER_PLOT;
   for (const plant of data.plants) {
     const cycle = plantCycle(plant, ctx);
-    rows.push({ cycle, rate: perPeriod(cycle, { cadenceHours }) });
+    rows.push({ cycle, rate: perPeriod(cycle, { count, cadenceHours }) });
   }
   for (const animal of data.animals) {
     if (ctx.settings.hideMounts && animal.kind === 'mount') continue;
     const cycle = animalCycle(animal, ctx);
-    rows.push({ cycle, rate: perPeriod(cycle, { cadenceHours }) });
+    rows.push({ cycle, rate: perPeriod(cycle, { count, cadenceHours }) });
     const prod = productCycle(animal, ctx);
-    if (prod) rows.push({ cycle: prod, rate: perPeriod(prod, { cadenceHours }) });
+    if (prod) rows.push({ cycle: prod, rate: perPeriod(prod, { count, cadenceHours }) });
   }
   return rows.sort((a, b) => b.rate.perDay - a.rate.perDay);
 }
@@ -411,7 +453,10 @@ export function planTotals(plan, data, ctx) {
     if (!cycle) continue;
     lines.push({
       row, cycle,
-      rate: perPeriod(cycle, { count: row.count, cadenceHours: ctx.settings.cadenceHours }),
+      rate: perPeriod(cycle, {
+        count: (row.count || 0) * (ctx.settings.tilesPerPlot || TILES_PER_PLOT),
+        cadenceHours: ctx.settings.cadenceHours,
+      }),
     });
   }
 
@@ -479,10 +524,20 @@ export const restsWith = (cycle) => (cycle?.focus || 0) > 0;
 export function harvestsFor(cycle, { farmDays, farmEvery = 1, cadenceHours = 24 }) {
   if (!cycle || farmDays <= 0) return 0;
   const every = restsWith(cycle) ? Math.max(1, Math.round(farmEvery) || 1) : 1;
-  const rhythmHours = Math.max(cadenceHours || 24, every * 24);
-  return rhythmHours >= cycle.hours
-    ? farmDayCount(farmDays, every)
-    : Math.floor((farmDays * 24) / cycle.hours);
+  /* You harvest no faster than the thing grows, no faster than you log in, and
+   * no faster than the rhythm you chose to farm on. Whichever of those three is
+   * slowest sets the gap between harvests: a 44-hour cow does not give you a
+   * calf a day just because you visited, and a two-day login rhythm does not
+   * harvest twice. */
+  const gap = Math.max(
+    every,
+    Math.ceil((cadenceHours || 24) / 24),
+    Math.ceil(cycle.hours / 24),
+  );
+  // Within the phase, count the harvest days themselves: days 1, 1+gap, ...
+  // Something that takes longer to grow than the whole phase cannot be counted
+  // as one whole harvest, so it reports the fraction of one it really finishes.
+  return gap <= farmDays ? farmDayCount(farmDays, gap) : farmDays / gap;
 }
 
 /** The cycle for one farm row, whatever it happens to be growing. */
@@ -676,12 +731,21 @@ export function simulateCycle(plan, data, ctx) {
   const harvestsOf = (cycle) =>
     harvestsFor(cycle, { farmDays, farmEvery, cadenceHours: cadence });
 
-  // Pass one: the watering bill, if every plot got watered.
-  let wateringPerDay = 0;
+  /* Pass one: the care bill, if every tile got its focus.
+   *
+   * A cycle's focus is the cost of one whole growth, not of one day. A cow
+   * takes 44 hours to raise and one 1000-focus nurture to do it, so billing it
+   * every calendar day charges twice what the game does; a T8 ox takes six
+   * nurtures over twelve days and billing one a day charges less than half.
+   * Count the nurtures each row actually completes in the phase, then spread
+   * that over the days you are out there. */
+  let careTotal = 0;
   for (const row of plan.plots) {
     const cycle = cycleFor(row, 1);
-    if (cycle) wateringPerDay += (cycle.focus || 0) * tilesOf(row);
+    if (cycle) careTotal += (cycle.focus || 0) * tilesOf(row) * harvestsOf(cycle);
   }
+  const careDays = Math.max(1, farmDayCount(farmDays, farmEvery));
+  const wateringPerDay = careTotal / careDays;
 
   const ledgerAt = (craftingPerDay) => focusLedger({
     cycleDays, farmDays, farmEvery,
@@ -695,7 +759,7 @@ export function simulateCycle(plan, data, ctx) {
    * lets you water more of a big farm. */
   const banked = ledgerAt(0);
   const wateringPaid = banked.spentWatering;
-  const wateringAsked = wateringPerDay * farmDayCount(farmDays, farmEvery);
+  const wateringAsked = careTotal;
   const wateredFraction = wateringAsked > 0 ? wateringPaid / wateringAsked : 1;
 
   /* Then crafting, out of everything the cycle regenerates that the watering
@@ -773,7 +837,8 @@ export function simulateCycle(plan, data, ctx) {
     // The return rate hands materials straight back, so the same pile makes
     // more crafts — and each of those still costs focus.
     const perCraft = recipe.inputs.map((i) => {
-      const net = i.count * (1 - batch.rrr);
+      // Inputs the game never hands back are consumed whole.
+      const net = i.count * (i.noReturn ? 1 : 1 - batch.rrr);
       const have = pool[i.id] || 0;
       return { ...i, net, have, allows: net > 0 ? Math.floor(have / net) : Infinity };
     });
@@ -842,6 +907,10 @@ export function simulateCycle(plan, data, ctx) {
    * money you never take, and would hide the thing that actually matters -
    * whether the farm is outrunning what your focus can process.
    */
+  /* An ingredient your plan means to brew is held, whether or not this
+   * particular cycle got round to it: a batch that stalled for want of one
+   * material leaves the rest sitting in the barn waiting, not sold off. What
+   * made that read as a disaster was expensing it, which heldBasis now fixes. */
   const eatenByPlan = new Set();
   for (const job of plan.crafts) {
     const r = recipeOf(job.recipeId);
@@ -855,14 +924,18 @@ export function simulateCycle(plan, data, ctx) {
   let revenue = 0;
   let stockValue = 0;
 
+  let heldBasis = 0;
   for (const [id, qty] of Object.entries(pool)) {
     if (qty <= 0.0001) continue;
     const unit = ctx.priceOf(id);
     if (keepStock && eatenByPlan.has(id)) {
-      // Held for the next batch rather than sold. Valued at what it would
-      // fetch, but kept out of profit until it actually is sold.
-      stock.push({ id, qty, value: qty * unit * tax });
+      /* Held for the next batch rather than sold. It stays out of revenue
+       * because you did not sell it — and its cost stays out of the bill for
+       * the same reason. Expensing what you are still holding is how a farm
+       * that grew two million silver of herbs got reported as a loss. */
+      stock.push({ id, qty, value: qty * unit * tax, cost: cost0.of(id) });
       stockValue += qty * unit * tax;
+      heldBasis += cost0.of(id);
     } else {
       const value = qty * unit * tax;
       revenue += value;
@@ -911,7 +984,11 @@ export function simulateCycle(plan, data, ctx) {
     };
   }).filter((b) => b.made > 0);
 
-  const cost = farmCost + buyCost + feeCost;
+  /* What the cycle actually spent, less what is still sitting in the barn.
+   * Every silver that entered the pool is tracked by cost0, so the two sides
+   * partition exactly: what you sold is expensed, what you kept is carried. */
+  const spend = farmCost + buyCost + feeCost;
+  const cost = spend - heldBasis;
   const profit = revenue - cost;
 
   /* The honest day-by-day picture, now that the crafting has said what it
@@ -941,7 +1018,7 @@ export function simulateCycle(plan, data, ctx) {
     // seed bonus the farm above actually earned.
     wateringPerDay, wateringAsked, wateringPaid, wateredFraction,
     wateringShortfall: ledger.shortfall,
-    farmCost, buyCost, feeCost, cost, revenue, profit,
+    farmCost, buyCost, feeCost, spend, heldBasis, cost, revenue, profit,
     perDay: profit / cycleDays,
     perMonth: (profit / cycleDays) * 30,
     focusUsed,
