@@ -210,8 +210,9 @@
   },
   {
    "id": "island",
-   "name": "My island (no city bonus)",
+   "name": "My island station",
    "cluster": null,
+   "craftOnly": true,
    "craftBase": 0,
    "craftSpecialties": {},
    "farmBonus": {}

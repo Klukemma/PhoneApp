@@ -138,8 +138,15 @@ def build_cities() -> list:
     a city adds a percentage for each category it specialises in.
 
     Farming: a flat +10% yield for a handful of named crops, herbs and animal
-    products, and here the island value matches the city value, so an island
-    bound to a city farms with that city's bonus.
+    products. Every one of the 30 royal-city rows has islandvalue equal to
+    value, so an island farms with the full bonus of the city it is bound to -
+    and every island is bound to one. There is no such thing as a farm with no
+    city behind it, so the island entry below is offered for crafting only.
+
+    (The same file also holds 450 Outlands rows at value 2.0, islandvalue 0.0:
+    the +200% guild territory farms. Those are keyed by biome and cluster
+    quality rather than by city, and this app does not model them, so they are
+    dropped here rather than silently mixed in with the city bonuses.)
     """
     craft_root = parse("craftingmodifiers.xml")
     farm_root = parse("farmingmodifiers.xml")
@@ -176,9 +183,12 @@ def build_cities() -> list:
             "craftSpecialties": c.get("specialties", {}),
             "farmBonus": farm.get(cluster, {}),
         })
-    # Crafting on your own island earns no city bonus at all.
+    # Crafting at your own island's station earns no city bonus: islandvalue is
+    # 0 for every craftingbonus in craftingmodifiers.xml. Farming is the other
+    # way round, so this entry is never offered as a place to farm.
     out.append({
-        "id": "island", "name": "My island (no city bonus)", "cluster": None,
+        "id": "island", "name": "My island station", "cluster": None,
+        "craftOnly": True,
         "craftBase": 0, "craftSpecialties": {}, "farmBonus": {},
     })
     return out

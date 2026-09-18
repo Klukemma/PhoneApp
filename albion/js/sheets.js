@@ -197,11 +197,14 @@ const PLOT_ICON = {
  * percent better, Lymhurst does the same for geese.
  */
 export function openFarm() {
-  const cities = (state.settings.cities || []).filter((c) => c.id !== 'island');
+  // Every island is bound to a city and farms with that city's bonus, so
+  // there is nowhere to put land that is not a city. The island entry exists
+  // for crafting, where the bonus really is zero, and has no place here.
+  const cities = (state.settings.cities || []).filter((c) => !c.craftOnly);
   const mine = new Map();
   for (const h of state.farm) mine.set(`${h.cityId}:${h.kind}`, h.count);
   const owned = [...new Set(state.farm.map((h) => h.cityId))];
-  const listed = [...new Set([...owned, 'island', ...cities.map((c) => c.id)])];
+  const listed = [...new Set([...owned, ...cities.map((c) => c.id)])];
   const sum = landSummary();
 
   const nameOfCity = (id) => (state.settings.cities || [])
@@ -249,6 +252,10 @@ export function openFarm() {
       Herb Garden, livestock only in a Pasture and the exotic mounts only in a
       Kennel. Five plots of carrots and seven of agaric are not twelve
       interchangeable plots.</p>
+    <p class="muted small">Every island is bound to a city and farms with that
+      city's full bonus, so put your island's plots under the city it sits in.
+      There is no such thing as a farm with no city behind it \u2014 crafting is the
+      one that loses the bonus on your own island.</p>
 
     ${state.farm.length ? `
       <div class="card" style="margin-bottom:12px">
@@ -410,7 +417,7 @@ export function openPlot(row) {
 /** City options for a farm, flagging the ones that boost this particular thing. */
 function farmCityOptions(selected, bonusKey) {
   return (state.settings.cities || [])
-    .filter((c) => c.id !== 'island')      // an island carries its city's bonus
+    .filter((c) => !c.craftOnly)           // an island carries its city's bonus
     .map((c) => {
       const pct = farmBonus(c, bonusKey);
       return `<option value="${esc(c.id)}" ${c.id === selected ? 'selected' : ''}>
@@ -439,7 +446,7 @@ export function openFarmCity() {
     <h2>Where is your farm?</h2>
     <p class="muted">A private island carries the farming bonus of the city it is
       bound to, so pick that city. Each plot can override it.</p>
-    ${(s.cities || []).filter((c) => c.id !== 'island').map((c) => {
+    ${(s.cities || []).filter((c) => !c.craftOnly).map((c) => {
       const items = Object.keys(c.farmBonus || {});
       return `
         <button class="row" data-farm-city="${esc(c.id)}"
@@ -643,15 +650,22 @@ export function openCraftCity() {
     <h2>Where do you craft?</h2>
     <p class="muted">This sets the default. Each job on your plan can override it.</p>
     ${(s.cities || []).map((c) => {
-      const pot = c.specialties?.includes('potion');
-      const food = c.specialties?.includes('food');
-      const tags = [pot && 'potions', food && 'cooked food'].filter(Boolean).join(', ');
+      const spec = c.craftSpecialties || {};
+      const tags = [
+        spec.potion && `+${spec.potion} for potions`,
+        spec.food && `+${spec.food} for cooked food`,
+      ].filter(Boolean).join(', ');
+      // The island is the one place with no city behind it, which is the
+      // whole point of listing it: your own station gets nothing back.
+      const meta = c.craftOnly
+        ? 'No city bonus at all \u2014 your own station, away from any city'
+        : `+${c.craftBase} base${tags ? `, ${tags}` : ', no specialty here'}`;
       return `
         <button class="row" data-city="${esc(c.id)}"
           ${c.id === s.craftCity ? 'style="border-color:var(--gold)"' : ''}>
-          <span class="ico">\u{1F3EF}</span>
+          <span class="ico">${c.craftOnly ? '\u{1F3E1}' : '\u{1F3EF}'}</span>
           <span class="body"><span class="title">${esc(c.name)}</span>
-            <span class="meta">+${c.base} base${tags ? `, +${s.craftSpecialtyBonus} for ${tags}` : ', no specialty here'}</span></span>
+            <span class="meta">${esc(meta)}</span></span>
           <span class="amt">${c.id === s.craftCity ? '\u2713' : ''}</span>
         </button>`;
     }).join('')}

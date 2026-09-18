@@ -23,7 +23,10 @@ const ctx = (prices = {}, over = {}) => ({
     ...data.constants,
     cities: data.cities,
     premium: true, watered: false, favouriteFood: true, useFocus: false,
-    craftCity: 'martlock', farmCity: 'island', spec: {}, specLevel: 0,
+    // Caerleon favours comfrey, teasel and mullein, none of which these
+    // tests grow, so its bonus never quietly inflates a yield. There is no
+    // such thing as farming outside a city, so there is nothing more neutral.
+    craftCity: 'martlock', farmCity: 'caerleon', spec: {}, specLevel: 0,
     cadenceHours: 24, cycleDays: 14, farmDays: 10, farmEvery: 1, startFocus: 0,
     focusNodes: data.focusNodes, nodeLevels: {}, stockCap: 5000,
     stationFeePerCraft: 0, feedItemId: 'T3_WHEAT',
@@ -409,6 +412,25 @@ test('a plan costs each craft job in its own city at its own mastery', () => {
 
 /* ------------------------------------------------ crafting on an island - */
 
+test('an island farms with the full bonus of the city it is bound to', () => {
+  // farmingmodifiers.xml gives islandvalue === value for all thirty
+  // royal-city rows, so a farm on your Martlock island gets Martlock's +10%.
+  // The island entry exists for crafting and must never answer for farming.
+  const s = ctx().settings;
+  const island = s.cities.find((c) => c.id === 'island');
+  assert.equal(island.craftOnly, true);
+  assert.equal(farmCityFor(s, 'island').id, s.farmCity,
+    'asking to farm on "island" falls back to where you actually farm');
+
+  const fox = plant('T6_FARM_FOXGLOVE_SEED');
+  const p = { T6_FOXGLOVE: 300, T6_FARM_FOXGLOVE_SEED: 2000 };
+  const here = plantCycle(fox, { ...ctx(p), cityId: 'martlock' });
+  const away = plantCycle(fox, { ...ctx(p), cityId: 'caerleon' });
+  assert.equal(here.farmBonusPct, 10, 'Martlock favours foxglove');
+  assert.equal(away.farmBonusPct, 0);
+  assert.ok(here.yieldPerTile > away.yieldPerTile);
+});
+
 test('crafting on your own island earns no city bonus at all', () => {
   // craftingmodifiers.xml gives every city islandvalue="0" for crafting.
   const s = ctx({}).settings;
@@ -517,6 +539,13 @@ test('each plot on a plan is farmed in its own city', () => {
 test('the city table came out of the game files intact', () => {
   const cities = data.cities;
   assert.equal(cities.length, 11);                  // 10 locations plus island
+  // The island is a crafting location only. Farming there is not a thing the
+  // game has: every island sits in a city and farms with its bonus.
+  assert.equal(cities.filter((c) => c.craftOnly).length, 1);
+  assert.equal(cities.find((c) => c.craftOnly).id, 'island');
+  for (const c of cities.filter((c) => !c.craftOnly)) {
+    assert.ok(!c.craftOnly, 'every real location can be farmed in');
+  }
 
   const byId = Object.fromEntries(cities.map((c) => [c.id, c]));
   // Only these two matter for what this app crafts.

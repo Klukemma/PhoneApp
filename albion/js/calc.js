@@ -238,8 +238,22 @@ export function cityById(settings, cityId, fallbackKey = 'craftCity') {
 /** Where you craft. */
 export const cityFor = (settings, cityId) => cityById(settings, cityId, 'craftCity');
 
-/** Where your farm is. An island carries the bonus of the city it is bound to. */
-export const farmCityFor = (settings, cityId) => cityById(settings, cityId, 'farmCity');
+/**
+ * Where your farm is.
+ *
+ * Every island is bound to a city and farms with that city's full bonus:
+ * farmingmodifiers.xml gives the same islandvalue as value for all thirty
+ * royal-city rows. There is no such thing as a farm with no city behind it, so
+ * a location that only exists for crafting is never a valid answer here.
+ */
+export function farmCityFor(settings, cityId) {
+  const found = cityById(settings, cityId, 'farmCity');
+  if (found && !found.craftOnly) return found;
+  const fallback = (settings.cities || []).find((c) => c.id === settings.farmCity);
+  return (fallback && !fallback.craftOnly ? fallback : null)
+    || (settings.cities || []).find((c) => !c.craftOnly)
+    || found || null;
+}
 
 /**
  * The +10% yield some cities give a specific crop, herb or animal product.

@@ -117,7 +117,11 @@ function normalize(raw) {
     farm: (Array.isArray(raw.farm) ? raw.farm : [])
       .map((h) => ({
         id: h.id || uid(),
-        cityId: h.cityId || 'island',
+        // "island" was a crafting location that leaked into the farm list.
+        // Farming always happens in some city's territory, so land recorded
+        // there belongs to whichever city you farm in.
+        cityId: (!h.cityId || h.cityId === 'island')
+          ? (raw.settings?.farmCity || 'martlock') : h.cityId,
         kind: (Number(raw.schema) || 1) < LAND_SCHEMA
           ? (LEGACY_KIND[h.kind] || h.kind)
           : (LAND_KINDS.has(h.kind) ? h.kind : 'farm'),
@@ -149,6 +153,10 @@ function normalize(raw) {
     }
   }
   s.schema = LAND_SCHEMA;
+  // "island" was offered as a place to farm, which it never was: every island
+  // is bound to a city and farms with that city's bonus. Anyone who picked it
+  // is moved to the default rather than being silently dropped somewhere else.
+  if (s.settings.farmCity === 'island') s.settings.farmCity = base.settings.farmCity;
   // Older saves carried one global "am I in a bonus city" flag, which applied
   // the specialty to every recipe. The city now decides, per item.
   delete s.settings.citySpecialty;
