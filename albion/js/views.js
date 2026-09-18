@@ -23,6 +23,41 @@ export const setPriceFilter = (f) => { priceFilter = f; };
 export let solution = null;
 export const setSolution = (r) => { solution = r; };
 
+/**
+ * A fingerprint of everything a solved plan rests on.
+ *
+ * Levelling the destiny board is not a cosmetic change: cheaper focus buys a
+ * far bigger batch, which changes how much of each thing to plant and how many
+ * days of the cycle are worth farming at all. A plan worked out before that is
+ * the answer to a different question, so the screen has to know when it is
+ * showing a stale one.
+ */
+export function solveStamp() {
+  const s = state.settings;
+  return {
+    mastery: JSON.stringify([state.nodeLevels, state.spec, s.specLevel]),
+    prices: JSON.stringify(state.prices),
+    setup: JSON.stringify([s.premium, s.useFocus, s.favouriteFood, s.craftCity,
+      s.farmCity, s.feedItemId, s.cadenceHours, s.startFocus, s.stockCap,
+      s.focusPerDay, s.focusCap, s.sellSurplus, s.hideMounts, s.stationFeePerCraft]),
+    goal: JSON.stringify([state.goal.recipeId, state.goal.plots, state.goal.cycleDays]),
+  };
+}
+
+const STAMP_LABEL = {
+  mastery: 'your mastery', prices: 'prices',
+  setup: 'your setup', goal: 'what you asked for',
+};
+
+/** What has moved since a plan was worked out, in words. */
+export function changedSince(stamp) {
+  if (!stamp) return [];
+  const now = solveStamp();
+  return Object.keys(STAMP_LABEL)
+    .filter((k) => stamp[k] !== undefined && stamp[k] !== now[k])
+    .map((k) => STAMP_LABEL[k]);
+}
+
 /** Everything the calculator needs, assembled from the current state. */
 export function ctx() {
   return {
@@ -168,25 +203,45 @@ export function plan() {
 function goalCard() {
   const goal = state.goal;
   const recipe = DATA.recipes.find((r) => r.id === goal.recipeId);
+  // The fingerprint outlives the session; the reasoning behind the plan does
+  // not. Either is enough to know the plan below is answering old numbers.
+  const stamp = (solution?.ok && solution.target.id === goal.recipeId
+    ? solution.stamp : null) || goal.stamp;
+  const moved = state.plan.plots.length ? changedSince(stamp) : [];
+  const line = (key, value) => `
+    <button class="goal-line" data-act="goal">
+      <span class="k">${key}</span>
+      <span class="v${key === 'Make' ? '' : ' num'}">${value}</span>
+      <span class="go">\u203A</span>
+    </button>`;
   return `
     <section>
       <div class="card goal">
-        <button class="goal-line" data-act="goal">
-          <span class="k">Make</span>
-          <span class="v">${recipe
-            ? `T${recipe.tier} ${esc(recipe.name)}` : 'pick a potion'}</span>
-          <span class="go">›</span>
-        </button>
-        <button class="goal-line" data-act="goal">
-          <span class="k">With</span>
-          <span class="v num">${goal.plots} ${goal.plots === 1 ? 'plot' : 'plots'}</span>
-          <span class="go">›</span>
-        </button>
+        ${line('Make', recipe ? `T${recipe.tier} ${esc(recipe.name)}` : 'pick a potion')}
+        ${line('With', `${goal.plots} ${goal.plots === 1 ? 'plot' : 'plots'}`)}
+        ${line('Every', goal.cycleDays
+          ? `${goal.cycleDays} days` : 'as long as it takes')}
         <button class="btn primary" data-act="solve" ${recipe ? '' : 'disabled'}>
           ${state.plan.plots.length ? 'Work it out again' : 'Work it out'}</button>
       </div>
+      ${moved.length ? `
+        <button class="row warn" data-act="solve" style="margin-top:10px">
+          <span class="ico">\u{1F504}</span>
+          <span class="body">
+            <span class="title">${esc(sentence(moved))} changed since this plan</span>
+            <span class="meta">What is below answers the old numbers</span>
+          </span>
+          <span class="amt" style="color:var(--warn)">Redo</span>
+        </button>` : ''}
     </section>`;
 }
+
+/** "your mastery and prices", rather than a bare comma-separated list. */
+function sentence(list) {
+  if (list.length <= 1) return list[0] || '';
+  return `${list.slice(0, -1).join(', ')} and ${list[list.length - 1]}`;
+}
+
 
 /* ------------------------------------------------------- the routine --- */
 
@@ -236,15 +291,25 @@ function routineCard(sim) {
 
   if (!steps.length) return '';
 
-  // The question everybody asks: how long should I sit on my focus?
-  const gap = Math.max(1, Math.round((s.focusCap || 0) / Math.max(1, s.focusPerDay || 1)));
-  const banking = sim.idleDays > 0
-    ? `Those ${sim.idleDays} idle ${sim.idleDays === 1 ? 'day is' : 'days are'} what
-       pays for the batch: focus climbs to ${short(sim.focusAtCraft)} while the farm
-       stands still.`
-    : `No waiting: focus regenerates ${short(s.focusPerDay)} a day and stops dead at
-       ${short(s.focusCap)}, so ${gap} days is the most that is ever worth banking.
-       This cycle spends it as fast as it arrives.`;
+  /* The question everybody asks: how long should I sit on my focus?
+   *
+   * Whether the cycle wastes any is what decides the answer, not whether it
+   * has idle days in it. A cycle that farms every day and crafts once at the
+   * end is still sitting on its focus, and a long one throws most of it away
+   * whatever it does with the land. */
+  const gap = Math.max(1, sim.ledger.cappedOn
+    || Math.round((s.focusCap || 0) / Math.max(1, s.focusPerDay || 1)));
+  const banking = sim.ledger.wasted > 0
+    ? `Focus fills up on day ${sim.ledger.cappedOn} and then stops:
+       ${short(sim.ledger.wasted)} of regeneration is thrown away over this cycle.
+       Crafting every ${gap} days instead would use all of it.`
+    : sim.idleDays > 0
+      ? `Those ${sim.idleDays} idle ${sim.idleDays === 1 ? 'day is' : 'days are'} what
+         pays for the batch: focus climbs to ${short(sim.focusAtCraft)} while the farm
+         stands still.`
+      : `No waiting: focus regenerates ${short(s.focusPerDay)} a day and stops dead at
+         ${short(s.focusCap)}, so ${gap} days is the most that is ever worth banking.
+         This cycle spends it as fast as it arrives.`;
 
   return `
     <section>
@@ -304,9 +369,19 @@ function answerCard(sim) {
           <span class="v num">${short(r.made)}</span></div>
         <div class="bar-row"><span class="n">Plots on the chain</span>
           <span class="v num">${r.chainPlots} of ${r.budget}</span></div>
+        ${r.pinnedCycle ? `<div class="bar-row"><span class="n">Cycle you set</span>
+          <span class="v num">${r.sched.cycleDays} days, farming ${r.sched.farmDays}
+            </span></div>` : ''}
         <div class="bar-row"><span class="n">Focus per craft, which makes ${r.target.amount}</span>
           <span class="v num">${r.targetFocus ? short(r.focusPerTarget) : 'none'}</span></div>
         <div class="warn-note" style="color:var(--dim)">${esc(LIMIT_NOTE[r.limit] || '')}</div>
+        ${r.pinnedCycle && r.sim.ledger.wasted > 0 ? `<div class="warn-note">
+          A ${r.sched.cycleDays}-day cycle banks focus it cannot hold: it caps on
+          day ${r.sim.ledger.cappedOn} and throws away
+          ${short(r.sim.ledger.wasted)} of regeneration. Crafting every
+          ${Math.max(1, r.sim.ledger.cappedOn || 1)} days instead would use all of
+          it. The plan below is the best this length can do \u2014 it is not the
+          best you can do.</div>` : ''}
         ${priced.missing ? `<div class="warn-note">${priced.missing} of the
           ${priced.total} items in this chain have no market price, so the plan
           is built on incomplete numbers. Fetch them and work it out again.</div>`

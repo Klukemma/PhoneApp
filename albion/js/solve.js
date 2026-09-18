@@ -389,13 +389,13 @@ function movePlots(cur, data, ctx, budget) {
 }
 
 /** Nudge the calendar and the plot counts until nothing helps any more. */
-function refine(start, chain, data, ctx, budget, rounds = 10) {
+function refine(start, chain, data, ctx, budget, rounds = 10, grid = null) {
   let cur = start;
   for (let round = 0; round < rounds; round++) {
     let next = cur;
     const tries = [];
     for (const d of [-1, 1]) {
-      tries.push({ ...cur.sched, cycleDays: cur.sched.cycleDays + d });
+      if (!grid?.pinned) tries.push({ ...cur.sched, cycleDays: cur.sched.cycleDays + d });
       tries.push({ ...cur.sched, farmDays: cur.sched.farmDays + d });
     }
     for (const sched of tries) {
@@ -436,14 +436,24 @@ export function solve(recipeId, plotBudget, data, ctx, opts = {}) {
     return { ok: false, reason: 'no-price', target: chain.recipe };
   }
 
-  const minCycle = Math.max(1, opts.minCycleDays || 2);
-  const maxCycle = opts.maxCycleDays || 21;
+  // You can pin the cycle to the rhythm you actually play to. Everything else
+  // is then solved inside it: which days of it you farm, how often, and how
+  // much of the land goes where.
+  const pinned = Math.round(Number(opts.cycleDays)) || 0;
+  const minCycle = pinned || Math.max(1, opts.minCycleDays || 2);
+  const maxCycle = pinned || (opts.maxCycleDays || 21);
   // Idling past the focus cap earns nothing, so a cycle never wants more idle
   // days than it takes to fill the bar. One spare day for rounding.
   const idleMax = Math.ceil((s.focusCap || 30000) / Math.max(1, s.focusPerDay || 10000)) + 1;
   const everies = opts.farmEvery || [1, 2, 3];
 
-  const grid = { minCycle, maxCycle, idleMax, everies };
+  // With the length pinned, every day of the cycle is fair game as a farming
+  // day: the point of a long cycle is no longer to bank focus, so capping the
+  // idle days would hide the shapes that actually suit it.
+  const grid = {
+    minCycle, maxCycle, everies, pinned: !!pinned,
+    idleMax: pinned ? pinned : idleMax,
+  };
 
   /* Pass one: the calendar, with the obvious way of sourcing everything. */
   const swept = sweepCalendar(chain, preferredAssign(chain), data, ctx, budget, grid);
@@ -478,13 +488,13 @@ export function solve(recipeId, plotBudget, data, ctx, opts = {}) {
    * land, and that can move the best cycle by a week. Repeat until it settles. */
   let best = null;
   for (const cand of finalists) {
-    const tuned = refine(cand, chain, data, ctx, budget);
+    const tuned = refine(cand, chain, data, ctx, budget, 10, grid);
     if (!best || tuned.rank > best.rank) best = tuned;
   }
   for (let round = 0; round < 3; round++) {
     const again = sweepCalendar(chain, best.assign, data, ctx, budget, grid);
     if (!again.length || again[0].rank <= best.rank + 1e-9) break;
-    const tuned = refine(again[0], chain, data, ctx, budget);
+    const tuned = refine(again[0], chain, data, ctx, budget, 10, grid);
     if (tuned.rank <= best.rank + 1e-9) break;
     best = tuned;
   }
@@ -581,9 +591,15 @@ function describe(best, chain, data, ctx, budget, opts = {}, grid = null) {
   const inGrid = (cycleDays, farmDays) => !grid
     || (cycleDays >= grid.minCycle && cycleDays <= grid.maxCycle
       && farmDays >= Math.max(1, cycleDays - grid.idleMax) && farmDays <= cycleDays);
-  for (const cycleDays of spread(sched.cycleDays)) {
+  // With the length pinned there is no other length to offer, so the choice on
+  // the table becomes how much of that cycle you spend farming.
+  const shapes = grid?.pinned
+    ? spread(sched.farmDays).filter((d) => d <= sched.cycleDays)
+      .map((farmDays) => [sched.cycleDays, farmDays])
+    : spread(sched.cycleDays).map((cycleDays) => [cycleDays,
+      Math.max(1, Math.min(cycleDays, sched.farmDays + (cycleDays - sched.cycleDays)))]);
+  for (const [cycleDays, farmDays] of shapes) {
     for (const farmEvery of [1, 2, 3]) {
-      const farmDays = Math.max(1, Math.min(cycleDays, sched.farmDays + (cycleDays - sched.cycleDays)));
       if (farmEvery > farmDays) continue;
       // Never offer a calendar the search itself never weighed up. Idling far
       // past the focus cap only ever looks good when the plan is losing money,
@@ -647,6 +663,7 @@ function describe(best, chain, data, ctx, budget, opts = {}, grid = null) {
     // At these prices the whole operation is a loss. Worth saying outright
     // rather than dressing up the least bad version of it as a plan.
     profitable: sim.perDay > 0,
+    pinnedCycle: !!grid?.pinned,
     // Calendars that earn the same as the winner, and calendars that earn less.
     ties,
     alternatives: distinct.slice(0, 4),

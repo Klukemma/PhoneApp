@@ -13,7 +13,9 @@ import {
 import { solve } from './solve.js';
 import { $, $$, closeSheet, esc, openSheet, toast } from './ui.js';
 import { hours, short, silver } from './util.js';
-import { cycleFor, ctx, detailHTML, setSolution, solution } from './views.js';
+import {
+  cycleFor, ctx, detailHTML, setSolution, solution, solveStamp,
+} from './views.js';
 
 const nameOf = (id) => DATA.items[id]?.name || id;
 
@@ -49,12 +51,41 @@ export function openGoal() {
       <div class="hint">Whole 3×3 plots and pastures, not tiles. An island counts
         its plots; a guild island counts all of them.</div></div>
 
+    <div class="field">
+      <label>How long one cycle runs</label>
+      <div class="seg" id="cycleSeg" style="margin-bottom:8px">
+        ${[0, 3, 7, 14].map((n) => `
+          <button type="button" data-cycle="${n}" aria-pressed="${goal.cycleDays === n}">
+            ${n === 0 ? 'You decide' : `${n} days`}</button>`).join('')}
+      </div>
+      <input type="number" id="cycleDays" inputmode="numeric" min="0" max="60"
+        value="${goal.cycleDays || ''}" placeholder="0 \u2014 let it choose">
+      <div class="hint">Farm, then bank focus, then craft the lot. Pin this to the
+        rhythm you actually play to and everything else gets solved inside it:
+        which days you go out, how often, and where the land goes. Focus stops at
+        ${Math.round(state.settings.focusCap).toLocaleString()} and comes back at
+        ${Math.round(state.settings.focusPerDay).toLocaleString()} a day, so a long
+        cycle throws away the regeneration it cannot hold \u2014 the app will say so
+        rather than hide it.</div>
+    </div>
+
     <div class="section-head"><h2>Potions</h2></div>${list(byCat.potion)}
     <div class="section-head"><h2>Food</h2></div>${list(byCat.food)}
   `, {
     onMount(root) {
-      const save = () => setGoal({ plots: Number($('#plots', root).value) });
+      const save = () => setGoal({
+        plots: Number($('#plots', root).value),
+        cycleDays: Number($('#cycleDays', root).value),
+      });
       $('#plots', root).onchange = save;
+      $('#cycleDays', root).onchange = () => { save(); openGoal(); };
+      for (const b of $$('[data-cycle]', root)) {
+        b.onclick = () => {
+          setGoal({ plots: Number($('#plots', root).value) });
+          setGoal({ cycleDays: Number(b.dataset.cycle) });
+          openGoal();
+        };
+      }
       root.onclick = (e) => {
         const btn = e.target.closest('[data-recipe]');
         if (!btn) return;
@@ -83,7 +114,8 @@ export function runSolve() {
   setTimeout(() => {
     let result;
     try {
-      result = solve(goal.recipeId, goal.plots, DATA, ctx());
+      result = solve(goal.recipeId, goal.plots, DATA, ctx(),
+        goal.cycleDays ? { cycleDays: goal.cycleDays } : {});
     } catch (err) {
       console.error(err);
       toast('Could not work that one out');
@@ -101,8 +133,11 @@ export function runSolve() {
       }
       return;
     }
-    setSolution(result);
-    applySolution(result);
+    // Remember what this answer was worked out against, so the screen can say
+    // when the board, the prices or the question have moved on since.
+    const stamp = solveStamp();
+    setSolution({ ...result, stamp });
+    applySolution(result, stamp);
     const stale = result.steps.filter((x) => !priceOf(x.itemId)).length;
     if (stale) {
       toast(`${stale} ingredient${stale === 1 ? ' has' : 's have'} no price`,
@@ -761,10 +796,31 @@ const focusAt = (base, spec) =>
   base / (state.settings.focusCostConstant || 1.00695555005672) ** Math.max(0, spec);
 
 /**
+ * Mastery is an input to the plan, not a display setting: halving what a craft
+ * costs in focus doubles the batch it can pay for, which changes what to plant
+ * and how many days of the cycle are worth farming at all. So changing it and
+ * walking away re-solves, rather than leaving you holding the answer to the
+ * old numbers.
+ */
+let masteryWas = null;
+
+const rememberMastery = () => {
+  if (masteryWas === null) masteryWas = solveStamp().mastery;
+};
+
+function leaveMastery() {
+  const moved = masteryWas !== null && masteryWas !== solveStamp().mastery;
+  masteryWas = null;
+  if (moved && state.goal.recipeId && state.plan.plots.length) runSolve();
+}
+
+
+/**
  * Mastery is per item line in Albion, not one global number, so this lists
  * recipes individually. Anything left blank falls back to your default level.
  */
 export function openMastery(filter = '') {
+  rememberMastery();
   const s = state.settings;
   const inPlan = new Set(state.plan.crafts.map((c) => c.recipeId));
   const term = filter.trim().toLowerCase();
@@ -812,8 +868,9 @@ export function openMastery(filter = '') {
       }
       const find = $('#find', root);
       find.onchange = () => openMastery(find.value);
-      $('#done', root).onclick = () => openSettings();
+      $('#done', root).onclick = () => { leaveMastery(); openSettings(); };
     },
+    onDismiss: leaveMastery,
   });
 }
 
@@ -948,6 +1005,7 @@ const BRANCH_LABEL = {
  * siblings. Levels are shown against the things you actually farm and brew.
  */
 export function openBoard(branch = null) {
+  rememberMastery();
   const s = state.settings;
   const nodes = s.focusNodes || [];
   const branches = [...new Set(nodes.map((n) => n.branch))];
@@ -1028,7 +1086,8 @@ export function openBoard(branch = null) {
       for (const input of $$('[data-node]', root)) {
         input.onchange = () => { setNodeLevel(input.dataset.node, input.value); openBoard(open); };
       }
-      $('#done', root).onclick = () => openSettings();
+      $('#done', root).onclick = () => { leaveMastery(); openSettings(); };
     },
+    onDismiss: leaveMastery,
   });
 }

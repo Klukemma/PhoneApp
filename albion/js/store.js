@@ -48,7 +48,9 @@ function defaults() {
     nodeLevels: {},            // destiny board node id -> level
     // What you are trying to make, and how much land you have to do it with.
     // The solver works from these two and writes the plan below.
-    goal: { recipeId: '', plots: 9 },
+    // cycleDays 0 means "you decide" — any other number pins the cycle to the
+    // rhythm you actually play to, and the solver works inside it.
+    goal: { recipeId: '', plots: 9, cycleDays: 0 },
     plan: { plots: [], crafts: [] },
   };
 }
@@ -236,10 +238,16 @@ export function removeCraft(id) {
 
 export function setGoal(patch) {
   Object.assign(state.goal, patch);
-  if (state.goal.plots !== undefined) {
-    const n = Math.round(Number(state.goal.plots));
-    state.goal.plots = Number.isFinite(n) && n > 0 ? Math.min(999, n) : 0;
-  }
+  const whole = (v, max) => {
+    const n = Math.round(Number(v));
+    return Number.isFinite(n) && n > 0 ? Math.min(max, n) : 0;
+  };
+  // Asking a different question invalidates the answer outright, so the
+  // fingerprint goes with it rather than being compared against.
+  if (patch.recipeId !== undefined || patch.plots !== undefined
+    || patch.cycleDays !== undefined) delete state.goal.stamp;
+  state.goal.plots = whole(state.goal.plots, 999);
+  state.goal.cycleDays = whole(state.goal.cycleDays, 60);
   commit();
 }
 
@@ -248,8 +256,11 @@ export function setGoal(patch) {
  * merging: a recommendation is a whole answer, and half of one is not an
  * answer at all.
  */
-export function applySolution(result) {
+export function applySolution(result, stamp = null) {
   if (!result?.ok) return;
+  // Kept with the goal rather than with the solution, so the app still knows
+  // the plan is stale after you close it and come back tomorrow.
+  if (stamp) state.goal.stamp = stamp;
   state.plan = {
     plots: result.plan.plots.map((p) => ({ ...p, id: uid() })),
     crafts: result.plan.crafts.map((c) => ({ ...c, id: uid() })),

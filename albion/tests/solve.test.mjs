@@ -7,7 +7,9 @@ import {
   allocateByBottleneck, assignments, bestCashCrop, buildPlan, chainFor,
   preferredAssign, requirements, solve, sourcesFor,
 } from '../js/solve.js';
-import { cityBonus, cityFor, returnRate, simulateCycle } from '../js/calc.js';
+import {
+  cityBonus, cityFor, returnRate, ruleCovers, simulateCycle,
+} from '../js/calc.js';
 
 const data = JSON.parse(
   readFileSync(new URL('../data/gamedata.json', import.meta.url), 'utf8'));
@@ -343,4 +345,85 @@ test('a plan that spends focus on the potion never asks for more than the cap', 
   const r = solve(POTION, 12, data, ctx());
   assert.ok(r.sim.focusUsed <= r.sim.focusAtCraft + 1);
   assert.ok(r.sim.focusAtCraft <= data.constants.focusCap + 1);
+});
+
+/* ------------------------------------------------ the cycle you choose - */
+
+test('a cycle length you pin is the one you get', () => {
+  for (const cycleDays of [1, 3, 7, 14, 21]) {
+    const r = solve(POTION, 12, data, ctx(), { cycleDays });
+    assert.equal(r.ok, true);
+    assert.equal(r.sched.cycleDays, cycleDays);
+    assert.equal(r.settingsPatch.cycleDays, cycleDays);
+    assert.equal(r.pinnedCycle, true);
+    assert.ok(r.sched.farmDays >= 1 && r.sched.farmDays <= cycleDays);
+    // Every alternative it offers has to keep to the length you asked for.
+    for (const alt of [...r.alternatives, ...(r.ties || [])]) {
+      assert.equal(alt.sched.cycleDays, cycleDays);
+    }
+  }
+});
+
+test('pinning a cycle still solves everything inside it', () => {
+  // Fourteen days is a long batch, so it should farm only the days it can
+  // process rather than filling the cycle with produce it cannot brew.
+  const free = solve(POTION, 12, data, ctx());
+  const long = solve(POTION, 12, data, ctx(), { cycleDays: 14 });
+  assert.equal(free.pinnedCycle, false);
+  assert.ok(long.sched.farmDays < 14, 'it stops farming once focus is the cap');
+  // And the length costs you something, because focus caps whatever you do.
+  assert.ok(long.perDay < free.perDay);
+  assert.ok(long.made > 0);
+});
+
+test('a pinned cycle never beats the same plan left free', () => {
+  for (const cycleDays of [2, 5, 9]) {
+    const pinned = solve(POTION, 12, data, ctx(), { cycleDays });
+    const free = solve(POTION, 12, data, ctx());
+    assert.ok(free.perDay >= pinned.perDay - 1,
+      `pinning ${cycleDays} days beat the unconstrained search`);
+  }
+});
+
+/* ------------------------------------------------------ mastery moves -- */
+
+/** Level every destiny board node that covers an item. */
+const boardFor = (itemId, level) => Object.fromEntries(
+  data.focusNodes
+    .filter((n) => n.rules.some((r) => ruleCovers(r, itemId)))
+    .map((n) => [n.id, level]));
+
+test('levelling the destiny board changes the plan, not just the figures', () => {
+  const at = (level) => solve(POTION, 12, data,
+    ctx(PRICES, { nodeLevels: boardFor(POTION, level) }), { cycleDays: 14 });
+
+  const none = at(0);
+  const some = at(50);
+  const lots = at(100);
+
+  // Cheaper focus buys a bigger batch out of the same land and the same cap.
+  assert.ok(some.focusPerTarget < none.focusPerTarget);
+  assert.ok(lots.focusPerTarget < some.focusPerTarget);
+  assert.ok(some.made > none.made);
+  assert.ok(lots.made > some.made);
+  assert.ok(lots.perDay > none.perDay);
+
+  // And the shape of the week moves with it: a batch that can absorb more
+  // produce is worth farming more days for.
+  assert.ok(lots.sched.farmDays > none.sched.farmDays);
+});
+
+test('a flat mastery override moves the plan the same way as the board', () => {
+  const plain = solve(POTION, 12, data, ctx(), { cycleDays: 14 });
+  const skilled = solve(POTION, 12, data,
+    ctx(PRICES, { spec: { [POTION]: 100 } }), { cycleDays: 14 });
+  assert.ok(skilled.focusPerTarget < plain.focusPerTarget);
+  assert.ok(skilled.made > plain.made);
+});
+
+test('the fingerprint of a plan moves when its mastery does', () => {
+  // Same shape the app stores, so a stale plan can be spotted without
+  // re-running the search on every render.
+  const stamp = (over) => JSON.stringify(over.nodeLevels ?? {});
+  assert.notEqual(stamp({ nodeLevels: boardFor(POTION, 50) }), stamp({}));
 });
