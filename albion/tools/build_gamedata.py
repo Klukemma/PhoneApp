@@ -401,26 +401,43 @@ def main() -> None:
         unique = el.get("uniquename")
         if not unique or "PROTOTYPE" in unique:
             continue
-        inputs = [
-            {"id": c.get("uniquename"), "count": int(c.get("count"))}
-            for c in req.findall("craftresource")
-        ]
-        if not any(i["id"] in farm_out for i in inputs):
-            continue
-        for i in inputs:
-            register(i["id"], item_meta.get(i["id"], {}).get("cat", "material"))
-        register(unique, cat)
-        recipes.append({
-            "id": unique,
-            "name": pretty(unique),
-            "tier": tier_of(unique),
-            "category": cat,
-            "amount": int(req.get("amountcrafted", 1)),
-            "focus": int(float(req.get("craftingfocus", 0))),
-            "silver": int(float(req.get("silver", 0))),
-            "inputs": inputs,
-        })
-    recipes.sort(key=lambda x: (x["category"], x["name"], x["tier"]))
+
+        def add_recipe(rid, rreq, enchant):
+            inputs = [
+                {"id": c.get("uniquename"), "count": int(c.get("count"))}
+                for c in rreq.findall("craftresource")
+            ]
+            if not any(i["id"] in farm_out for i in inputs):
+                return
+            for i in inputs:
+                register(i["id"], item_meta.get(i["id"], {}).get("cat", "material"))
+            register(rid, cat)
+            recipes.append({
+                "id": rid,
+                "name": pretty(rid),
+                "tier": tier_of(rid),
+                # 0 for a plain item, 1-3 for the enchanted versions the game
+                # writes as T6.1, T6.2 and T6.3.
+                "enchant": enchant,
+                "category": cat,
+                "amount": int(rreq.get("amountcrafted", 1)),
+                "focus": int(float(rreq.get("craftingfocus", 0))),
+                "silver": int(float(rreq.get("silver", 0))),
+                "inputs": inputs,
+            })
+
+        add_recipe(unique, req, 0)
+        # The enchanted versions are separate recipes on the same item: the
+        # same ingredients plus alchemy extract, and a lot more focus. They
+        # sell for a lot more too, so they are worth having in the list.
+        for ench in el.findall("./enchantments/enchantment"):
+            ereq = ench.find("craftingrequirements")
+            level = int(ench.get("enchantmentlevel", 0))
+            if ereq is None or not level:
+                continue
+            add_recipe(f"{unique}@{level}", ereq, level)
+
+    recipes.sort(key=lambda x: (x["category"], x["name"], x["tier"], x["enchant"]))
 
     data = {
         "source": "ao-data/ao-bin-dumps (items.xml, loot.xml, gamedata.xml)",

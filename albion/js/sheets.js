@@ -15,7 +15,7 @@ import {
 } from './store.js';
 import { solve } from './solve.js';
 import { $, $$, closeSheet, esc, openSheet, toast } from './ui.js';
-import { ago, hours, short, silver } from './util.js';
+import { ago, hours, short, silver, tierText } from './util.js';
 import {
   cycleFor, ctx, detailHTML, setSolution, solution, solveStamp,
 } from './views.js';
@@ -28,7 +28,32 @@ const nameOf = (id) => DATA.items[id]?.name || id;
 export function openGoal() {
   const goal = state.goal;
   const byCat = { potion: [], food: [] };
-  for (const r of DATA.recipes) (byCat[r.category] || byCat.potion).push(r);
+  // Enchanted versions hang off their base rather than trebling the list: the
+  // game writes them T6.1, T6.2 and T6.3, and they are the same potion made
+  // with alchemy extract stirred in, for a lot more focus and a lot more money.
+  const enchantsOf = new Map();
+  for (const r of DATA.recipes) {
+    if (r.enchant) {
+      const base = r.id.split('@')[0];
+      if (!enchantsOf.has(base)) enchantsOf.set(base, []);
+      enchantsOf.get(base).push(r);
+    } else {
+      (byCat[r.category] || byCat.potion).push(r);
+    }
+  }
+  for (const list of enchantsOf.values()) list.sort((a, b) => a.enchant - b.enchant);
+
+  const chips = (r) => {
+    const variants = enchantsOf.get(r.id) || [];
+    if (!variants.length) return '';
+    return `
+      <div class="seg" style="margin:6px 0 10px 44px">
+        ${[r, ...variants].map((v) => `
+          <button type="button" class="mini" data-recipe="${esc(v.id)}"
+            aria-pressed="${v.id === goal.recipeId}">
+            ${tierText(v.tier, v.enchant)}${priceOf(v.id) ? '' : ' ?'}</button>`).join('')}
+      </div>`;
+  };
 
   const list = (rs) => rs
     .sort((a, b) => a.tier - b.tier || a.name.localeCompare(b.name))
@@ -36,17 +61,20 @@ export function openGoal() {
       <button class="row" data-recipe="${esc(r.id)}"
         ${r.id === goal.recipeId ? 'style="border-color:var(--gold)"' : ''}>
         <span class="ico">${r.category === 'food' ? '\u{1F35E}' : '\u{1F9EA}'}</span>
-        <span class="body"><span class="title">T${r.tier} ${esc(r.name)}</span>
-          <span class="meta">${r.inputs.map((i) => `${i.count}× ${nameOf(i.id)}`).join(', ')}
-            → ${r.amount}${priceOf(r.id) ? '' : ' · no price yet'}</span></span>
-        <span class="amt">${r.id === goal.recipeId ? '✓' : '+'}</span>
-      </button>`).join('');
+        <span class="body"><span class="title">${tierText(r.tier, r.enchant)} ${esc(r.name)}</span>
+          <span class="meta">${r.inputs.map((i) => `${i.count}\u00d7 ${nameOf(i.id)}`).join(', ')}
+            \u2192 ${r.amount}${priceOf(r.id) ? '' : ' \u00b7 no price yet'}</span></span>
+        <span class="amt">${r.id === goal.recipeId ? '\u2713' : '+'}</span>
+      </button>
+      ${chips(r)}`).join('');
 
   openSheet(`
     <h2>What are you making?</h2>
     <p class="muted">Pick the thing you want to end up with and say how much land
-      you have. Everything else — what to plant, how often to go out, when to
-      stop and bank focus, how much to brew — gets worked out from there.</p>
+      you have. Everything else — what to plant, how often to go out, how much
+      to brew and when — gets worked out from there. The .1, .2 and .3 under a
+      potion are its enchanted versions: same ingredients plus alchemy extract,
+      much more focus, much more money.</p>
 
     ${state.farm.length ? `
     <div class="field">
@@ -501,7 +529,7 @@ export function openAddCraft() {
     .map((r) => `
       <button class="row" data-recipe="${esc(r.id)}">
         <span class="ico">${r.category === 'food' ? '\u{1F35E}' : '\u{1F9EA}'}</span>
-        <span class="body"><span class="title">T${r.tier} ${esc(r.name)}</span>
+        <span class="body"><span class="title">${tierText(r.tier, r.enchant)} ${esc(r.name)}</span>
           <span class="meta">${r.inputs.map((i) => `${i.count}× ${nameOf(i.id)}`).join(', ')}
             → ${r.amount}</span></span>
         <span class="amt">+</span>
@@ -549,7 +577,7 @@ export function openCraft(job) {
     : null;
 
   openSheet(`
-    <h2>T${recipe.tier} ${esc(recipe.name)}</h2>
+    <h2>${tierText(recipe.tier, recipe.enchant)} ${esc(recipe.name)}</h2>
 
     <div class="field">
       <label>Where do you craft this?</label>
@@ -1108,7 +1136,7 @@ export function openMastery(filter = '') {
     return `
       <div class="row" style="gap:8px">
         <span class="ico">${r.category === 'food' ? '\u{1F35E}' : '\u{1F9EA}'}</span>
-        <span class="body"><span class="title">T${r.tier} ${esc(r.name)}</span>
+        <span class="body"><span class="title">${tierText(r.tier, r.enchant)} ${esc(r.name)}</span>
           <span class="meta">${focus} focus each${own == null ? ', default' : ''}</span></span>
         <input type="number" class="spec-input" data-spec="${esc(r.id)}"
           inputmode="numeric" min="0" max="120" placeholder="${s.specLevel}"

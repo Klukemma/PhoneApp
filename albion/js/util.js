@@ -57,3 +57,13 @@ export function ago(ms) {
   if (hrs < 48) return `${hrs}h ago`;
   return `${Math.round(hrs / 24)}d ago`;
 }
+
+/** 1, 2 or 3 for an enchanted item — `T6_POTION_HEAL@2` — and 0 for a plain one. */
+export const enchantOf = (id) => {
+  const m = /@(\d)$/.exec(id || '');
+  return m ? Number(m[1]) : 0;
+};
+
+/** How the game writes a tier: T6 plain, T6.1 once enchanted. */
+export const tierText = (tier, enchant = 0) =>
+  (enchant > 0 ? `T${tier}.${enchant}` : `T${tier}`);

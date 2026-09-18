@@ -535,18 +535,30 @@ export function rowOutput(row, cycle, data) {
 /**
  * Focus day by day across one cycle.
  *
- * Focus regenerates a fixed amount daily and stops dead at the cap, so idling
- * past the cap earns nothing \u2014 that wasted regen is the whole reason to know
- * when you cap. Watering spends focus, but only on the days you actually farm:
- * skipping a day banks another day of regeneration for the next watering, at
- * the cost of that day's harvest.
+ * Focus regenerates a fixed amount daily and stops dead at the cap. What
+ * matters is that you do not have to sit on it until some grand crafting day:
+ * a craft hands most of its materials straight back, so the same pile of herbs
+ * keeps making more potions, and you spend each day's focus the day it
+ * arrives. A cycle is worth the focus it regenerates over its whole length,
+ * not the thirty thousand it can hold at one moment \u2014 which is why a longer
+ * cycle is not the waste it looks like as long as you are crafting through it.
+ *
+ * Focus only goes to waste when there is genuinely nothing to spend it on: the
+ * crafting has run out of materials and the bar is already full.
+ *
+ * Watering comes first on any day you farm, because a plot has to be watered
+ * when you are standing there; crafting takes whatever is left, which is the
+ * real reason watering a big farm and crafting hard compete.
  */
 export function focusLedger({
   cycleDays, farmDays, perDay, cap, start = 0, wateringPerDay = 0, farmEvery = 1,
+  craftingPerDay = 0,
 }) {
   let focus = Math.min(cap, Math.max(0, start));
   let wasted = 0;
   let shortfall = 0;        // watering you planned but could not pay for
+  let spentWatering = 0;
+  let spentCrafting = 0;
   let cappedOn = null;
   const days = [];
 
@@ -563,13 +575,21 @@ export function focusLedger({
     const spent = farming ? Math.min(focus, wateringPerDay) : 0;
     if (farming) shortfall += wateringPerDay - spent;
     focus -= spent;
+    spentWatering += spent;
+
+    const craft = Math.max(0, Math.min(focus, craftingPerDay));
+    focus -= craft;
+    spentCrafting += craft;
 
     days.push({
-      day, farming, gained, wasted: lost, spent, focus,
+      day, farming, gained, wasted: lost, spent, craft, focus,
       resting: day <= farmDays && !farming,
     });
   }
-  return { days, atCraft: focus, wasted, shortfall, cappedOn, cap };
+  return {
+    days, atCraft: focus, left: focus,
+    spentWatering, spentCrafting, wasted, shortfall, cappedOn, cap,
+  };
 }
 
 /** Run craft jobs so that anything feeding another job runs first. */
@@ -663,16 +683,33 @@ export function simulateCycle(plan, data, ctx) {
     if (cycle) wateringPerDay += (cycle.focus || 0) * tilesOf(row);
   }
 
-  const ledger = focusLedger({
+  const ledgerAt = (craftingPerDay) => focusLedger({
     cycleDays, farmDays, farmEvery,
     perDay: s.focusPerDay, cap: s.focusCap,
     start: s.startFocus || 0,
-    wateringPerDay,
+    wateringPerDay, craftingPerDay,
   });
 
-  const wateringPaid = ledger.days.reduce((t, d) => t + d.spent, 0);
+  /* Watering first: it has to be paid on the day you are standing in the
+   * field, out of whatever has built up, which is exactly why skipping a day
+   * lets you water more of a big farm. */
+  const banked = ledgerAt(0);
+  const wateringPaid = banked.spentWatering;
   const wateringAsked = wateringPerDay * farmDayCount(farmDays, farmEvery);
   const wateredFraction = wateringAsked > 0 ? wateringPaid / wateringAsked : 1;
+
+  /* Then crafting, out of everything the cycle regenerates that the watering
+   * did not take.
+   *
+   * This is the part that matters: you do not sit on focus waiting for a
+   * crafting day. A craft hands most of its materials straight back, so the
+   * same pile of herbs keeps making more potions and you spend each day's
+   * focus the day it arrives. A cycle is therefore worth the focus it
+   * regenerates over its whole length, not the thirty thousand it can hold at
+   * any one moment. Focus only goes to waste at the end, when the crafting has
+   * run out of materials and the bar is already full. */
+  const grossRegen = (s.startFocus || 0) + cycleDays * s.focusPerDay;
+  const focusBudget = Math.max(0, grossRegen - wateringPaid);
 
   // Pass two: the farm as it really runs.
   const pool = {};
@@ -714,7 +751,7 @@ export function simulateCycle(plan, data, ctx) {
     });
   }
 
-  let focusLeft = ledger.atCraft;
+  let focusLeft = focusBudget;
 
   /* ---- craft ---- */
   const craftLines = [];
@@ -877,11 +914,24 @@ export function simulateCycle(plan, data, ctx) {
   const cost = farmCost + buyCost + feeCost;
   const profit = revenue - cost;
 
+  /* The honest day-by-day picture, now that the crafting has said what it
+   * actually wanted. Focus only climbs to the cap where the crafting could not
+   * absorb it, and only what is over the cap at the end is truly thrown away -
+   * the rest you simply start the next cycle holding. */
+  const focusUsed = focusBudget - focusLeft;
+  const ledger = ledgerAt(focusUsed / cycleDays);
+  const focusCarried = Math.min(s.focusCap, Math.max(0, focusLeft));
+  const focusWasted = Math.max(0, focusLeft - s.focusCap);
+
   return {
     cycleDays, farmDays, farmEvery, idleDays: cycleDays - farmDays,
     farmingDays: farmDayCount(farmDays, farmEvery),
     restDays: farmDays - farmDayCount(farmDays, farmEvery),
-    ledger, focusAtCraft: ledger.atCraft, focusLeft,
+    ledger,
+    // What the whole cycle can put into crafting, spending it as it comes.
+    focusBudget, focusAtCraft: focusBudget, focusLeft,
+    // Left over: what you carry into the next cycle, and what the cap ate.
+    focusCarried, focusWasted,
     farmLines, craftLines, sales, stock, stockValue, balance, pool, stockCap,
     // Your shopping list, biggest bill first.
     buys: Object.entries(bought)
@@ -894,6 +944,6 @@ export function simulateCycle(plan, data, ctx) {
     farmCost, buyCost, feeCost, cost, revenue, profit,
     perDay: profit / cycleDays,
     perMonth: (profit / cycleDays) * 30,
-    focusUsed: ledger.atCraft - focusLeft,
+    focusUsed,
   };
 }

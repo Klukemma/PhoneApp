@@ -9,7 +9,7 @@ import {
 } from './store.js';
 import { serverName } from './prices.js';
 import { esc } from './ui.js';
-import { hours, pct, short, silver, toneOf } from './util.js';
+import { enchantOf, hours, pct, short, silver, tierText, toneOf } from './util.js';
 
 export let rankTab = 'farm';
 export const setRankTab = (t) => { rankTab = t; };
@@ -79,7 +79,7 @@ export function ownCostOf(id) {
 
 const nameOf = (id) => DATA.items[id]?.name || id;
 const tierOf = (id) => DATA.items[id]?.tier ?? 0;
-const label = (id) => `T${tierOf(id)} ${nameOf(id)}`;
+const label = (id) => `${tierText(tierOf(id), enchantOf(id))} ${nameOf(id)}`;
 
 const EMOJI = {
   crop: '\u{1F33E}', herb: '\u{1F33F}', livestock: '\u{1F414}', mount: '\u{1F40E}',
@@ -117,8 +117,8 @@ export function plan() {
   const unpriced = missingPrices();
   const goal = state.goal;
 
-  const focusPct = sim.focusAtCraft > 0
-    ? Math.min(1, sim.focusUsed / sim.focusAtCraft) : 0;
+  const focusPct = sim.focusBudget > 0
+    ? Math.min(1, sim.focusUsed / sim.focusBudget) : 0;
   const idleFocus = sim.focusLeft >= oneCraftOf(sim);
 
   return {
@@ -140,7 +140,7 @@ export function plan() {
           <div class="note">${short(sim.perDay)} a day · ${short(sim.perMonth)} per 30 days</div>
           <div class="meter"><i class="spent" style="width:${focusPct * 100}%"></i></div>
           <div class="hero-foot">
-            <span class="num">${short(sim.focusUsed)} of ${short(sim.focusAtCraft)} focus spent</span>
+            <span class="num">${short(sim.focusUsed)} of ${short(sim.focusBudget)} focus spent</span>
             <span class="num ${idleFocus ? 'bad' : ''}">${idleFocus
               ? `${short(sim.focusLeft)} left over` : 'all used'}</span>
           </div>
@@ -219,7 +219,9 @@ function goalCard() {
   return `
     <section>
       <div class="card goal">
-        ${line('Make', recipe ? `T${recipe.tier} ${esc(recipe.name)}` : 'pick a potion')}
+        ${line('Make', recipe
+          ? `${tierText(recipe.tier, recipe.enchant)} ${esc(recipe.name)}`
+          : 'pick a potion')}
         ${landLine()}
         ${line('Every', goal.cycleDays
           ? `${goal.cycleDays} days` : 'as long as it takes')}
@@ -306,56 +308,39 @@ function routineCard(sim) {
     steps.push({
       when: sim.idleDays === 1 ? `Day ${sim.cycleDays}`
         : `Days ${sim.farmDays + 1}–${sim.cycleDays}`,
-      what: 'Stop farming and let focus bank',
-      note: `Focus reaches ${short(sim.focusAtCraft)} by craft day${
-        sim.ledger.cappedOn ? `, capping on day ${sim.ledger.cappedOn}` : ''}`,
-    });
-  }
-
-  // Buying is a thing you have to go and do, so it belongs in the routine and
-  // not only in the costs.
-  if (sim.buys.length) {
-    const list = sim.buys.slice(0, 3)
-      .map((b) => `${short(b.qty)} \u00d7 ${nameOf(b.id)}`).join(', ');
-    const more = sim.buys.length > 3 ? ` and ${sim.buys.length - 3} more` : '';
-    const bill = sim.buys.reduce((t, b) => t + b.cost, 0);
-    steps.push({
-      when: `Day ${sim.cycleDays}`,
-      what: `Buy ${list}${more}`,
-      note: `${short(bill)} at the market \u2014 your plots do not grow enough of these`,
+      what: 'Stop farming, keep brewing',
+      note: 'Nothing left to harvest, but every day still brings focus to spend',
     });
   }
 
   const made = sim.craftLines.filter((l) => l.crafts > 0);
   if (made.length) {
     steps.push({
-      when: `Day ${sim.cycleDays}`,
+      when: `Days 1–${sim.cycleDays}`,
       what: made.map((l) => `${short(l.crafts)}× ${nameOf(l.recipe.id)}`).join(', '),
-      note: `${short(sim.focusUsed)} focus · ${short(sim.revenue)} on the market`,
+      note: `${short(sim.focusUsed)} focus over the cycle, about ${
+        short(sim.focusUsed / sim.cycleDays)} a day · ${
+        short(sim.revenue)} on the market`,
     });
   }
 
   if (!steps.length) return '';
 
-  /* The question everybody asks: how long should I sit on my focus?
+  /* Focus, and why the length of the cycle is worth what it is.
    *
-   * Whether the cycle wastes any is what decides the answer, not whether it
-   * has idle days in it. A cycle that farms every day and crafts once at the
-   * end is still sitting on its focus, and a long one throws most of it away
-   * whatever it does with the land. */
-  const gap = Math.max(1, sim.ledger.cappedOn
-    || Math.round((s.focusCap || 0) / Math.max(1, s.focusPerDay || 1)));
-  const banking = sim.ledger.wasted > 0
-    ? `Focus fills up on day ${sim.ledger.cappedOn} and then stops:
-       ${short(sim.ledger.wasted)} of regeneration is thrown away over this cycle.
-       Crafting every ${gap} days instead would use all of it.`
-    : sim.idleDays > 0
-      ? `Those ${sim.idleDays} idle ${sim.idleDays === 1 ? 'day is' : 'days are'} what
-         pays for the batch: focus climbs to ${short(sim.focusAtCraft)} while the farm
-         stands still.`
-      : `No waiting: focus regenerates ${short(s.focusPerDay)} a day and stops dead at
-         ${short(s.focusCap)}, so ${gap} days is the most that is ever worth banking.
-         This cycle spends it as fast as it arrives.`;
+   * A craft hands most of its materials straight back, so the same pile keeps
+   * brewing and each day's focus gets spent the day it arrives. A cycle is
+   * worth its whole length in regeneration, not the one bar it can hold, and
+   * focus is only thrown away when the crafting has nothing left to work on. */
+  const banking = sim.focusWasted > 0
+    ? `${short(sim.focusWasted)} focus goes to waste: the crafting runs out of
+       materials and the bar is already full at ${short(s.focusCap)}. More land,
+       or a shorter cycle, would put it to use.`
+    : `${short(sim.focusBudget)} of focus across ${sim.cycleDays} days, spent as it
+       arrives rather than saved up — each craft hands most of its materials
+       back, so the same pile keeps brewing with tomorrow's focus.${
+      sim.focusCarried > 0 ? ` You end holding ${short(sim.focusCarried)}, which
+      starts the next cycle off.` : ''}`;
 
   return `
     <section>
@@ -430,13 +415,11 @@ function answerCard(sim) {
         <div class="bar-row"><span class="n">Focus per craft, which makes ${r.target.amount}</span>
           <span class="v num">${r.targetFocus ? short(r.focusPerTarget) : 'none'}</span></div>
         <div class="warn-note" style="color:var(--dim)">${esc(LIMIT_NOTE[r.limit] || '')}</div>
-        ${r.pinnedCycle && r.sim.ledger.wasted > 0 ? `<div class="warn-note">
-          A ${r.sched.cycleDays}-day cycle banks focus it cannot hold: it caps on
-          day ${r.sim.ledger.cappedOn} and throws away
-          ${short(r.sim.ledger.wasted)} of regeneration. Crafting every
-          ${Math.max(1, r.sim.ledger.cappedOn || 1)} days instead would use all of
-          it. The plan below is the best this length can do \u2014 it is not the
-          best you can do.</div>` : ''}
+        ${r.pinnedCycle && r.sim.focusWasted > 0 ? `<div class="warn-note">
+          A ${r.sched.cycleDays}-day cycle regenerates more focus than this plan
+          can use: ${short(r.sim.focusWasted)} of it goes to waste once the
+          crafting runs out of materials. More land, or a shorter cycle, would
+          put it to work.</div>` : ''}
         ${priced.missing ? `<div class="warn-note">${priced.missing} of the
           ${priced.total} items in this chain have no market price, so the plan
           is built on incomplete numbers. Fetch them and work it out again.</div>`
@@ -511,21 +494,32 @@ function oneCraftOf(sim) {
 function cycleCard(sim) {
   const s = state.settings;
   const l = sim.ledger;
-  const max = Math.max(l.cap, 1);
+  /* The chart shows focus put to use each day, not focus in hand.
+   *
+   * Held focus is the wrong story now: you spend it as it arrives, so the bar
+   * would sit at nearly zero every day of a cycle that is going well. What is
+   * worth seeing is how much of each day's regeneration actually went into
+   * watering and brewing, and which days it did not. */
+  const perDay = Math.max(1, s.focusPerDay || 1);
   const bars = l.days.map((d) => {
-    const h = Math.max(3, (d.focus / max) * 100);
-    const cls = d.focus >= l.cap ? 'over'
-      : d.farming ? 'today' : d.resting ? 'rest' : '';
-    const what = d.farming ? 'farming' : d.resting ? 'resting' : 'idle';
+    const used = d.spent + d.craft;
+    const h = Math.max(4, Math.min(100, (used / perDay) * 100));
+    const cls = used <= 0 ? 'over'
+      : d.farming ? 'today'
+        : d.resting ? 'rest' : 'crafting';
+    const what = [
+      d.farming ? 'farming' : d.resting ? 'resting' : 'at the station',
+      used > 0 ? `${Math.round(used)} focus used` : 'nothing to spend it on',
+    ].join(', ');
     return `<i class="${cls}" style="height:${h}%"
       title="day ${d.day}, ${what}"></i>`;
   }).join('');
 
   const warn = [];
-  if (l.wasted > 0) {
-    warn.push(`Focus hits the ${short(l.cap)} cap on day ${l.cappedOn}, so
-      ${short(l.wasted)} of regeneration is thrown away. A shorter cycle, or
-      watering more plots, would use it.`);
+  if (sim.focusWasted > 0) {
+    warn.push(`${short(sim.focusWasted)} focus goes to waste: the crafting runs
+      out of materials before the bar stops filling. More land, or a shorter
+      cycle, would use it.`);
   }
   if (sim.restDays > 0) {
     const free = sim.farmLines.filter((l) => !l.rests).length;
@@ -558,13 +552,19 @@ function cycleCard(sim) {
         <div class="spark">${bars}</div>
         <div class="legend">
           <span>day 1</span>
-          <span>green = farming${sim.restDays ? ', teal = resting' : ''}, amber = at the ${short(l.cap)} cap</span>
+          <span>how much of each day's ${short(perDay)} focus you used · green = farming${
+            sim.restDays ? ', teal = resting' : ''}, blue = brewing only, amber = wasted</span>
           <span>day ${sim.cycleDays}</span></div>
         <div class="bar-row" style="margin-top:8px">
-          <span class="n">Focus banked by craft day</span>
-          <span class="v num">${short(sim.focusAtCraft)}</span></div>
+          <span class="n">Focus this cycle regenerates</span>
+          <span class="v num">${short(sim.focusBudget + sim.wateringPaid)}</span></div>
+        ${sim.wateringPaid > 0 ? `<div class="bar-row"><span class="n">Of which watering takes</span>
+          <span class="v num">${short(sim.wateringPaid)}</span></div>` : ''}
         <div class="bar-row"><span class="n">Spent crafting</span>
           <span class="v num">${short(sim.focusUsed)}</span></div>
+        ${sim.focusCarried > 0 ? `<div class="bar-row">
+          <span class="n">Carried into the next cycle</span>
+          <span class="v num">${short(sim.focusCarried)}</span></div>` : ''}
         ${warn.map((w) => `<div class="warn-note">${w}</div>`).join('')}
       </div>
     </section>`;
@@ -630,7 +630,7 @@ function craftRow(line) {
     <button class="row ${crafts === 0 ? 'warn' : ''}" data-craft="${esc(job.id)}">
       <span class="ico">${EMOJI[recipe.category] || EMOJI.potion}</span>
       <span class="body">
-        <span class="title">T${recipe.tier} ${esc(recipe.name)} ×${short(made)}</span>
+        <span class="title">${tierText(recipe.tier, recipe.enchant)} ${esc(recipe.name)} ×${short(made)}</span>
         <span class="meta">${short(crafts)} crafts · ${esc(why)}${
           crafts ? ` · ${esc(margin)}` : ''}</span>
       </span>

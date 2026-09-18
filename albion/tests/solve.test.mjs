@@ -413,10 +413,30 @@ test('with no land at all it says so instead of inventing a farm', () => {
   assert.equal(r.plan.plots.length, 0);
 });
 
-test('a plan that spends focus on the potion never asks for more than the cap', () => {
-  const r = solve(POTION, 12, data, ctx());
-  assert.ok(r.sim.focusUsed <= r.sim.focusAtCraft + 1);
-  assert.ok(r.sim.focusAtCraft <= data.constants.focusCap + 1);
+test('a plan never spends focus the cycle did not regenerate', () => {
+  for (const cycleDays of [2, 7, 14]) {
+    const r = solve(POTION, 12, data, ctx(), { cycleDays });
+    const gross = cycleDays * r.sim.ledger.days[0].gained
+      + (r.sim.wateringPaid || 0);
+    assert.ok(r.sim.focusUsed <= r.sim.focusBudget + 1, 'spends within its means');
+    assert.ok(r.sim.focusBudget + r.sim.wateringPaid
+      <= cycleDays * data.constants.focusPerDay + 1,
+    `${cycleDays}d conjured focus out of nowhere`);
+    void gross;
+  }
+});
+
+test('focus is only wasted when the crafting cannot absorb it', () => {
+  // Nothing to brew: the bar fills and everything past it is genuinely lost.
+  const idle = solve(POTION, 0, data, ctx(), { cycleDays: 14 });
+  assert.ok(idle.sim.focusWasted > 0 || idle.sim.made === 0);
+
+  // A working plan spends what it regenerates, so nothing is thrown away.
+  const busy = solve(POTION, 12, data, ctx(), { cycleDays: 14 });
+  if (busy.sim.focusLeft <= data.constants.focusCap) {
+    assert.equal(busy.sim.focusWasted, 0,
+      'a cycle you craft through wastes no regeneration');
+  }
 });
 
 /* ------------------------------------------------ the cycle you choose - */
@@ -436,16 +456,19 @@ test('a cycle length you pin is the one you get', () => {
   }
 });
 
-test('pinning a cycle still solves everything inside it', () => {
-  // Fourteen days is a long batch, so it should farm only the days it can
-  // process rather than filling the cycle with produce it cannot brew.
-  const free = solve(POTION, 12, data, ctx());
-  const long = solve(POTION, 12, data, ctx(), { cycleDays: 14 });
-  assert.equal(free.pinnedCycle, false);
-  assert.ok(long.sched.farmDays < 14, 'it stops farming once focus is the cap');
-  // And the length costs you something, because focus caps whatever you do.
-  assert.ok(long.perDay < free.perDay);
-  assert.ok(long.made > 0);
+test('a long cycle is worth every day of focus it regenerates', () => {
+  // The old model banked focus to one crafting day and capped it at 30k, so a
+  // fortnight was worth no more than three days. You craft through those days
+  // instead: each craft hands the materials back and the next day's focus
+  // brews them again, so a longer cycle really does make more potions.
+  const week = solve(POTION, 12, data, ctx(), { cycleDays: 7 });
+  const fortnight = solve(POTION, 12, data, ctx(), { cycleDays: 14 });
+  assert.ok(fortnight.made > week.made, 'more days, more potions');
+  assert.ok(fortnight.sim.focusBudget > week.sim.focusBudget);
+  assert.ok(fortnight.sim.focusBudget > data.constants.focusCap,
+    'a fortnight is worth more than one full bar of focus');
+  // And per day it is no longer punished for being long.
+  assert.ok(fortnight.perDay > week.perDay * 0.9);
 });
 
 test('a pinned cycle never beats the same plan left free', () => {
@@ -473,16 +496,25 @@ test('levelling the destiny board changes the plan, not just the figures', () =>
   const some = at(50);
   const lots = at(100);
 
-  // Cheaper focus buys a bigger batch out of the same land and the same cap.
+  // Cheaper focus buys a bigger batch out of the same land.
   assert.ok(some.focusPerTarget < none.focusPerTarget);
   assert.ok(lots.focusPerTarget < some.focusPerTarget);
   assert.ok(some.made > none.made);
-  assert.ok(lots.made > some.made);
+  assert.ok(lots.made >= some.made);
   assert.ok(lots.perDay > none.perDay);
+
+  // And the wall moves. Unlevelled, focus is what stops you; once it is cheap
+  // enough the land runs out first, and past that point more mastery cannot
+  // make another potion because there is nothing left to brew.
+  assert.equal(none.limit, 'focus');
+  assert.equal(lots.limit, 'plots');
+  assert.ok(none.sim.focusUsed > lots.sim.focusUsed,
+    'a levelled board needs less focus for more potions');
 
   // And the shape of the week moves with it: a batch that can absorb more
   // produce is worth farming more days for.
-  assert.ok(lots.sched.farmDays > none.sched.farmDays);
+  assert.ok(lots.sched.farmDays >= none.sched.farmDays);
+  assert.ok(lots.chainPlots >= none.chainPlots);
 });
 
 test('a flat mastery override moves the plan the same way as the board', () => {

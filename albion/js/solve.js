@@ -373,10 +373,17 @@ export function buildPlan(chain, assign, data, ctx, sched, budget, withFiller = 
     farmed.push({ itemId, need: at.need, row, cycle: probe, kind, perPlotByCity });
   }
 
-  const ledgerAt = (wateringPerDay) => focusLedger({
-    cycleDays: sched.cycleDays, farmDays: sched.farmDays, farmEvery: sched.farmEvery,
-    perDay: s.focusPerDay, cap: s.focusCap, start: s.startFocus || 0, wateringPerDay,
-  }).atCraft;
+  // What the whole cycle can put into crafting, spending focus as it arrives
+  // rather than sitting on it: the same measure simulateCycle uses. Watering
+  // is paid first, out of the bank, on the days you are actually farming.
+  const ledgerAt = (wateringPerDay) => {
+    const banked = focusLedger({
+      cycleDays: sched.cycleDays, farmDays: sched.farmDays, farmEvery: sched.farmEvery,
+      perDay: s.focusPerDay, cap: s.focusCap, start: s.startFocus || 0, wateringPerDay,
+    });
+    const gross = (s.startFocus || 0) + sched.cycleDays * s.focusPerDay;
+    return Math.max(0, gross - banked.spentWatering);
+  };
 
   const craftsFrom = (focusAvail) => (focusPer > 0 ? focusAvail / focusPer : Infinity);
   const spread = (focusAvail) =>

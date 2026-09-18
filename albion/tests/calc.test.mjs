@@ -996,8 +996,12 @@ test('turning watering off costs no focus and grants no bonus', () => {
   assert.equal(sim.wateringPerDay, 0);
   assert.equal(sim.wateringShortfall, 0);
   assert.equal(sim.farmLines[0].cycle.seedsBack, foxglove.seedReturn);
-  // All the focus goes to crafting instead.
-  assert.equal(sim.focusAtCraft, sim.ledger.cap);
+  // All the focus goes to crafting instead, and that is every day of the
+  // cycle's regeneration, not the thirty thousand the bar can hold: you spend
+  // it as it arrives rather than saving up for one grand crafting day.
+  const s = sim.ledger;
+  assert.equal(sim.focusBudget, sim.cycleDays * 10000);
+  assert.ok(sim.focusBudget > s.cap, 'a long cycle is worth more than one bar');
 });
 
 /* ------------------------------------------------- the destiny board --- */

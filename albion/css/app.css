@@ -289,3 +289,6 @@ nav button[aria-current="page"] .e { filter: none; opacity: 1; }
 .step .what, .step .note { display: block; }
 .step .what { font-size: 13.5px; }
 .step .note { font-size: 11.5px; color: var(--faint); margin-top: 2px; }
+
+/* A day you spent focus crafting on, rather than one you sat on it. */
+.spark i.crafting { background: var(--info, #7aa7e8); }
