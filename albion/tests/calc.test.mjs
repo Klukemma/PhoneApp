@@ -1549,6 +1549,39 @@ test('an unpriced purchase is still listed, so it cannot hide', () => {
   assert.equal(schnapps.cost, 0);
 });
 
+/* ----------------------------------------- rationing the focus --------- */
+
+test('two independent crafts do not split the focus by who was listed first', () => {
+  const prices = {
+    T4_POTION_HEAL: 900, T5_MEAL_SOUP: 5000, T5_CABBAGE: 200,
+    T4_BURDOCK: 180, T3_EGG: 120,
+    T4_FARM_BURDOCK_SEED: 4000, T5_FARM_CABBAGE_SEED: 10000,
+    T3_FARM_CHICKEN_BABY: 5000, T3_WHEAT: 90,
+  };
+  const plots = [
+    { id: 'b', itemId: 'T4_FARM_BURDOCK_SEED', count: 6, mode: 'grow', cityId: 'martlock' },
+    { id: 'c', itemId: 'T5_FARM_CABBAGE_SEED', count: 6, mode: 'grow', cityId: 'martlock' },
+    { id: 'h', itemId: 'T3_FARM_CHICKEN_BABY', count: 6, mode: 'product', cityId: 'martlock' },
+  ];
+  // Neither recipe feeds the other, so the dependency sort has nothing to say
+  // about them and list order used to decide who got the focus.
+  const potion = { id: 'c1', recipeId: 'T4_POTION_HEAL', mode: 'fill' };
+  const soup = { id: 'c2', recipeId: 'T5_MEAL_SOUP', mode: 'fill' };
+  const c = ctx(prices, {
+    useFocus: true, watered: false, cycleDays: 14, farmDays: 14,
+    craftCity: 'brecilien', farmCity: 'martlock',
+  });
+  const one = simulateCycle({ plots, crafts: [potion, soup] }, data, c);
+  const two = simulateCycle({ plots, crafts: [soup, potion] }, data, c);
+
+  assert.equal(Math.round(one.profit), Math.round(two.profit));
+  // And it lands on the better of the two, not whichever came first: the
+  // focus goes to the soup, which pays far more for it at these prices.
+  const soupLine = (sim) => sim.craftLines.find((l) => l.recipe.id === 'T5_MEAL_SOUP');
+  assert.ok(soupLine(one).crafts > 0, 'the job that pays best for focus gets it');
+  assert.ok(soupLine(one).payRate > 0);
+});
+
 /* ------------------------------------------ one tax, on the way out ---- */
 
 test('a spare baby is produce you sell, not a discount on the next one', () => {

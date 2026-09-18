@@ -632,7 +632,7 @@ function farmRow(line, sim) {
  * that only feeds the next one has no figure at all — nothing of it reaches
  * the market, and its cost simply carries forward.
  */
-function craftRow(line) {
+function craftRow(line, _i, all) {
   const { recipe, crafts, made, limitedBy, job, bottleneck } = line;
   const destroys = crafts > 0 && line.terminal && line.gain < 0;
 
@@ -644,7 +644,10 @@ function craftRow(line) {
         ? `no ${nameOf(bottleneck.id)} at all`
         : `short on ${nameOf(bottleneck.id)}`)
       : 'materials run out')
-    : limitedBy === 'focus' ? 'focus runs out'
+    : limitedBy === 'focus'
+      ? (sim.craftLines.some((o) => o !== line && o.crafts > 0 && o.payRate > line.payRate)
+        ? 'focus runs out \u2014 it went to what pays better for it'
+        : 'focus runs out')
       : line.bought?.length ? 'topped up from the market'
         : `batch set to ${short(job.perCycle || 0)}`;
 
@@ -1029,7 +1032,7 @@ export function detailHTML(cycle, rate) {
     const a = cycle.ref;
     line('Feed needed', `${round1(cycle.plantsNeeded)} × ${nameOf(cycle.feedId)}`);
     line('Feed cost', short(-cycle.feedCost), 'bad');
-    line(`Babies back (${s.watered ? 'watered' : 'dry'})`, pct(cycle.babiesBack, 0));
+    line(`Babies back (${s.watered ? 'nurtured' : 'not nurtured'})`, pct(cycle.babiesBack, 0));
     line(cycle.babyCost >= 0 ? 'Baby cost' : 'Spare babies',
       short(-cycle.babyCost), cycle.babyCost >= 0 ? 'bad' : 'good');
     line('Sale after tax', short(cycle.revenue), 'good');

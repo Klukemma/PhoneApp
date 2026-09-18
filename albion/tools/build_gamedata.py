@@ -609,12 +609,15 @@ def main() -> None:
             # Not published in the dumps. Editable in-app.
             "focusPerDay": 10000,
             "focusCap": 30000,
+            # These two ARE published, as words rather than as numbers:
+            # localization.xml carries "Double crop yield from farming" and
+            # "Double farm animal growth rate" among Premium's store benefits.
+            # That backs the crop yield per tile exactly. It does not cover
+            # egg and milk quantity, which calc.js also scales by the yield
+            # multiplier, nor does the growth string say anything about how
+            # much an animal eats - so both stay editable rather than being
+            # written into the engine as facts.
             "premiumYieldMultiplier": 2,
-            # localization.xml lists Premium's farming benefits as three
-            # separate things: double crop yield (plants), double animal growth
-            # rate (animals), and +10,000 focus a day. The multipliers
-            # themselves are the word "double" in those strings, not a number
-            # in the tables, so they stay editable.
             "premiumGrowthMultiplier": 2,
             # What a character regenerates WITHOUT Premium is published
             # nowhere. Zero is a placeholder, not a game fact.

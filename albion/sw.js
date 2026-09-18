@@ -1,7 +1,7 @@
 // Cache-first shell so the app opens instantly and works with no signal.
 // Bump CACHE when the shell or the game data changes.
 
-const CACHE = 'albionfarm-v22';  // v22: one tax on the way out, the whole shopping list, an honest day chart
+const CACHE = 'albionfarm-v23';  // v23: focus goes to whatever pays best for it
 const SHELL = [
   './', './index.html', './manifest.webmanifest',
   './css/app.css',

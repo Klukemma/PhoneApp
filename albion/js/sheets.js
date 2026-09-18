@@ -1086,9 +1086,11 @@ export function openSettings() {
     </div>`}
 
     <div class="section-head"><h2>Game numbers</h2></div>
-    <p class="muted small">Straight from the game files, except focus regeneration
-      and the premium yield, which are not published. City bonuses are read from
-      the game's own tables, so they are not listed here.</p>
+    <p class="muted small">Straight from the game files. The premium multipliers
+      are the word "double" on the game's own Premium benefits screen rather
+      than a number in its tables, and focus regeneration is published nowhere
+      at all, so those stay yours to set. City bonuses are read from the game's
+      own tables, so they are not listed here.</p>
     <div class="two">
       <div class="field"><label>Focus craft bonus (%)</label>
         <input type="number" id="focusCraftBonus" inputmode="decimal" value="${s.focusCraftBonus}"></div>

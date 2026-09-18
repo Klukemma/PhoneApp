@@ -962,14 +962,49 @@ export function simulateCycle(plan, data, ctx) {
   let buyCost = 0;
   let feeCost = 0;
 
-  for (const job of orderByDependency(plan.crafts, recipeOf)) {
+  const batchOf = new Map();
+  for (const job of plan.crafts) {
+    const recipe = recipeOf(job.recipeId);
+    if (!recipe) continue;
+    batchOf.set(job, craftBatch(recipe, {
+      ...ctx, cityId: job.cityId, specLevel: job.specLevel,
+      settings: { ...s, useFocus: job.useFocus ?? s.useFocus },
+    }));
+  }
+
+  /* When two jobs want the same focus and neither feeds the other, whoever
+   * happened to be higher up the list used to take it all \u2014 so dragging a
+   * row could move the cycle's profit by three hundred per cent. Focus goes
+   * to whatever pays best for it instead, and the dependency sort still runs
+   * afterwards so a feeder never waits on the thing it feeds.
+   *
+   * The rate has to be in the same currency the ledger books, or the sort is
+   * worse than no sort at all: batch.profit charges every input at the
+   * market, while the cycle charges what you grew at what it cost you to grow
+   * and does not charge unsold stock at all. So what is already on the pile
+   * is valued at its own basis and only the shortfall at the market ask. */
+  const unitBasis = (id) => {
+    const have = pool[id] || 0;
+    return have > 0 ? cost0.of(id) / have : costOf(id);
+  };
+  const payRate = (job) => {
+    const b = batchOf.get(job);
+    if (!b || !(b.focus > 0)) return Infinity;      // free, so it never waits
+    const spend = b.ref.inputs.reduce((t, i) => {
+      const net = i.count * (i.noReturn ? 1 : 1 - b.rrr);
+      const have = pool[i.id] || 0;
+      const fromPile = Math.min(net, have);
+      return t + fromPile * unitBasis(i.id) + (net - fromPile) * costOf(i.id);
+    }, 0);
+    return (b.revenue - spend - b.fees) / b.focus;
+  };
+  const byPay = [...plan.crafts].sort((a, b) => payRate(b) - payRate(a));
+
+  for (const job of orderByDependency(byPay, recipeOf)) {
     const recipe = recipeOf(job.recipeId);
     if (!recipe) continue;
     const useFocus = job.useFocus ?? s.useFocus;
-    const batch = craftBatch(recipe, {
-      ...ctx, cityId: job.cityId, specLevel: job.specLevel,
-      settings: { ...s, useFocus },
-    });
+    const batch = batchOf.get(job);
 
     // The return rate hands materials straight back, so the same pile makes
     // more crafts — and each of those still costs focus.
@@ -1027,6 +1062,9 @@ export function simulateCycle(plan, data, ctx) {
 
     craftLines.push({
       job, recipe, batch, crafts, limitedBy, byMaterial, byFocus,
+      // Where this job came in the queue for focus, so the card can say why
+      // it got none rather than leaving it to look broken.
+      payRate: payRate(job),
       consumed, made, useFocus, inputs: perCraft, bottleneck,
       // What this job in particular had to go to market for.
       bought: lineBought,
