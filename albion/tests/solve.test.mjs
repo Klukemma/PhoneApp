@@ -4,8 +4,8 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
 import {
-  allocateByBottleneck, assignments, bestCashCrop, buildPlan, chainFor,
-  preferredAssign, requirements, solve, sourcesFor,
+  allocateAcrossFarm, assignments, bestCashCrop, buildPlan, capacityOf,
+  chainFor, preferredAssign, requirements, solve, sourcesFor, totalPlots,
 } from '../js/solve.js';
 import {
   cityBonus, cityFor, returnRate, ruleCovers, simulateCycle,
@@ -158,30 +158,102 @@ test('buying an ingredient takes it out of the farm and leaves it in the bill', 
 
 /* ------------------------------------------------------- allocation ---- */
 
+// Three ingredients wanting wildly different amounts of land, the way a
+// healing potion does: foxglove takes seven times the plots the eggs do.
+const leaf = (kind, need, perPlotByCity) => ({ kind, need, perPlotByCity });
+const THREE = (city = 'martlock') => [
+  leaf('farm', 54, { [city]: 178 }),        // foxglove: 0.30 plots a craft
+  leaf('pasture', 13.5, { [city]: 324 }),   // eggs:     0.042
+  leaf('farm', 7.6, { [city]: 178 }),       // potatoes: 0.043
+];
+const spent = (got) => got.reduce((t, g) => t + Object.values(g).reduce((a, b) => a + b, 0), 0);
+
 test('plots go to whichever ingredient is furthest behind', () => {
-  // Foxglove needs seven times the land of the eggs per craft.
-  const counts = allocateByBottleneck([0.3, 0.042, 0.043], 12);
-  assert.equal(counts.reduce((a, b) => a + b, 0), 12);
-  assert.ok(counts[0] > counts[1] && counts[0] > counts[2]);
-  // The batch is as big as its scarcest part, and max-min beats rounding
-  // each row on its own (10/1/1 supports 23 crafts, this supports 26).
-  const supported = Math.min(counts[0] / 0.3, counts[1] / 0.042, counts[2] / 0.043);
-  assert.ok(supported > Math.min(10 / 0.3, 1 / 0.042, 1 / 0.043));
+  const { got, made } = allocateAcrossFarm(THREE(),
+    capacityOf([{ cityId: 'martlock', kind: 'any', count: 12 }]));
+  assert.equal(spent(got), 12);
+  assert.ok(got[0].martlock > got[1].martlock && got[0].martlock > got[2].martlock);
+
+  // The batch is as big as its scarcest part, and handing plots to the current
+  // bottleneck beats rounding each row on its own (10/1/1 supports 23 crafts).
+  const supported = Math.min(made[0] / 54, made[1] / 13.5, made[2] / 7.6);
+  assert.ok(supported > Math.min((10 * 178) / 54, 324 / 13.5, 178 / 7.6));
 });
 
 test('allocation stops once focus, not land, is the limit', () => {
-  const counts = allocateByBottleneck([0.3, 0.042, 0.043], 40, 26);
-  const used = counts.reduce((a, b) => a + b, 0);
-  assert.ok(used < 40, 'leaves the rest of the land alone');
-  for (const [i, unit] of [0.3, 0.042, 0.043].entries()) {
-    assert.ok(counts[i] / unit >= 26, 'every row covers the batch');
+  const { got, made } = allocateAcrossFarm(THREE(),
+    capacityOf([{ cityId: 'martlock', kind: 'any', count: 40 }]), 26);
+  assert.ok(spent(got) < 40, 'leaves the rest of the land alone');
+  for (const [i, need] of [54, 13.5, 7.6].entries()) {
+    assert.ok(made[i] / need >= 26, 'every row covers the batch');
   }
 });
 
+test('a herb never ends up in a pasture, nor a goose on a herb patch', () => {
+  const cap = capacityOf([
+    { cityId: 'martlock', kind: 'farm', count: 6 },
+    { cityId: 'lymhurst', kind: 'pasture', count: 3 },
+  ]);
+  const leaves = [
+    leaf('farm', 54, { martlock: 178, lymhurst: 178 }),
+    leaf('pasture', 13.5, { martlock: 324, lymhurst: 356 }),
+  ];
+  const { got } = allocateAcrossFarm(leaves, cap);
+  assert.equal(got[0].lymhurst ?? 0, 0, 'the herb stays out of the pasture city');
+  assert.equal(got[1].martlock ?? 0, 0, 'the geese stay out of the farm city');
+  assert.equal(got[0].martlock, 6);
+  assert.equal(got[1].lymhurst, 3);
+});
+
+test('a plot goes to the city that grows the thing best', () => {
+  // The same crop, ten percent better in Martlock, with room in both.
+  const cap = capacityOf([
+    { cityId: 'caerleon', kind: 'farm', count: 4 },
+    { cityId: 'martlock', kind: 'farm', count: 4 },
+  ]);
+  const { got } = allocateAcrossFarm(
+    [leaf('farm', 100, { caerleon: 178, martlock: 196 })], cap);
+  assert.equal(got[0].martlock, 4, 'the better city fills first');
+  assert.equal(got[0].caerleon, 4, 'then it spills into the other one');
+});
+
+test('a crop with nowhere to go gets nothing rather than a plot it cannot use', () => {
+  const cap = capacityOf([{ cityId: 'martlock', kind: 'pasture', count: 5 }]);
+  const { got, free } = allocateAcrossFarm([leaf('farm', 54, { martlock: 178 })], cap);
+  assert.deepEqual(got[0], {});
+  assert.equal(free['pasture:martlock'], 5, 'the pastures are still going spare');
+});
+
+test('land you have not described is one undifferentiated heap', () => {
+  const cap = capacityOf([{ cityId: 'martlock', kind: 'any', count: 9 }]);
+  const leaves = [
+    leaf('farm', 54, { martlock: 178 }),
+    leaf('pasture', 13.5, { martlock: 324 }),
+  ];
+  const { got } = allocateAcrossFarm(leaves, cap);
+  // Both draw on the same heap, so between them they take all nine.
+  assert.equal(spent(got), 9);
+  assert.ok(got[0].martlock > 0 && got[1].martlock > 0);
+});
+
 test('allocation copes with nothing to allocate', () => {
-  assert.deepEqual(allocateByBottleneck([], 10), []);
-  assert.deepEqual(allocateByBottleneck([0.5, 0.5], 0), [0, 0]);
-  assert.deepEqual(allocateByBottleneck([0, 0], 4), [0, 0]);
+  assert.deepEqual(allocateAcrossFarm([], capacityOf([])), { got: [], made: [], free: {} });
+  const none = allocateAcrossFarm([leaf('farm', 5, { martlock: 10 })], capacityOf([]));
+  assert.deepEqual(none.got[0], {});
+  const noNeed = allocateAcrossFarm([leaf('farm', 0, { martlock: 10 })],
+    capacityOf([{ cityId: 'martlock', kind: 'farm', count: 4 }]));
+  assert.deepEqual(noNeed.got[0], {});
+});
+
+test('holdings add up and ignore nonsense', () => {
+  assert.equal(totalPlots([{ count: 6 }, { count: 3 }, { count: -2 }, {}]), 9);
+  const cap = capacityOf([
+    { cityId: 'martlock', kind: 'farm', count: 4 },
+    { cityId: 'martlock', kind: 'farm', count: 2 },
+    { cityId: 'martlock', kind: 'pasture', count: 1 },
+    { cityId: 'martlock', kind: 'farm', count: 0 },
+  ]);
+  assert.deepEqual(cap, { 'farm:martlock': 6, 'pasture:martlock': 1 });
 });
 
 /* ---------------------------------------------------------- the plan --- */
@@ -426,4 +498,100 @@ test('the fingerprint of a plan moves when its mastery does', () => {
   // re-running the search on every render.
   const stamp = (over) => JSON.stringify(over.nodeLevels ?? {});
   assert.notEqual(stamp({ nodeLevels: boardFor(POTION, 50) }), stamp({}));
+});
+
+/* ---------------------------------------------------------- your land -- */
+
+const LAND = (...h) => h.map((x, i) => ({ id: `h${i}`, ...x }));
+
+test('a plan never puts a herb in a pasture', () => {
+  // Farms in Martlock, pastures in Lymhurst: the herbs and potatoes belong in
+  // one, the geese in the other, and neither may wander.
+  const r = solve(POTION, 12, data, ctx(), {
+    cycleDays: 7,
+    holdings: LAND(
+      { cityId: 'martlock', kind: 'farm', count: 6 },
+      { cityId: 'lymhurst', kind: 'pasture', count: 2 }),
+  });
+  assert.equal(r.ok, true);
+  for (const row of r.plan.plots) {
+    const isAnimal = data.animals.some((a) => a.id === row.itemId);
+    assert.equal(row.cityId, isAnimal ? 'lymhurst' : 'martlock',
+      `${row.itemId} ended up in ${row.cityId}`);
+  }
+});
+
+test('with no pastures it buys the eggs instead of imagining a pasture', () => {
+  const r = solve(POTION, 9, data, ctx(), {
+    cycleDays: 7,
+    holdings: LAND({ cityId: 'martlock', kind: 'farm', count: 9 }),
+  });
+  assert.ok(!r.plan.plots.some((p) => data.animals.some((a) => a.id === p.itemId)),
+    'nothing is being kept in a pasture you do not have');
+  assert.ok(r.buys.some((b) => b.itemId === 'T5_EGG'), 'the eggs are bought');
+  // And it says why, rather than leaving that looking like a price decision.
+  assert.deepEqual(r.landGaps.map((g) => g.kind), ['pasture']);
+  assert.ok(r.landGaps[0].items.includes('T5_EGG'));
+});
+
+test('land the plan cannot use is named rather than silently ignored', () => {
+  const r = solve(POTION, 4, data, ctx(), {
+    cycleDays: 7,
+    holdings: LAND({ cityId: 'lymhurst', kind: 'pasture', count: 4 }),
+  });
+  assert.equal(r.plan.plots.length, 0, 'herbs cannot go in a pasture');
+  assert.ok(r.idleLand.some((x) => x.kind === 'pasture' && x.city === 'lymhurst'));
+  assert.deepEqual(r.landGaps.map((g) => g.kind), ['farm']);
+});
+
+test('plots go to the city that grows the thing best, then spill over', () => {
+  // Martlock gives foxglove and potatoes +10%; Caerleon gives them nothing.
+  const r = solve(POTION, 14, data, ctx(), {
+    cycleDays: 7,
+    holdings: LAND(
+      { cityId: 'caerleon', kind: 'farm', count: 8 },
+      { cityId: 'martlock', kind: 'farm', count: 4 },
+      { cityId: 'lymhurst', kind: 'pasture', count: 2 }),
+  });
+  const farmRows = r.plan.plots.filter((p) => !data.animals.some((a) => a.id === p.itemId));
+  const inMartlock = farmRows.filter((p) => p.cityId === 'martlock')
+    .reduce((t, p) => t + p.count, 0);
+  assert.equal(inMartlock, 4, 'the favouring city is filled before the other');
+});
+
+test('the plan never uses more of a kind of plot than you own', () => {
+  const holdings = LAND(
+    { cityId: 'martlock', kind: 'farm', count: 5 },
+    { cityId: 'lymhurst', kind: 'pasture', count: 1 });
+  for (const cycleDays of [3, 7, 14]) {
+    const r = solve(POTION, 6, data, ctx(), { cycleDays, holdings });
+    const used = { farm: {}, pasture: {} };
+    for (const row of r.plan.plots) {
+      const kind = data.animals.some((a) => a.id === row.itemId) ? 'pasture' : 'farm';
+      used[kind][row.cityId] = (used[kind][row.cityId] || 0) + row.count;
+    }
+    for (const h of holdings) {
+      assert.ok((used[h.kind][h.cityId] || 0) <= h.count,
+        `${cycleDays}d used ${used[h.kind][h.cityId]} ${h.kind} in ${h.cityId} of ${h.count}`);
+    }
+  }
+});
+
+test('describing your land never invents plots you did not describe', () => {
+  const r = solve(POTION, 999, data, ctx(), {
+    cycleDays: 7,
+    holdings: LAND({ cityId: 'martlock', kind: 'farm', count: 3 }),
+  });
+  assert.equal(r.budget, 3, 'the land you described is the budget');
+  assert.ok(r.plan.plots.reduce((t, p) => t + p.count, 0) <= 3);
+});
+
+test('saying nothing about your land works exactly as before', () => {
+  const plain = solve(POTION, 12, data, ctx(), { cycleDays: 7 });
+  const heap = solve(POTION, 12, data, ctx(), {
+    cycleDays: 7,
+    holdings: LAND({ cityId: 'martlock', kind: 'any', count: 12 }),
+  });
+  assert.equal(Math.round(plain.perDay), Math.round(heap.perDay));
+  assert.deepEqual(plain.landGaps, []);
 });

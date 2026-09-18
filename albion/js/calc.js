@@ -481,6 +481,15 @@ export function rowCycle(row, data, ctx, wateredFraction) {
   return row.mode === 'product' ? productCycle(animal, at) : animalCycle(animal, at);
 }
 
+/**
+ * Which sort of plot a row has to go in.
+ *
+ * The game will not let you keep geese on a herb patch: a Farm grows crops and
+ * herbs, a Pasture holds animals, and the two are separate buildings you have
+ * to have built. So the plan does not get to mix them either.
+ */
+export const plotKindOf = (cycle) => (cycle?.kind === 'plant' ? 'farm' : 'pasture');
+
 /** What one tile of a row yields, and what it yields it as. */
 export function rowOutput(row, cycle, data) {
   if (!cycle) return null;

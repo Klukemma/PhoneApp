@@ -52,6 +52,10 @@ function defaults() {
     // cycleDays 0 means "you decide" — any other number pins the cycle to the
     // rhythm you actually play to, and the solver works inside it.
     goal: { recipeId: '', plots: 9, cycleDays: 0 },
+    // The land you actually own: so many plots of one sort in one city.
+    // Empty means you have not said, and the plan treats your plot count as
+    // one undifferentiated heap in your default farming city.
+    farm: [],
     plan: { plots: [], crafts: [] },
   };
 }
@@ -88,6 +92,14 @@ function normalize(raw) {
     spec: { ...(raw.spec || {}) },
     nodeLevels: { ...(raw.nodeLevels || {}) },
     goal: { ...base.goal, ...(raw.goal || {}) },
+    farm: (Array.isArray(raw.farm) ? raw.farm : [])
+      .map((h) => ({
+        id: h.id || uid(),
+        cityId: h.cityId || 'island',
+        kind: h.kind === 'pasture' ? 'pasture' : 'farm',
+        count: Math.max(0, Math.round(Number(h.count)) || 0),
+      }))
+      .filter((h) => h.count > 0),
     plan: {
       plots: Array.isArray(raw.plan?.plots) ? raw.plan.plots : [],
       crafts: (Array.isArray(raw.plan?.crafts) ? raw.plan.crafts : []).map((c) => {
@@ -256,6 +268,45 @@ export function removeCraft(id) {
   const [gone] = state.plan.crafts.splice(i, 1);
   commit();
   return gone;
+}
+
+/* -------------------------------------------------------------- land --- */
+
+/** Total plots you own, or the number you typed if you never said. */
+export const plotsOwned = () => (state.farm.length
+  ? state.farm.reduce((t, h) => t + h.count, 0)
+  : (Number(state.goal.plots) || 0));
+
+/** Farms and pastures, counted separately. */
+export function landSummary() {
+  const out = { farm: 0, pasture: 0, cities: new Set() };
+  for (const h of state.farm) {
+    out[h.kind] += h.count;
+    out.cities.add(h.cityId);
+  }
+  return out;
+}
+
+export function setHolding(cityId, kind, count) {
+  const n = Math.max(0, Math.round(Number(count)) || 0);
+  const at = state.farm.find((h) => h.cityId === cityId && h.kind === kind);
+  if (at) {
+    if (n > 0) at.count = n;
+    else state.farm.splice(state.farm.indexOf(at), 1);
+  } else if (n > 0) {
+    state.farm.push({ id: uid(), cityId, kind, count: n });
+  }
+  // The typed plot count and the described land are one number, so keep them
+  // agreeing rather than leaving two answers to "how much land have I got".
+  if (state.farm.length) state.goal.plots = plotsOwned();
+  delete state.goal.stamp;
+  commit();
+}
+
+export function clearLand() {
+  state.farm = [];
+  delete state.goal.stamp;
+  commit();
 }
 
 /* -------------------------------------------------------------- goal --- */

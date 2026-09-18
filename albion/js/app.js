@@ -3,7 +3,7 @@
 import { loadGameData, hydrate, state, subscribe } from './store.js';
 import {
   acceptSpare, openAddCraft, openAddPlot, openBoard, openCraft, openCraftCity,
-  openCycle, openFarmCity, openGoal, openMastery, openPlot, openPrice,
+  openCycle, openFarm, openFarmCity, openGoal, openMastery, openPlot, openPrice,
   openPriceSource, openSettings, runPriceFetch, runSolve,
 } from './sheets.js';
 import { $, closeSheet, sheetIsOpen } from './ui.js';
@@ -81,6 +81,8 @@ function wire() {
       render();
     } else if (d.toggle) {
       setSettings({ [d.toggle]: !state.settings[d.toggle] });
+    } else if (d.act === 'land') {
+      openFarm();
     } else if (d.act === 'goal') {
       openGoal();
     } else if (d.act === 'solve') {

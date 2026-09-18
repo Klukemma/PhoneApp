@@ -4,7 +4,9 @@ import {
   animalCycle, cityFor, craftBatch, farmCityFor, perPeriod, plantCycle,
   productCycle, rankFarmables, rankRecipes, returnRate, simulateCycle,
 } from './calc.js';
-import { costOf, DATA, hasOwnCost, priceOf, state } from './store.js';
+import {
+  costOf, DATA, hasOwnCost, landSummary, plotsOwned, priceOf, state,
+} from './store.js';
 import { serverName } from './prices.js';
 import { esc } from './ui.js';
 import { hours, pct, short, silver, toneOf } from './util.js';
@@ -218,7 +220,7 @@ function goalCard() {
     <section>
       <div class="card goal">
         ${line('Make', recipe ? `T${recipe.tier} ${esc(recipe.name)}` : 'pick a potion')}
-        ${line('With', `${goal.plots} ${goal.plots === 1 ? 'plot' : 'plots'}`)}
+        ${landLine()}
         ${line('Every', goal.cycleDays
           ? `${goal.cycleDays} days` : 'as long as it takes')}
         <button class="btn primary" data-act="solve" ${recipe ? '' : 'disabled'}>
@@ -234,6 +236,28 @@ function goalCard() {
           <span class="amt" style="color:var(--warn)">Redo</span>
         </button>` : ''}
     </section>`;
+}
+
+/**
+ * The land line. Once you have described your farm it says what you actually
+ * own, because "12 plots" and "6 Farms and 2 Pastures across two cities" lead
+ * to very different plans and only one of them is a real farm.
+ */
+function landLine() {
+  const sum = landSummary();
+  const total = plotsOwned();
+  const bits = [];
+  if (sum.farm) bits.push(`${sum.farm} ${sum.farm === 1 ? 'Farm' : 'Farms'}`);
+  if (sum.pasture) bits.push(`${sum.pasture} ${sum.pasture === 1 ? 'Pasture' : 'Pastures'}`);
+  const what = bits.length
+    ? `${bits.join(' · ')}${sum.cities.size > 1 ? `, ${sum.cities.size} cities` : ''}`
+    : `${total} ${total === 1 ? 'plot' : 'plots'}`;
+  return `
+    <button class="goal-line" data-act="land">
+      <span class="k">On</span>
+      <span class="v num">${esc(what)}</span>
+      <span class="go">\u203A</span>
+    </button>`;
 }
 
 /** "your mastery and prices", rather than a bare comma-separated list. */
@@ -345,6 +369,10 @@ function routineCard(sim) {
 
 /* -------------------------------------------------- what it worked out - */
 
+const KIND_LABEL = { farm: 'Farm', pasture: 'Pasture' };
+const cityName = (id) => (state.settings.cities || [])
+  .find((c) => c.id === id)?.name || id;
+
 const LIMIT_NOTE = {
   focus: 'Focus is the wall. More land would only grow produce you cannot brew,'
     + ' so the spare plots are better off earning on their own.',
@@ -363,6 +391,8 @@ function answerCard(sim) {
   const buys = r.buys.filter((b) => b.perTarget > 0);
   const alt = r.alternatives.filter((a) => a.perDay > 0).slice(0, 3);
   const ties = (r.ties || []).slice(0, 2);
+  const gaps = r.landGaps || [];
+  const idle = (r.idleLand || []).filter((x) => x.kind !== 'any');
   // The plan is only worth what its prices are worth, so say how complete they are.
   const chainIds = [...new Set([r.target.id, ...r.steps.map((x) => x.itemId)])];
   const priced = {
@@ -404,12 +434,23 @@ function answerCard(sim) {
             ${esc(state.settings.priceCity)}. Fetch them again before you commit
             to a cycle \u2014 a herb doubling in price changes the answer.</div>`}
         ${!r.targetFocus ? `<div class="warn-note" style="color:var(--dim)">
-          It brews without focus: you can grow more than ${short(sim.focusAtCraft)}
-          focus is able to process, and a bigger batch at a worse return rate beats
-          a small one at a good rate when the herbs are your own.</div>` : ''}
-        ${buys.length ? `<div class="warn-note" style="color:var(--dim)">
+          It brews without focus: your land grows more than the focus you have
+          could ever process, and a bigger batch at a worse return rate beats a
+          small one at a good rate when the herbs cost you seeds rather than
+          silver.</div>` : ''}
+        ${gaps.length ? gaps.map((g) => `<div class="warn-note">
+          You own no ${esc(KIND_LABEL[g.kind] || g.kind)} plots, so
+          ${esc(sentence(g.items.map(nameOf)))} ${g.items.length === 1 ? 'has' : 'have'}
+          to be bought however cheap ${g.items.length === 1 ? 'it is' : 'they are'} to grow.
+          Building ${g.kind === 'pasture' ? 'a Pasture' : 'a Farm'} would change this plan.
+          </div>`).join('') : ''}
+        ${buys.length && !gaps.length ? `<div class="warn-note" style="color:var(--dim)">
           Buy rather than grow: ${buys.map((b) => esc(nameOf(b.itemId))).join(', ')}.
           The land pays better under something else.</div>` : ''}
+        ${idle.length ? `<div class="warn-note" style="color:var(--dim)">
+          Standing empty: ${esc(sentence(idle.map((x) =>
+            `${x.plots} ${(KIND_LABEL[x.kind] || x.kind)}${x.plots === 1 ? '' : 's'} in ${
+              cityName(x.city)}`)))}. Nothing this potion needs will grow there.</div>` : ''}
       </div>
     </section>
 
@@ -519,6 +560,8 @@ function cycleCard(sim) {
 
 function farmRow(line, sim) {
   const { cycle, row, harvests, produced, itemId } = line;
+  // Where a row is only matters when you farm in more than one place.
+  const spread = new Set(sim.farmLines.map((l) => l.cycle.city?.id)).size > 1;
   const ref = cycle.ref;
   const emoji = EMOJI[cycle.kind === 'product' ? 'product' : ref.kind] || '\u{1F331}';
   const what = cycle.kind === 'product'
@@ -532,7 +575,8 @@ function farmRow(line, sim) {
         <span class="meta">${line.tiles} tiles \u2192 ${short(produced)} ${esc(nameOf(itemId))}
           over ${harvests} ${harvests === 1 ? 'harvest' : 'harvests'}${
           !line.rests && sim.restDays ? ' · no focus, so no rest days' : ''}${
-          cycle.farmBonusPct ? ` · ${cycle.city.name} +${cycle.farmBonusPct}%` : ''}</span>
+          cycle.farmBonusPct ? ` · ${cycle.city.name} +${cycle.farmBonusPct}%`
+            : spread ? ` · ${cycle.city.name}` : ''}</span>
       </span>
       <span class="amt num ${line.cost > 0 ? 'bad' : 'good'}">${short(-line.cost)}</span>
     </button>`;

@@ -9,9 +9,9 @@ import {
 } from './prices.js';
 import {
   addCraft, addPlot, addSpare, applySolution, DATA, exportJSON, importJSON,
-  priceOf, pricedItemIds, commit, removeCraft, removePlot, setBuyPrice, setGoal,
-  setNodeLevel, setPrice, setPrices, setSettings, setSpec, state, updateCraft,
-  updatePlot, wipe,
+  priceOf, pricedItemIds, clearLand, commit, landSummary, plotsOwned,
+  removeCraft, removePlot, setBuyPrice, setGoal, setHolding, setNodeLevel,
+  setPrice, setPrices, setSettings, setSpec, state, updateCraft, updatePlot, wipe,
 } from './store.js';
 import { solve } from './solve.js';
 import { $, $$, closeSheet, esc, openSheet, toast } from './ui.js';
@@ -48,11 +48,25 @@ export function openGoal() {
       you have. Everything else — what to plant, how often to go out, when to
       stop and bank focus, how much to brew — gets worked out from there.</p>
 
+    ${state.farm.length ? `
+    <div class="field">
+      <label>Your land</label>
+      <button class="row" data-act="land" style="width:100%">
+        <span class="body"><span class="title">${landSummary().farm} Farms ·
+          ${landSummary().pasture} Pastures</span>
+          <span class="meta">Across ${landSummary().cities.size} ${
+            landSummary().cities.size === 1 ? 'city' : 'cities'} · tap to change</span></span>
+        <span class="amt">\u203A</span>
+      </button>
+      <input type="hidden" id="plots" value="${plotsOwned()}">
+    </div>` : `
     <div class="field"><label>Plots you can farm on</label>
       <input type="number" id="plots" inputmode="numeric" min="0" max="999"
         value="${goal.plots}">
       <div class="hint">Whole 3×3 plots and pastures, not tiles. An island counts
-        its plots; a guild island counts all of them.</div></div>
+        its plots; a guild island counts all of them.
+        <button class="linkish" data-act="land">Say which are Farms and which
+        are Pastures</button>, and the plan will stop assuming you own both.</div></div>`}
 
     <div class="field">
       <label>How long one cycle runs</label>
@@ -77,7 +91,7 @@ export function openGoal() {
   `, {
     onMount(root) {
       const save = () => setGoal({
-        plots: Number($('#plots', root).value),
+        plots: Number($('#plots', root).value) || plotsOwned(),
         cycleDays: Number($('#cycleDays', root).value),
       });
       $('#plots', root).onchange = save;
@@ -90,6 +104,7 @@ export function openGoal() {
         };
       }
       root.onclick = (e) => {
+        if (e.target.closest('[data-act="land"]')) { save(); openFarm(); return; }
         const btn = e.target.closest('[data-recipe]');
         if (!btn) return;
         save();
@@ -111,14 +126,16 @@ export function runSolve() {
   const goal = state.goal;
   const recipe = DATA.recipes.find((r) => r.id === goal.recipeId);
   if (!recipe) { openGoal(); return; }
-  if (!goal.plots) { toast('Say how many plots you have first'); openGoal(); return; }
+  if (!plotsOwned()) { toast('Say how much land you have first'); openFarm(); return; }
 
   toast(`Working out ${recipe.name}…`);
   setTimeout(() => {
     let result;
     try {
-      result = solve(goal.recipeId, goal.plots, DATA, ctx(),
-        goal.cycleDays ? { cycleDays: goal.cycleDays } : {});
+      result = solve(goal.recipeId, plotsOwned(), DATA, ctx(), {
+        ...(goal.cycleDays ? { cycleDays: goal.cycleDays } : {}),
+        ...(state.farm.length ? { holdings: state.farm } : {}),
+      });
     } catch (err) {
       console.error(err);
       toast('Could not work that one out');
@@ -157,6 +174,103 @@ export function acceptSpare() {
   if (!spare) return;
   addSpare(spare);
   toast(`${spare.plots} ${spare.plots === 1 ? 'plot' : 'plots'} added`);
+}
+
+/* -------------------------------------------------------------- land --- */
+
+/**
+ * The land you actually own.
+ *
+ * A Farm grows crops and herbs and a Pasture holds animals; they are separate
+ * buildings and the game will not let you swap them, so knowing which you have
+ * is the difference between a plan you can carry out and a plan that quietly
+ * assumes a pasture you never built. The city matters too: each one grows a
+ * handful of things ten percent better, and that is per crop, so where a plot
+ * is changes what is worth putting in it.
+ */
+export function openFarm() {
+  const cities = (state.settings.cities || []).filter((c) => c.id !== 'island');
+  const mine = new Map();
+  for (const h of state.farm) mine.set(`${h.cityId}:${h.kind}`, h.count);
+  const owned = [...new Set(state.farm.map((h) => h.cityId))];
+  const listed = [...new Set([...owned, 'island', ...cities.map((c) => c.id)])];
+  const sum = landSummary();
+
+  const nameOfCity = (id) => (state.settings.cities || [])
+    .find((c) => c.id === id)?.name || id;
+
+  const bonusHere = (id) => {
+    const city = (state.settings.cities || []).find((c) => c.id === id);
+    const items = Object.keys(city?.farmBonus || {});
+    if (!items.length) return 'no crop bonus here';
+    return `+10% ${items.slice(0, 2).map((x) => nameOf(x)).join(', ')}${
+      items.length > 2 ? ` and ${items.length - 2} more` : ''}`;
+  };
+
+  const cityBlock = (id) => `
+    <div class="card" style="padding:10px 12px;margin-bottom:10px">
+      <div style="margin-bottom:8px">
+        <div style="font-size:14px;font-weight:600">${esc(nameOfCity(id))}</div>
+        <div class="muted small">${esc(bonusHere(id))}</div>
+      </div>
+      <div class="two">
+        <div class="field" style="margin:0">
+          <label>\u{1F33F} Farms</label>
+          <input type="number" inputmode="numeric" min="0" max="99"
+            data-land="${esc(id)}" data-kind="farm"
+            value="${mine.get(`${id}:farm`) || ''}" placeholder="0"></div>
+        <div class="field" style="margin:0">
+          <label>\u{1F404} Pastures</label>
+          <input type="number" inputmode="numeric" min="0" max="99"
+            data-land="${esc(id)}" data-kind="pasture"
+            value="${mine.get(`${id}:pasture`) || ''}" placeholder="0"></div>
+      </div>
+    </div>`;
+
+  openSheet(`
+    <h2>Your land</h2>
+    <p class="muted">Count whole 3\u00d73 plots, not tiles. A Farm takes crops and
+      herbs, a Pasture takes animals \u2014 the game keeps them apart and so does
+      the plan, so a herb will never be put somewhere you cannot grow it.</p>
+
+    ${state.farm.length ? `
+      <div class="card" style="margin-bottom:12px">
+        <div class="bar-row"><span class="n">Farms</span>
+          <span class="v num">${sum.farm}</span></div>
+        <div class="bar-row"><span class="n">Pastures</span>
+          <span class="v num">${sum.pasture}</span></div>
+        <div class="bar-row total"><span class="n">Across</span>
+          <span class="v num">${sum.cities.size} ${
+            sum.cities.size === 1 ? 'city' : 'cities'}</span></div>
+      </div>`
+    : `<div class="warn-note" style="margin-bottom:12px">Nothing described yet, so
+        the plan is working from ${state.goal.plots} plots that can grow anything,
+        anywhere. Fill this in and it will stop assuming pastures you may not own.</div>`}
+
+    ${listed.map(cityBlock).join('')}
+
+    ${state.farm.length ? `
+      <button class="btn danger" id="clear">Forget all this</button>` : ''}
+
+    <div class="sheet-actions">
+      <button class="btn primary" id="save">Save</button>
+    </div>
+  `, {
+    onMount(root) {
+      for (const input of $$('[data-land]', root)) {
+        input.onchange = () => {
+          setHolding(input.dataset.land, input.dataset.kind, input.value);
+          openFarm();
+        };
+      }
+      $('#clear', root)?.addEventListener('click', () => { clearLand(); openFarm(); });
+      $('#save', root).onclick = () => {
+        closeSheet();
+        // Describing your land is a change to the question, so answer it again.
+        if (state.goal.recipeId) runSolve();
+      };
+    },
+  });
 }
 
 /* ------------------------------------------------------- pick a plant -- */

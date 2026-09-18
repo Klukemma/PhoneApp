@@ -9,7 +9,7 @@
 
 import {
   TILES_PER_PLOT, cityBonus, cityFor, focusCostAt, focusLedger, harvestsFor,
-  returnRate, rowCycle, rowOutput, simulateCycle, specFor,
+  plotKindOf, returnRate, rowCycle, rowOutput, simulateCycle, specFor,
 } from './calc.js';
 import { uid } from './util.js';
 
@@ -102,6 +102,25 @@ export function assignments(chain, cap = 96) {
   return combos;
 }
 
+/**
+ * Which sort of plot each growable ingredient needs.
+ *
+ * Worth knowing separately from the allocation, because "you own no Farms and
+ * this potion is made of herbs" is a different answer from "it was cheaper to
+ * buy them", and the two look identical once the plan comes out.
+ */
+export function landNeeds(chain, data, ctx, out = new Map()) {
+  for (const inp of chain.inputs) {
+    if (inp.sub) landNeeds(inp.sub, data, ctx, out);
+    if (!inp.farm) continue;
+    const probe = rowCycle(
+      { itemId: inp.farm.itemId, mode: inp.farm.mode, cityId: ctx.settings.farmCity },
+      data, ctx, 1);
+    if (probe) out.set(inp.itemId, plotKindOf(probe));
+  }
+  return out;
+}
+
 /* ------------------------------------------------------ requirements --- */
 
 const rrrFor = (recipe, useFocus, settings) => returnRate(
@@ -150,8 +169,36 @@ export function requirements(chain, assign, settings) {
 /* -------------------------------------------------------- allocation --- */
 
 /**
+ * Your actual land, as something the allocator can spend down.
+ *
+ * A holding is so many plots of one sort in one city: six Farms in Martlock,
+ * two Pastures on a guild island in Fort Sterling. Pools are keyed by sort and
+ * city, and the sort "any" is the pool used when you have not told the app what
+ * you own \u2014 one undifferentiated heap, which is how it behaved before.
+ */
+export function capacityOf(holdings) {
+  const cap = {};
+  for (const h of holdings || []) {
+    const kind = h.kind === 'pasture' ? 'pasture' : h.kind === 'any' ? 'any' : 'farm';
+    const n = Math.max(0, Math.round(Number(h.count)) || 0);
+    if (!n) continue;
+    const key = `${kind}:${h.cityId}`;
+    cap[key] = (cap[key] || 0) + n;
+  }
+  return cap;
+}
+
+export const totalPlots = (holdings) => (holdings || [])
+  .reduce((t, h) => t + Math.max(0, Math.round(Number(h.count)) || 0), 0);
+
+/** A herb row may draw on a Farm, or on the undifferentiated heap. */
+const poolsFor = (kind) => [kind, 'any'];
+
+export const cityOfPool = (key) => key.slice(key.indexOf(':') + 1);
+
+/**
  * Whole plots, handed out one at a time to whichever ingredient is currently
- * furthest behind.
+ * furthest behind, and taken from the best city that still has one free.
  *
  * A batch is only as big as its scarcest ingredient, so the plot that helps
  * most is always the one going to the current bottleneck. Rounding each row
@@ -159,30 +206,59 @@ export function requirements(chain, assign, settings) {
  * plots and foxglove wanting seven times the land of the eggs, a rounded-down
  * egg row caps the whole batch while the surplus foxglove just piles up.
  *
- * `wants` is the plots each row needs per craft of the target. `targetCrafts`
- * stops the handout early when focus, not land, is the real limit — those
- * spare plots are better off growing something else entirely.
+ * Which city a plot comes from matters because some cities grow some things
+ * ten percent better, and that bonus is per crop \u2014 Martlock favours foxglove
+ * and potatoes, Lymhurst favours geese. Each plot goes wherever it is worth
+ * most, and a crop spills into a second city once the first runs out.
+ *
+ * `targetCrafts` stops the handout early when focus, not land, is the real
+ * limit: those spare plots are better off growing something else entirely.
  */
-export function allocateByBottleneck(wants, budget, targetCrafts = Infinity) {
-  const counts = wants.map(() => 0);
-  if (!wants.length || budget <= 0) return counts;
-  const supported = (i) => (wants[i] > 0 ? counts[i] / wants[i] : Infinity);
+export function allocateAcrossFarm(leaves, cap, targetCrafts = Infinity) {
+  const free = { ...cap };
+  const got = leaves.map(() => ({}));    // leaf -> { city: plots }
+  const made = leaves.map(() => 0);      // units of the ingredient produced
 
-  for (let n = 0; n < budget; n++) {
-    if (wants.every((_, i) => supported(i) >= targetCrafts)) break;
-    let worst = -1;
-    for (let i = 0; i < wants.length; i++) {
-      if (wants[i] <= 0) continue;
-      if (worst < 0 || supported(i) < supported(worst)) worst = i;
+  const supported = (i) => (leaves[i].need > 0 ? made[i] / leaves[i].need : Infinity);
+
+  // The best plot this leaf could still be given, anywhere.
+  const bestPool = (i) => {
+    let best = null;
+    for (const kind of poolsFor(leaves[i].kind)) {
+      for (const [key, n] of Object.entries(free)) {
+        if (n <= 0 || !key.startsWith(`${kind}:`)) continue;
+        const city = cityOfPool(key);
+        const per = leaves[i].perPlotByCity[city] || 0;
+        if (per <= 0) continue;
+        if (!best || per > best.per) best = { key, city, per };
+      }
     }
-    if (worst < 0) break;
-    counts[worst] += 1;
+    return best;
+  };
+
+  for (;;) {
+    let pick = -1;
+    let pool = null;
+    for (let i = 0; i < leaves.length; i++) {
+      if (!(leaves[i].need > 0)) continue;
+      if (supported(i) >= targetCrafts) continue;
+      if (pick >= 0 && supported(i) >= supported(pick)) continue;
+      const p = bestPool(i);
+      if (!p) continue;
+      pick = i;
+      pool = p;
+    }
+    if (pick < 0) break;
+    got[pick][pool.city] = (got[pick][pool.city] || 0) + 1;
+    free[pool.key] -= 1;
+    made[pick] += pool.per;
   }
-  return counts;
+  return { got, made, free };
 }
 
+
 /** The best thing to do with plots the chain does not need. */
-export function bestCashCrop(data, ctx, sched, exclude = new Set()) {
+export function bestCashCrop(data, ctx, sched, exclude = new Set(), free = null) {
   const s = ctx.settings;
   const tiles = s.tilesPerPlot || TILES_PER_PLOT;
   const rows = [];
@@ -195,18 +271,42 @@ export function bestCashCrop(data, ctx, sched, exclude = new Set()) {
   let best = null;
   for (const row of rows) {
     if (exclude.has(`${row.itemId}:${row.mode}`)) continue;
-    const at = { ...row, cityId: s.farmCity };
-    const cycle = rowCycle(at, data, ctx, 1);
-    if (!cycle) continue;
-    const out = rowOutput(at, cycle, data);
-    // A crop nobody has priced looks free and worthless at the same time;
-    // never recommend one on the strength of a missing number.
-    if (!out || !ctx.priceOf(out.itemId)) continue;
-    const perPlot = cycle.profit * tiles * harvestsFor(cycle, sched);
-    if (!Number.isFinite(perPlot)) continue;
-    if (!best || perPlot > best.perPlot) best = { ...at, perPlot, cycle };
+    const probe = rowCycle({ ...row, cityId: s.farmCity }, data, ctx, 1);
+    if (!probe) continue;
+    const kind = plotKindOf(probe);
+    // Only somewhere you actually have room for this sort of thing. A pasture
+    // going spare is no use to a herb, however well herbs pay.
+    for (const [city, plots] of Object.entries(spareBy(free, kind, s.farmCity))) {
+      if (plots <= 0) continue;
+      const at = { ...row, cityId: city };
+      const cycle = rowCycle(at, data, ctx, 1);
+      if (!cycle) continue;
+      const out = rowOutput(at, cycle, data);
+      // A crop nobody has priced looks free and worthless at the same time;
+      // never recommend one on the strength of a missing number.
+      if (!out || !ctx.priceOf(out.itemId)) continue;
+      const perPlot = cycle.profit * tiles * harvestsFor(cycle, sched);
+      if (!Number.isFinite(perPlot)) continue;
+      if (!best || perPlot > best.perPlot) {
+        best = { ...at, kind, perPlot, cycle, plots };
+      }
+    }
   }
   return best && best.perPlot > 0 ? best : null;
+}
+
+/** Which cities have a free plot of this sort, after the chain has taken its share. */
+function spareBy(free, kind, fallbackCity) {
+  if (!free) return { [fallbackCity]: Infinity };
+  const out = {};
+  for (const key of [...poolsFor(kind)]) {
+    for (const [k, n] of Object.entries(free)) {
+      if (n <= 0 || !k.startsWith(`${key}:`)) continue;
+      const city = cityOfPool(k);
+      out[city] = (out[city] || 0) + n;
+    }
+  }
+  return out;
 }
 
 /**
@@ -219,12 +319,19 @@ export function bestCashCrop(data, ctx, sched, exclude = new Set()) {
  * worked out twice: once ignoring watering, then again once the farm it implies
  * is known.
  */
-export function buildPlan(chain, assign, data, ctx, sched, budget, withFiller = false) {
+export function buildPlan(chain, assign, data, ctx, sched, budget, withFiller = false,
+  cap = null) {
   const s = ctx.settings;
   const { raw, jobs, focusPer } = requirements(chain, assign, s);
   const tiles = s.tilesPerPlot || TILES_PER_PLOT;
+  // Told nothing about your land, treat it as one undifferentiated heap in your
+  // default city, which is how it worked before there was anywhere to say.
+  const capacity = cap || { [`any:${s.farmCity}`]: budget };
+  const cities = [...new Set(Object.keys(capacity).map(cityOfPool))];
 
-  // Every leaf we grow ourselves, with what one plot of it yields per cycle.
+  // Every leaf we grow ourselves, with what one plot of it yields in each city
+  // you have land in \u2014 a crop is worth ten percent more in the city that
+  // favours it, and that is the whole reason to care where a plot is.
   const farmed = [];
   const bought = [];
   for (const [itemId, at] of raw) {
@@ -232,12 +339,23 @@ export function buildPlan(chain, assign, data, ctx, sched, budget, withFiller = 
     if (mode !== 'farm' || !at.node.farm) { bought.push({ itemId, need: at.need }); continue; }
     const src = at.node.farm;
     const row = { itemId: src.itemId, mode: src.mode, cityId: s.farmCity };
-    const cycle = rowCycle(row, data, ctx, 1);
-    const out = cycle ? rowOutput(row, cycle, data) : null;
+    const probe = rowCycle(row, data, ctx, 1);
+    const out = probe ? rowOutput(row, probe, data) : null;
     if (!out) { bought.push({ itemId, need: at.need }); continue; }
-    const perPlot = out.perTile * tiles * harvestsFor(cycle, sched);
-    if (!(perPlot > 0)) { bought.push({ itemId, need: at.need }); continue; }
-    farmed.push({ itemId, need: at.need, row, cycle, perPlot, unit: at.need / perPlot });
+    const kind = plotKindOf(probe);
+    const harvests = harvestsFor(probe, sched);
+
+    const perPlotByCity = {};
+    for (const city of cities) {
+      const here = rowCycle({ ...row, cityId: city }, data, ctx, 1);
+      const yield_ = here ? rowOutput({ ...row, cityId: city }, here, data) : null;
+      if (yield_) perPlotByCity[city] = yield_.perTile * tiles * harvests;
+    }
+    if (!Object.values(perPlotByCity).some((v) => v > 0)) {
+      bought.push({ itemId, need: at.need });
+      continue;
+    }
+    farmed.push({ itemId, need: at.need, row, cycle: probe, kind, perPlotByCity });
   }
 
   const ledgerAt = (wateringPerDay) => focusLedger({
@@ -245,25 +363,31 @@ export function buildPlan(chain, assign, data, ctx, sched, budget, withFiller = 
     perDay: s.focusPerDay, cap: s.focusCap, start: s.startFocus || 0, wateringPerDay,
   }).atCraft;
 
-  const units = farmed.map((f) => f.unit);
   const craftsFrom = (focusAvail) => (focusPer > 0 ? focusAvail / focusPer : Infinity);
-  const counts = (focusAvail) => allocateByBottleneck(units, budget, craftsFrom(focusAvail));
+  const spread = (focusAvail) =>
+    allocateAcrossFarm(farmed, capacity, craftsFrom(focusAvail));
 
   // Watering spends the same focus the crafting wants, so the budget has to be
   // worked out twice: once ignoring it, then again once the farm it implies is
   // known.
   let focusAvail = ledgerAt(0);
-  let plots = counts(focusAvail);
-  if (s.watered && plots.length) {
-    const wateringPerDay = farmed.reduce(
-      (t, f, i) => t + (f.cycle.focus || 0) * plots[i] * tiles, 0);
+  let spent = spread(focusAvail);
+  if (s.watered && farmed.length) {
+    const wateringPerDay = farmed.reduce((t, f, i) => t
+      + (f.cycle.focus || 0) * tiles
+        * Object.values(spent.got[i]).reduce((a, b) => a + b, 0), 0);
     focusAvail = ledgerAt(wateringPerDay);
-    plots = counts(focusAvail);
+    spent = spread(focusAvail);
   }
 
-  const rows = farmed
-    .map((f, i) => ({ id: uid(), ...f.row, count: plots[i] || 0 }))
-    .filter((r) => r.count > 0);
+  // One row per crop per city, because a crop that spills into a second city is
+  // two different yields and has to be two lines you can see.
+  const rows = [];
+  farmed.forEach((f, i) => {
+    for (const [city, count] of Object.entries(spent.got[i])) {
+      if (count > 0) rows.push({ id: uid(), ...f.row, cityId: city, count });
+    }
+  });
 
   // Anything the chain does not need is idle land. The cash crop that could use
   // it is worked out separately and only added once the calendar is settled:
@@ -274,11 +398,13 @@ export function buildPlan(chain, assign, data, ctx, sched, budget, withFiller = 
   let filler = null;
   if (withFiller && spare > 0) {
     const exclude = new Set(rows.map((r) => `${r.itemId}:${r.mode}`));
-    filler = bestCashCrop(data, ctx, sched, exclude);
+    filler = bestCashCrop(data, ctx, sched, exclude, spent.free);
     if (filler) {
       rows.push({
         id: uid(), itemId: filler.itemId, mode: filler.mode,
-        cityId: filler.cityId, count: spare, filler: true,
+        cityId: filler.cityId,
+        count: Math.min(spare, Number.isFinite(filler.plots) ? filler.plots : spare),
+        filler: true,
       });
     }
   }
@@ -287,7 +413,7 @@ export function buildPlan(chain, assign, data, ctx, sched, budget, withFiller = 
    * Land and focus each cap it; an ingredient you buy caps nothing, which is
    * the whole reason buying one can beat growing it. */
   const byLand = farmed.length
-    ? Math.min(...farmed.map((f, i) => (plots[i] * f.perPlot) / f.need))
+    ? Math.min(...farmed.map((f, i) => spent.made[i] / f.need))
     : Infinity;
   const targetCrafts = Math.floor(Math.min(byLand, craftsFrom(focusAvail)));
 
@@ -311,6 +437,8 @@ export function buildPlan(chain, assign, data, ctx, sched, budget, withFiller = 
     plan: { plots: rows, crafts },
     farmed, bought, focusPer, filler, targetCrafts,
     chainPlots: used, plotsSpare: spare,
+    // What the chain could not use, by sort and city, so idle land can be named.
+    freeLand: spent.free,
   };
 }
 
@@ -342,9 +470,9 @@ const fuss = (sched) => (sched.watered ? 1 : 0) + (sched.farmEvery > 1 ? 1 : 0);
 const rankOf = (perDay, sched) =>
   perDay - fuss(sched) * Math.abs(perDay) * FUSS_MARGIN;
 
-function attempt(chain, assign, sched, data, ctx, budget, withFiller = false) {
+function attempt(chain, assign, sched, data, ctx, budget, withFiller = false, cap = null) {
   const c = withSched(ctx, sched);
-  const built = buildPlan(chain, assign, data, c, sched, budget, withFiller);
+  const built = buildPlan(chain, assign, data, c, sched, budget, withFiller, cap);
   if (!built) return REJECTED;
   const sim = simulateCycle(built.plan, data, c);
   return {
@@ -360,32 +488,61 @@ function rescore(cand, plan, data, ctx) {
 }
 
 /** Shuffle a plot between rows, or off the plan entirely, while it helps. */
-function movePlots(cur, data, ctx, budget) {
+function movePlots(cur, data, ctx, budget, cap = null) {
   let best = cur;
   const n = cur.plan.plots.length;
-  const used = cur.plan.plots.reduce((t, p) => t + (p.count || 0), 0);
   const shift = (i, j, d) => cur.plan.plots.map((p, k) => ({
     ...p, count: (p.count || 0) + (k === i ? -d : 0) + (k === j ? d : 0),
   })).filter((p) => p.count > 0);
+  const legal = (plots) => fitsOnYourLand(plots, data, ctx, budget, cap);
 
   for (let i = 0; i < n; i++) {
     if ((cur.plan.plots[i].count || 0) < 1) continue;
     for (let j = 0; j < n; j++) {
       if (i === j) continue;
-      const cand = rescore(best, { ...cur.plan, plots: shift(i, j, 1) }, data, ctx);
+      const plots = shift(i, j, 1);
+      if (!legal(plots)) continue;
+      const cand = rescore(best, { ...cur.plan, plots }, data, ctx);
       if (cand.rank > best.rank + 1e-9) best = cand;
     }
     // Give this row one more plot, or take one away and farm less.
     for (const d of [1, -1]) {
-      if (d === 1 && used >= budget) continue;
       const plots = cur.plan.plots
         .map((p, k) => ({ ...p, count: (p.count || 0) + (k === i ? d : 0) }))
         .filter((p) => p.count > 0);
+      if (!legal(plots)) continue;
       const cand = rescore(best, { ...cur.plan, plots }, data, ctx);
       if (cand.rank > best.rank + 1e-9) best = cand;
     }
   }
   return best;
+}
+
+/**
+ * Could you actually lay this out on the land you have?
+ *
+ * The hill climb shuffles plots around one at a time, and without this it will
+ * happily put a tenth Farm in a city where you own six, or move a pasture's
+ * worth of geese onto a herb patch \u2014 improvements you cannot act on.
+ */
+export function fitsOnYourLand(plots, data, ctx, budget, cap = null) {
+  const total = plots.reduce((t, p) => t + (p.count || 0), 0);
+  if (!cap) return total <= budget;
+  const free = { ...cap };
+  for (const row of plots) {
+    const cycle = rowCycle(row, data, ctx, 1);
+    if (!cycle) continue;
+    let left = row.count || 0;
+    for (const kind of [plotKindOf(cycle), 'any']) {
+      const key = `${kind}:${row.cityId}`;
+      const take = Math.min(left, free[key] || 0);
+      free[key] = (free[key] || 0) - take;
+      left -= take;
+      if (left <= 0) break;
+    }
+    if (left > 0) return false;
+  }
+  return true;
 }
 
 /** Nudge the calendar and the plot counts until nothing helps any more. */
@@ -401,10 +558,10 @@ function refine(start, chain, data, ctx, budget, rounds = 10, grid = null) {
     for (const sched of tries) {
       if (sched.cycleDays < 1 || sched.farmDays < 1) continue;
       if (sched.farmDays > sched.cycleDays) continue;
-      const cand = attempt(chain, cur.assign, sched, data, ctx, budget);
+      const cand = attempt(chain, cur.assign, sched, data, ctx, budget, false, grid?.cap);
       if (cand.rank > next.rank + 1e-9) next = cand;
     }
-    const moved = movePlots(next, data, ctx, budget);
+    const moved = movePlots(next, data, ctx, budget, grid?.cap);
     if (moved.rank > next.rank + 1e-9) next = moved;
     if (next === cur) break;
     cur = next;
@@ -430,7 +587,11 @@ export function solve(recipeId, plotBudget, data, ctx, opts = {}) {
   const chain = chainFor(recipeId, data);
   if (!chain) return { ok: false, reason: 'unknown-recipe' };
 
-  const budget = Math.max(0, Math.round(Number(plotBudget)) || 0);
+  const holdings = (opts.holdings || []).filter((h) => (Number(h.count) || 0) > 0);
+  const cap = holdings.length ? capacityOf(holdings) : null;
+  const budget = holdings.length
+    ? totalPlots(holdings)
+    : Math.max(0, Math.round(Number(plotBudget)) || 0);
   const s = ctx.settings;
   if (!ctx.priceOf(chain.recipe.id)) {
     return { ok: false, reason: 'no-price', target: chain.recipe };
@@ -451,7 +612,7 @@ export function solve(recipeId, plotBudget, data, ctx, opts = {}) {
   // day: the point of a long cycle is no longer to bank focus, so capping the
   // idle days would hide the shapes that actually suit it.
   const grid = {
-    minCycle, maxCycle, everies, pinned: !!pinned,
+    minCycle, maxCycle, everies, pinned: !!pinned, cap,
     idleMax: pinned ? pinned : idleMax,
   };
 
@@ -475,7 +636,7 @@ export function solve(recipeId, plotBudget, data, ctx, opts = {}) {
     for (const assign of combos) {
       for (const targetFocus of [true, false]) {
         const r = attempt(chain, { ...assign, __target: targetFocus }, cand.sched,
-          data, ctx, budget);
+          data, ctx, budget, false, grid.cap);
         if (r.rank > bestHere.rank + 1e-9) bestHere = r;
       }
     }
@@ -498,7 +659,7 @@ export function solve(recipeId, plotBudget, data, ctx, opts = {}) {
     if (tuned.rank <= best.rank + 1e-9) break;
     best = tuned;
   }
-  if (opts.fillSpare) best = withFiller(best, chain, data, ctx, budget);
+  if (opts.fillSpare) best = withFiller(best, chain, data, ctx, budget, grid.cap);
 
   return describe(best, chain, data, ctx, budget, opts, grid);
 }
@@ -506,7 +667,7 @@ export function solve(recipeId, plotBudget, data, ctx, opts = {}) {
 const schedKey = (x) => `${x.cycleDays}/${x.farmDays}/${x.farmEvery}/${x.watered}`;
 
 /** Score one way of sourcing the chain across every shape of cycle worth trying. */
-function sweepCalendar(chain, assign, data, ctx, budget, grid) {
+function sweepCalendar(chain, assign, data, ctx, budget, grid) {   // eslint-disable-line
   const out = [];
   for (const cycleDays of range(grid.minCycle, grid.maxCycle)) {
     for (const farmDays of range(Math.max(1, cycleDays - grid.idleMax), cycleDays)) {
@@ -514,7 +675,7 @@ function sweepCalendar(chain, assign, data, ctx, budget, grid) {
         if (farmEvery > 1 && farmEvery > farmDays) continue;
         for (const watered of [false, true]) {
           const r = attempt(chain, assign, { cycleDays, farmDays, farmEvery, watered },
-            data, ctx, budget);
+            data, ctx, budget, false, grid.cap);
           if (Number.isFinite(r.score)) out.push(r);
         }
       }
@@ -524,9 +685,9 @@ function sweepCalendar(chain, assign, data, ctx, budget, grid) {
 }
 
 /** Plant whatever the chain left idle, if doing so actually pays. */
-function withFiller(cand, chain, data, ctx, budget) {
+function withFiller(cand, chain, data, ctx, budget, cap = null) {
   if (!cand.built || cand.built.plotsSpare <= 0) return cand;
-  const withIt = attempt(chain, cand.assign, cand.sched, data, ctx, budget, true);
+  const withIt = attempt(chain, cand.assign, cand.sched, data, ctx, budget, true, cap);
   return withIt.score > cand.score + 1e-9 ? withIt : cand;
 }
 
@@ -535,9 +696,9 @@ function withFiller(cand, chain, data, ctx, budget) {
  * cash crop on them. Kept out of the plan and out of the score: it answers a
  * different question, and it only gets added if you ask for it.
  */
-function spareAdvice(cand, chain, data, ctx, budget) {
+function spareAdvice(cand, chain, data, ctx, budget, cap = null) {
   if (!cand.built || cand.built.plotsSpare <= 0) return null;
-  const withIt = attempt(chain, cand.assign, cand.sched, data, ctx, budget, true);
+  const withIt = attempt(chain, cand.assign, cand.sched, data, ctx, budget, true, cap);
   const row = withIt.built?.filler;
   if (!row || !(withIt.score > cand.score + 1e-9)) return null;
   return {
@@ -611,7 +772,7 @@ function describe(best, chain, data, ctx, budget, opts = {}, grid = null) {
       // asks more of you has to clear a margin to win, so listing one here
       // unadjusted would have it appear to beat the very plan it lost to.
       if (fuss(alt) > fuss(sched)) continue;
-      const r = attempt(chain, best.assign, alt, data, ctx, budget);
+      const r = attempt(chain, best.assign, alt, data, ctx, budget, false, grid?.cap);
       if (Number.isFinite(r.score)) alternatives.push({ sched: alt, perDay: r.score });
     }
   }
@@ -644,11 +805,23 @@ function describe(best, chain, data, ctx, budget, opts = {}, grid = null) {
     },
     assign: best.assign,
     budget,
+    holdings: (opts.holdings || []).filter((h) => (Number(h.count) || 0) > 0),
+    // Ingredients you could have grown, if only you owned the right sort of
+    // plot. Being told to buy foxglove reads very differently once you know it
+    // is because you have no Farms rather than because buying was cheaper.
+    landGaps: landGapsFor(chain, data, ctx, opts.holdings),
+    // Plots the chain had no use for, by sort and city. Pastures going spare
+    // on a herb plan is worth saying out loud rather than leaving you to
+    // notice the totals do not add up.
+    idleLand: Object.entries(built.freeLand || {})
+      .filter(([, n]) => n > 0)
+      .map(([key, n]) => ({ kind: key.slice(0, key.indexOf(':')), city: cityOfPool(key), plots: n }))
+      .sort((a, b) => b.plots - a.plots),
     chainPlots,
     fillerPlots,
     plotsIdle: Math.max(0, budget - chainPlots - fillerPlots),
     filler: plan.plots.find((p) => p.filler) || null,
-    spare: spareAdvice(best, chain, data, ctx, budget),
+    spare: spareAdvice(best, chain, data, ctx, budget, grid?.cap),
     focusPerTarget: built.focusPer || 0,
     targetCrafts: line?.crafts || 0,
     made: line?.made || 0,
@@ -668,6 +841,24 @@ function describe(best, chain, data, ctx, budget, opts = {}, grid = null) {
     ties,
     alternatives: distinct.slice(0, 4),
   };
+}
+
+/** Ingredients the chain would grow, if you had anywhere to grow them. */
+function landGapsFor(chain, data, ctx, holdings) {
+  const owned = holdings || [];
+  if (!owned.length) return [];
+  const have = new Set(owned
+    .filter((h) => (Number(h.count) || 0) > 0)
+    .map((h) => (h.kind === 'pasture' ? 'pasture' : h.kind === 'any' ? 'any' : 'farm')));
+  if (have.has('any')) return [];
+
+  const byKind = new Map();
+  for (const [itemId, kind] of landNeeds(chain, data, ctx)) {
+    if (have.has(kind)) continue;
+    if (!byKind.has(kind)) byKind.set(kind, []);
+    byKind.get(kind).push(itemId);
+  }
+  return [...byKind.entries()].map(([kind, items]) => ({ kind, items }));
 }
 
 /** A few cycle lengths either side, for the "what else" list. */
