@@ -645,7 +645,7 @@ function craftRow(line, _i, all) {
         : `short on ${nameOf(bottleneck.id)}`)
       : 'materials run out')
     : limitedBy === 'focus'
-      ? (sim.craftLines.some((o) => o !== line && o.crafts > 0 && o.payRate > line.payRate)
+      ? ((all || []).some((o) => o !== line && o.crafts > 0 && o.payRate > line.payRate)
         ? 'focus runs out \u2014 it went to what pays better for it'
         : 'focus runs out')
       : line.bought?.length ? 'topped up from the market'
