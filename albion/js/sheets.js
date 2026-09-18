@@ -6,15 +6,120 @@ import {
 } from './calc.js';
 import { explain, fetchPrices, serverName, CITIES, SERVERS } from './prices.js';
 import {
-  addCraft, addPlot, DATA, exportJSON, importJSON, priceOf, pricedItemIds,
-  commit, removeCraft, removePlot, setNodeLevel, setPrice, setPrices,
-  setSettings, setSpec, state, updateCraft, updatePlot, wipe,
+  addCraft, addPlot, addSpare, applySolution, DATA, exportJSON, importJSON,
+  priceOf, pricedItemIds, commit, removeCraft, removePlot, setGoal, setNodeLevel,
+  setPrice, setPrices, setSettings, setSpec, state, updateCraft, updatePlot, wipe,
 } from './store.js';
+import { solve } from './solve.js';
 import { $, $$, closeSheet, esc, openSheet, toast } from './ui.js';
 import { hours, short, silver } from './util.js';
-import { cycleFor, ctx, detailHTML } from './views.js';
+import { cycleFor, ctx, detailHTML, setSolution, solution } from './views.js';
 
 const nameOf = (id) => DATA.items[id]?.name || id;
+
+/* ------------------------------------------------------------- goal --- */
+
+/** What you are making, and how much land you have to make it with. */
+export function openGoal() {
+  const goal = state.goal;
+  const byCat = { potion: [], food: [] };
+  for (const r of DATA.recipes) (byCat[r.category] || byCat.potion).push(r);
+
+  const list = (rs) => rs
+    .sort((a, b) => a.tier - b.tier || a.name.localeCompare(b.name))
+    .map((r) => `
+      <button class="row" data-recipe="${esc(r.id)}"
+        ${r.id === goal.recipeId ? 'style="border-color:var(--gold)"' : ''}>
+        <span class="ico">${r.category === 'food' ? '\u{1F35E}' : '\u{1F9EA}'}</span>
+        <span class="body"><span class="title">T${r.tier} ${esc(r.name)}</span>
+          <span class="meta">${r.inputs.map((i) => `${i.count}× ${nameOf(i.id)}`).join(', ')}
+            → ${r.amount}${priceOf(r.id) ? '' : ' · no price yet'}</span></span>
+        <span class="amt">${r.id === goal.recipeId ? '✓' : '+'}</span>
+      </button>`).join('');
+
+  openSheet(`
+    <h2>What are you making?</h2>
+    <p class="muted">Pick the thing you want to end up with and say how much land
+      you have. Everything else — what to plant, how often to go out, when to
+      stop and bank focus, how much to brew — gets worked out from there.</p>
+
+    <div class="field"><label>Plots you can farm on</label>
+      <input type="number" id="plots" inputmode="numeric" min="0" max="999"
+        value="${goal.plots}">
+      <div class="hint">Whole 3×3 plots and pastures, not tiles. An island counts
+        its plots; a guild island counts all of them.</div></div>
+
+    <div class="section-head"><h2>Potions</h2></div>${list(byCat.potion)}
+    <div class="section-head"><h2>Food</h2></div>${list(byCat.food)}
+  `, {
+    onMount(root) {
+      const save = () => setGoal({ plots: Number($('#plots', root).value) });
+      $('#plots', root).onchange = save;
+      root.onclick = (e) => {
+        const btn = e.target.closest('[data-recipe]');
+        if (!btn) return;
+        save();
+        setGoal({ recipeId: btn.dataset.recipe });
+        closeSheet();
+        runSolve();
+      };
+    },
+  });
+}
+
+/**
+ * Work the plan out and put it in place.
+ *
+ * The search runs a few hundred simulations, which is long enough to feel like
+ * a freeze on a phone, so the screen says what it is doing before it starts.
+ */
+export function runSolve() {
+  const goal = state.goal;
+  const recipe = DATA.recipes.find((r) => r.id === goal.recipeId);
+  if (!recipe) { openGoal(); return; }
+  if (!goal.plots) { toast('Say how many plots you have first'); openGoal(); return; }
+
+  toast(`Working out ${recipe.name}…`);
+  setTimeout(() => {
+    let result;
+    try {
+      result = solve(goal.recipeId, goal.plots, DATA, ctx());
+    } catch (err) {
+      console.error(err);
+      toast('Could not work that one out');
+      return;
+    }
+    if (!result.ok) {
+      setSolution(null);
+      // A plan is only as real as its prices, so offer to go and get them
+      // rather than asking you to type a number you would have to guess.
+      if (result.reason === 'no-price') {
+        toast(`No market price for ${recipe.name}`,
+          { label: 'Fetch live', run: () => runPriceFetch().then(runSolve) });
+      } else {
+        toast('No plan makes that at these prices');
+      }
+      return;
+    }
+    setSolution(result);
+    applySolution(result);
+    const stale = result.steps.filter((x) => !priceOf(x.itemId)).length;
+    if (stale) {
+      toast(`${stale} ingredient${stale === 1 ? ' has' : 's have'} no price`,
+        { label: 'Fetch live', run: () => runPriceFetch().then(runSolve) });
+    } else {
+      toast(`${short(result.perDay)} a day · ${Math.round(result.made)} ${recipe.name}`);
+    }
+  }, 30);
+}
+
+/** Take the solver up on its suggestion for the land the chain did not need. */
+export function acceptSpare() {
+  const spare = solution?.spare;
+  if (!spare) return;
+  addSpare(spare);
+  toast(`${spare.plots} ${spare.plots === 1 ? 'plot' : 'plots'} added`);
+}
 
 /* ------------------------------------------------------- pick a plant -- */
 

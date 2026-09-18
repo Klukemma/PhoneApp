@@ -440,6 +440,52 @@ export function farmDayCount(farmDays, farmEvery = 1) {
 }
 
 /**
+ * Rest days exist to bank focus, so a row that spends none has no reason to
+ * pause: collecting eggs costs nothing, and you collect them every day even on
+ * a day you skip watering the herbs.
+ */
+export const restsWith = (cycle) => (cycle?.focus || 0) > 0;
+
+/**
+ * How many harvests one row gets out of a farming phase of this shape.
+ *
+ * A row that outgrows your login rhythm is capped by the rhythm; a row that
+ * takes longer than the rhythm is capped by its own growth time.
+ */
+export function harvestsFor(cycle, { farmDays, farmEvery = 1, cadenceHours = 24 }) {
+  if (!cycle || farmDays <= 0) return 0;
+  const every = restsWith(cycle) ? Math.max(1, Math.round(farmEvery) || 1) : 1;
+  const rhythmHours = Math.max(cadenceHours || 24, every * 24);
+  return rhythmHours >= cycle.hours
+    ? farmDayCount(farmDays, every)
+    : Math.floor((farmDays * 24) / cycle.hours);
+}
+
+/** The cycle for one farm row, whatever it happens to be growing. */
+export function rowCycle(row, data, ctx, wateredFraction) {
+  const at = { ...ctx, cityId: row.cityId, wateredFraction };
+  const plant = data.plants.find((p) => p.id === row.itemId);
+  if (plant) return plantCycle(plant, at);
+  const animal = data.animals.find((a) => a.id === row.itemId);
+  if (!animal) return null;
+  return row.mode === 'product' ? productCycle(animal, at) : animalCycle(animal, at);
+}
+
+/** What one tile of a row yields, and what it yields it as. */
+export function rowOutput(row, cycle, data) {
+  if (!cycle) return null;
+  if (cycle.kind === 'plant') {
+    const plant = data.plants.find((p) => p.id === row.itemId);
+    return { itemId: plant.cropId, perTile: cycle.yieldPerTile };
+  }
+  const animal = data.animals.find((a) => a.id === row.itemId);
+  if (!animal) return null;
+  return cycle.kind === 'product'
+    ? { itemId: animal.product.itemId, perTile: cycle.perCycle }
+    : { itemId: animal.grownId, perTile: 1 };
+}
+
+/**
  * Focus day by day across one cycle.
  *
  * Focus regenerates a fixed amount daily and stops dead at the cap, so idling
@@ -506,6 +552,30 @@ function orderByDependency(jobs, recipeOf) {
 const add = (pool, id, qty) => { pool[id] = (pool[id] || 0) + qty; };
 
 /**
+ * What the things in your pool actually cost you.
+ *
+ * A craft priced at market rates reads as a disaster when the herbs going into
+ * it came off your own plots: you never paid the market for them, you paid for
+ * seeds. Carrying a cost basis through the pool is the only way a line on the
+ * screen can agree with the total at the top.
+ */
+function makeLedgerOfCost() {
+  const basis = {};
+  return {
+    put(id, cost) { basis[id] = (basis[id] || 0) + cost; },
+    /** Take the share of an item's basis that goes with `qty` of `have`. */
+    take(id, qty, have) {
+      if (!(have > 0) || !(qty > 0)) return 0;
+      const share = Math.min(1, qty / have);
+      const out = (basis[id] || 0) * share;
+      basis[id] = (basis[id] || 0) - out;
+      return out;
+    },
+    of(id) { return basis[id] || 0; },
+  };
+}
+
+/**
  * One whole cycle: farm for a while, let focus build, then craft in a batch.
  *
  * This is a single profit and loss for the cycle rather than a sum of daily
@@ -520,8 +590,6 @@ export function simulateCycle(plan, data, ctx) {
   const farmEvery = Math.max(1, Math.round(s.farmEvery) || 1);
   const cadence = s.cadenceHours || 24;
 
-  const plantOf = Object.fromEntries(data.plants.map((p) => [p.id, p]));
-  const animalOf = Object.fromEntries(data.animals.map((a) => [a.id, a]));
   const recipeOf = (id) => data.recipes.find((r) => r.id === id);
 
   /* ---- farm ----
@@ -531,31 +599,12 @@ export function simulateCycle(plan, data, ctx) {
    * cannot pay for must not hand you its seed bonus, so the second pass redoes
    * the farm with the share that really got watered.
    */
-  const cycleFor = (row, wateredFraction) => {
-    const at = { ...ctx, cityId: row.cityId, wateredFraction };
-    const plant = plantOf[row.itemId];
-    const animal = animalOf[row.itemId];
-    if (plant) return plantCycle(plant, at);
-    if (!animal) return null;
-    return row.mode === 'product' ? productCycle(animal, at) : animalCycle(animal, at);
-  };
+  const cycleFor = (row, wateredFraction) => rowCycle(row, data, ctx, wateredFraction);
 
   const tilesOf = (row) => (row.count || 0) * (s.tilesPerPlot || TILES_PER_PLOT);
 
-  /**
-   * Rest days exist to bank focus, so a row that spends none has no reason to
-   * pause: collecting eggs costs nothing, and you collect them every day even
-   * on a day you skip watering the herbs.
-   */
-  const restsWith = (cycle) => (cycle.focus || 0) > 0;
-
-  const harvestsOf = (cycle) => {
-    const every = restsWith(cycle) ? farmEvery : 1;
-    const rhythmHours = Math.max(cadence, every * 24);
-    return rhythmHours >= cycle.hours
-      ? farmDayCount(farmDays, every)
-      : Math.floor((farmDays * 24) / cycle.hours);
-  };
+  const harvestsOf = (cycle) =>
+    harvestsFor(cycle, { farmDays, farmEvery, cadenceHours: cadence });
 
   // Pass one: the watering bill, if every plot got watered.
   let wateringPerDay = 0;
@@ -577,39 +626,37 @@ export function simulateCycle(plan, data, ctx) {
 
   // Pass two: the farm as it really runs.
   const pool = {};
+  const cost0 = makeLedgerOfCost();
   const farmLines = [];
   let farmCost = 0;
 
   for (const row of plan.plots) {
     const cycle = cycleFor(row, wateredFraction);
     if (!cycle) continue;
-    const plant = plantOf[row.itemId];
-    const animal = animalOf[row.itemId];
+    const plant = cycle.kind === 'plant' ? cycle.ref : null;
 
     const harvests = harvestsOf(cycle);
     const plots = row.count || 0;
     const tiles = tilesOf(row);
 
-    let itemId = null;
-    let perHarvest = 0;
-    if (cycle.kind === 'plant') { itemId = plant.cropId; perHarvest = cycle.yieldPerTile; }
-    else if (cycle.kind === 'product') { itemId = animal.product.itemId; perHarvest = cycle.perCycle; }
-    else { itemId = animal.grownId; perHarvest = 1; }
-
+    const { itemId, perTile: perHarvest } = rowOutput(row, cycle, data);
     const produced = perHarvest * tiles * harvests;
     add(pool, itemId, produced);
 
     // Seeds that came back beyond what was replanted are stock, not a discount.
-    if (cycle.kind === 'plant' && cycle.seedSurplus > 0) {
+    if (plant && cycle.seedSurplus > 0) {
       add(pool, plant.seedId, cycle.seedSurplus * tiles * harvests);
     }
 
-    const costPer = cycle.kind === 'plant'
+    const costPer = plant
       ? cycle.seedsBought * ctx.priceOf(plant.seedId)   // surplus is produce, above
       : cycle.kind === 'product' ? cycle.feedCost
         : cycle.feedCost + cycle.babyCost;
     const cost = costPer * tiles * harvests;
     farmCost += cost;
+    // The whole bill lands on the crop; surplus seeds are a by-product and
+    // carry nothing, which is why they read as pure profit when sold.
+    cost0.put(itemId, cost);
 
     farmLines.push({
       row, cycle, harvests, itemId, produced, cost, plots, tiles,
@@ -657,22 +704,34 @@ export function simulateCycle(plan, data, ctx) {
     if (!Number.isFinite(crafts)) crafts = 0;
 
     const consumed = {};
+    let basisIn = 0;
     for (const i of perCraft) {
       const need = i.net * crafts;
       const have = pool[i.id] || 0;
       const short = Math.max(0, need - have);
-      if (short > 0) buyCost += short * ctx.priceOf(i.id);   // fixed mode tops up
+      if (short > 0) {
+        const bill = short * ctx.priceOf(i.id);
+        buyCost += bill;                                     // fixed mode tops up
+        basisIn += bill;
+      }
+      basisIn += cost0.take(i.id, Math.min(need, have), have);
       pool[i.id] = Math.max(0, have - need);
       consumed[i.id] = need;
     }
     const made = recipe.amount * crafts;
     add(pool, recipe.id, made);
     focusLeft -= batch.focus * crafts;
-    feeCost += ((recipe.silver || 0) + (s.stationFeePerCraft || 0)) * crafts;
+    const fees = ((recipe.silver || 0) + (s.stationFeePerCraft || 0)) * crafts;
+    feeCost += fees;
+    basisIn += fees;
+    cost0.put(recipe.id, basisIn);
 
     craftLines.push({
       job, recipe, batch, crafts, limitedBy, byMaterial, byFocus,
       consumed, made, useFocus, inputs: perCraft, bottleneck,
+      // What this step really cost, counting your own produce at what you paid
+      // to grow it rather than at what it would fetch.
+      basisIn,
       // An input you have none of, which some other recipe could make for you.
       missing: perCraft.filter((i) => i.have <= 0).map((i) => i.id),
       focusUsed: batch.focus * crafts,
@@ -715,6 +774,19 @@ export function simulateCycle(plan, data, ctx) {
   }
   sales.sort((a, b) => b.value - a.value);
   stock.sort((a, b) => b.value - a.value);
+
+  /* A step that feeds another step has no profit of its own: its cost simply
+   * moves along the chain. Only the steps whose output you actually sell get a
+   * figure, and those figures are what the cycle's profit is made of. */
+  const soldValue = Object.fromEntries(sales.map((x) => [x.id, x.value]));
+  for (const line of craftLines) {
+    const feeds = craftLines.find(
+      (o) => o !== line && o.recipe.inputs.some((i) => i.id === line.recipe.id));
+    line.feeds = feeds ? feeds.recipe : null;
+    line.terminal = !line.feeds;
+    line.revenue = soldValue[line.recipe.id] || 0;
+    line.gain = line.terminal ? line.revenue - line.basisIn : null;
+  }
 
   /* ---- is the farm outrunning the crafting? ---- */
   const consumed = {};

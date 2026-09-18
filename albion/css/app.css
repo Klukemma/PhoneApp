@@ -260,3 +260,32 @@ nav button[aria-current="page"] .e { filter: none; opacity: 1; }
   font-size: 10.5px; color: var(--faint);
 }
 .spark i.rest { background: #2dd4bf; opacity: .7; }   /* a day skipped to bank focus */
+
+/* ----------------------------------------------------------- the goal -- */
+
+.goal { padding: 6px 6px 10px; }
+.goal-line {
+  display: flex; align-items: baseline; gap: 10px; width: 100%;
+  padding: 11px 10px; border-radius: 11px; text-align: left;
+}
+.goal-line:active { background: var(--card-2); }
+.goal-line .k { font-size: 12px; color: var(--dim); width: 42px; flex: 0 0 42px; }
+.goal-line .v {
+  flex: 1; min-width: 0; font-size: 15px; font-weight: 600;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.goal-line .go { color: var(--faint); }
+.goal .btn { margin-top: 6px; }
+.goal .btn[disabled] { opacity: .45; }
+
+/* The routine: what to do, on which day. */
+.step { display: flex; gap: 12px; padding: 9px 0; }
+.step + .step { border-top: 1px solid var(--line); }
+.step .when {
+  width: 84px; flex: 0 0 84px; font-size: 11.5px; color: var(--gold);
+  font-weight: 620; padding-top: 2px;
+}
+.step .body { flex: 1; min-width: 0; }
+.step .what, .step .note { display: block; }
+.step .what { font-size: 13.5px; }
+.step .note { font-size: 11.5px; color: var(--faint); margin-top: 2px; }

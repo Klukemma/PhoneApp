@@ -46,6 +46,9 @@ function defaults() {
     prices: {},
     spec: {},                  // recipe id -> a flat efficiency override
     nodeLevels: {},            // destiny board node id -> level
+    // What you are trying to make, and how much land you have to do it with.
+    // The solver works from these two and writes the plan below.
+    goal: { recipeId: '', plots: 9 },
     plan: { plots: [], crafts: [] },
   };
 }
@@ -80,6 +83,7 @@ function normalize(raw) {
     prices: { ...(raw.prices || {}) },
     spec: { ...(raw.spec || {}) },
     nodeLevels: { ...(raw.nodeLevels || {}) },
+    goal: { ...base.goal, ...(raw.goal || {}) },
     plan: {
       plots: Array.isArray(raw.plan?.plots) ? raw.plan.plots : [],
       crafts: (Array.isArray(raw.plan?.crafts) ? raw.plan.crafts : []).map((c) => {
@@ -226,6 +230,42 @@ export function removeCraft(id) {
   const [gone] = state.plan.crafts.splice(i, 1);
   commit();
   return gone;
+}
+
+/* -------------------------------------------------------------- goal --- */
+
+export function setGoal(patch) {
+  Object.assign(state.goal, patch);
+  if (state.goal.plots !== undefined) {
+    const n = Math.round(Number(state.goal.plots));
+    state.goal.plots = Number.isFinite(n) && n > 0 ? Math.min(999, n) : 0;
+  }
+  commit();
+}
+
+/**
+ * Take the plan the solver worked out. It replaces what was there rather than
+ * merging: a recommendation is a whole answer, and half of one is not an
+ * answer at all.
+ */
+export function applySolution(result) {
+  if (!result?.ok) return;
+  state.plan = {
+    plots: result.plan.plots.map((p) => ({ ...p, id: uid() })),
+    crafts: result.plan.crafts.map((c) => ({ ...c, id: uid() })),
+  };
+  Object.assign(state.settings, result.settingsPatch);
+  commit();
+}
+
+/** Plant the land the chain did not need with what the solver suggested. */
+export function addSpare(spare) {
+  if (!spare) return;
+  state.plan.plots.push({
+    id: uid(), itemId: spare.itemId, mode: spare.mode,
+    count: spare.plots, cityId: state.settings.farmCity, filler: true,
+  });
+  commit();
 }
 
 export function setSettings(patch) {

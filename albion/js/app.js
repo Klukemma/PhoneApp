@@ -2,9 +2,9 @@
 
 import { loadGameData, hydrate, state, subscribe } from './store.js';
 import {
-  openAddCraft, openAddPlot, openBoard, openCraft, openCraftCity, openCycle,
-  openFarmCity, openMastery, openPlot, openPrice, openPriceSource, openSettings,
-  runPriceFetch,
+  acceptSpare, openAddCraft, openAddPlot, openBoard, openCraft, openCraftCity,
+  openCycle, openFarmCity, openGoal, openMastery, openPlot, openPrice,
+  openPriceSource, openSettings, runPriceFetch, runSolve,
 } from './sheets.js';
 import { $, closeSheet, sheetIsOpen } from './ui.js';
 import {
@@ -48,7 +48,7 @@ function wire() {
     const el = e.target.closest(
       '[data-act],[data-plot],[data-craft],[data-price],[data-rank],' +
       '[data-price-filter],[data-toggle],[data-add-plot],[data-add-craft],' +
-      '[data-add-step]');
+      '[data-add-step],[data-add-spare]');
     if (!el) return;
     const d = el.dataset;
 
@@ -66,6 +66,8 @@ function wire() {
     } else if (d.addCraft) {
       addCraft(d.addCraft);
       go('plan');
+    } else if (d.addSpare) {
+      acceptSpare();
     } else if (d.addStep) {
       // The missing intermediate is usually a cheap one, so keep focus for
       // whatever it feeds rather than burning it here.
@@ -79,6 +81,10 @@ function wire() {
       render();
     } else if (d.toggle) {
       setSettings({ [d.toggle]: !state.settings[d.toggle] });
+    } else if (d.act === 'goal') {
+      openGoal();
+    } else if (d.act === 'solve') {
+      runSolve();
     } else if (d.act === 'add-plot') {
       openAddPlot();
     } else if (d.act === 'add-craft') {

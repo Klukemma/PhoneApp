@@ -14,6 +14,15 @@ export const setRankTab = (t) => { rankTab = t; };
 export let priceFilter = 'used';
 export const setPriceFilter = (f) => { priceFilter = f; };
 
+/**
+ * The last thing the solver worked out, kept for the session so its reasoning
+ * stays on screen. It is never the source of any figure — the plan it wrote is
+ * simulated like any other, so editing a plot by hand changes the numbers and
+ * the recommendation sits above them as what was suggested, not what is true.
+ */
+export let solution = null;
+export const setSolution = (r) => { solution = r; };
+
 /** Everything the calculator needs, assembled from the current state. */
 export function ctx() {
   return {
@@ -68,16 +77,24 @@ export function plan() {
   const sim = simulateCycle(state.plan, DATA, c);
   const s = state.settings;
   const unpriced = missingPrices();
+  const goal = state.goal;
 
-  const focusPct = sim.ledger.cap > 0
-    ? Math.min(1, sim.focusUsed / sim.ledger.cap) : 0;
+  const focusPct = sim.focusAtCraft > 0
+    ? Math.min(1, sim.focusUsed / sim.focusAtCraft) : 0;
+  const idleFocus = sim.focusLeft >= oneCraftOf(sim);
 
   return {
     title: 'Plan',
-    sub: `${sim.cycleDays}-day cycle · ${sim.farmingDays} ${
-      sim.farmingDays === 1 ? 'harvest' : 'harvests'}${
-      sim.farmEvery > 1 ? ` every ${sim.farmEvery} days` : ''}, ${sim.idleDays} idle`,
+    sub: goal.recipeId
+      ? `${goal.plots} ${goal.plots === 1 ? 'plot' : 'plots'} · ${
+        esc(DATA.recipes.find((r) => r.id === goal.recipeId)?.name || 'pick a potion')}`
+      : `${sim.cycleDays}-day cycle · ${sim.farmingDays} ${
+        sim.farmingDays === 1 ? 'harvest' : 'harvests'}${
+        sim.farmEvery > 1 ? ` every ${sim.farmEvery} days` : ''}, ${sim.idleDays} idle`,
     html: `
+      ${goalCard()}
+
+      ${state.plan.plots.length || state.plan.crafts.length ? `
       <section>
         <div class="card hero">
           <div class="label">Profit per cycle</div>
@@ -86,12 +103,14 @@ export function plan() {
           <div class="meter"><i class="spent" style="width:${focusPct * 100}%"></i></div>
           <div class="hero-foot">
             <span class="num">${short(sim.focusUsed)} of ${short(sim.focusAtCraft)} focus spent</span>
-            <span class="num ${sim.focusLeft > 0 ? 'bad' : ''}">${sim.focusLeft > 0
+            <span class="num ${idleFocus ? 'bad' : ''}">${idleFocus
               ? `${short(sim.focusLeft)} left over` : 'all used'}</span>
           </div>
         </div>
       </section>
 
+      ${routineCard(sim)}
+      ${answerCard(sim)}
       ${cycleCard(sim)}
 
       ${unpriced.length ? `
@@ -138,8 +157,202 @@ export function plan() {
         </div>
       </section>` : ''}
 
-      ${stockCard(sim)}`,
+      ${stockCard(sim)}` : empty(EMOJI.potion,
+        'Tell it what you are making and how much land you have, then let it work the rest out.')}`,
   };
+}
+
+/* ---------------------------------------------------------- the goal --- */
+
+/** What you are making, with how much land. The front door of the whole app. */
+function goalCard() {
+  const goal = state.goal;
+  const recipe = DATA.recipes.find((r) => r.id === goal.recipeId);
+  return `
+    <section>
+      <div class="card goal">
+        <button class="goal-line" data-act="goal">
+          <span class="k">Make</span>
+          <span class="v">${recipe
+            ? `T${recipe.tier} ${esc(recipe.name)}` : 'pick a potion'}</span>
+          <span class="go">›</span>
+        </button>
+        <button class="goal-line" data-act="goal">
+          <span class="k">With</span>
+          <span class="v num">${goal.plots} ${goal.plots === 1 ? 'plot' : 'plots'}</span>
+          <span class="go">›</span>
+        </button>
+        <button class="btn primary" data-act="solve" ${recipe ? '' : 'disabled'}>
+          ${state.plan.plots.length ? 'Work it out again' : 'Work it out'}</button>
+      </div>
+    </section>`;
+}
+
+/* ------------------------------------------------------- the routine --- */
+
+/**
+ * What to actually do, day by day.
+ *
+ * Read from the simulation rather than from the solver, so it keeps telling
+ * the truth after you have moved a plot around by hand.
+ */
+function routineCard(sim) {
+  if (!sim.farmLines.length && !sim.craftLines.length) return '';
+  const s = state.settings;
+  const steps = [];
+
+  if (sim.farmDays > 0 && sim.farmLines.length) {
+    const days = sim.ledger.days.filter((d) => d.farming).map((d) => d.day);
+    const when = sim.farmEvery > 1
+      ? `days ${days.slice(0, 4).join(', ')}${days.length > 4 ? '…' : ''}`
+      : `every day`;
+    steps.push({
+      when: sim.farmDays === 1 ? 'Day 1' : `Days 1–${sim.farmDays}`,
+      what: `Harvest and replant, ${when}`,
+      note: `${sim.farmingDays} ${sim.farmingDays === 1 ? 'harvest' : 'harvests'}${
+        sim.restDays > 0 ? `, resting the other ${sim.restDays}` : ''}${
+        s.watered ? ` · water what you can afford to` : ''}`,
+    });
+  }
+
+  if (sim.idleDays > 0) {
+    steps.push({
+      when: sim.idleDays === 1 ? `Day ${sim.cycleDays}`
+        : `Days ${sim.farmDays + 1}–${sim.cycleDays}`,
+      what: 'Stop farming and let focus bank',
+      note: `Focus reaches ${short(sim.focusAtCraft)} by craft day${
+        sim.ledger.cappedOn ? `, capping on day ${sim.ledger.cappedOn}` : ''}`,
+    });
+  }
+
+  const made = sim.craftLines.filter((l) => l.crafts > 0);
+  if (made.length) {
+    steps.push({
+      when: `Day ${sim.cycleDays}`,
+      what: made.map((l) => `${short(l.crafts)}× ${nameOf(l.recipe.id)}`).join(', '),
+      note: `${short(sim.focusUsed)} focus · ${short(sim.revenue)} on the market`,
+    });
+  }
+
+  if (!steps.length) return '';
+
+  // The question everybody asks: how long should I sit on my focus?
+  const gap = Math.max(1, Math.round((s.focusCap || 0) / Math.max(1, s.focusPerDay || 1)));
+  const banking = sim.idleDays > 0
+    ? `Those ${sim.idleDays} idle ${sim.idleDays === 1 ? 'day is' : 'days are'} what
+       pays for the batch: focus climbs to ${short(sim.focusAtCraft)} while the farm
+       stands still.`
+    : `No waiting: focus regenerates ${short(s.focusPerDay)} a day and stops dead at
+       ${short(s.focusCap)}, so ${gap} days is the most that is ever worth banking.
+       This cycle spends it as fast as it arrives.`;
+
+  return `
+    <section>
+      <div class="section-head"><h2>Your routine</h2>
+        <span class="right num" style="color:var(--dim)">${sim.cycleDays}-day cycle</span></div>
+      <div class="card">
+        ${steps.map((st) => `
+          <div class="step">
+            <span class="when">${esc(st.when)}</span>
+            <span class="body">
+              <span class="what">${esc(st.what)}</span>
+              <span class="note">${esc(st.note)}</span>
+            </span>
+          </div>`).join('')}
+        <div class="warn-note" style="color:var(--dim)">${banking}</div>
+      </div>
+    </section>`;
+}
+
+/* -------------------------------------------------- what it worked out - */
+
+const LIMIT_NOTE = {
+  focus: 'Focus is the wall. More land would only grow produce you cannot brew,'
+    + ' so the spare plots are better off earning on their own.',
+  plots: 'Land is the wall. Every plot is already feeding the batch, and more'
+    + ' of them would turn straight into more potions.',
+  materials: 'Neither focus nor land is quite the wall — whole plots do not'
+    + ' divide evenly into the recipe, so one ingredient runs out first.',
+  nothing: 'Nothing gets made at these prices. Check the ones it is missing.',
+};
+
+/** The solver's reasoning, shown until you ask it something else. */
+function answerCard(sim) {
+  const r = solution;
+  if (!r?.ok || r.target.id !== state.goal.recipeId) return '';
+
+  const buys = r.buys.filter((b) => b.perTarget > 0);
+  const alt = r.alternatives.filter((a) => a.perDay > 0).slice(0, 3);
+  const ties = (r.ties || []).slice(0, 2);
+  // The plan is only worth what its prices are worth, so say how complete they are.
+  const chainIds = [...new Set([r.target.id, ...r.steps.map((x) => x.itemId)])];
+  const priced = {
+    total: chainIds.length,
+    missing: chainIds.filter((id) => !priceOf(id)).length,
+  };
+  const shape = (x) => `${x.cycleDays}-day, farm ${x.farmDays}${
+    x.farmEvery > 1 ? ` every ${x.farmEvery}` : ''}`;
+
+  return `
+    <section>
+      <div class="section-head"><h2>Why this plan</h2></div>
+      <div class="card">
+        ${r.profitable ? '' : `<div class="warn-note">At your prices this loses
+          money \u2014 every way of making it that was tried came out
+          negative. Check the prices, or make something else.</div>`}
+        <div class="bar-row"><span class="n">Potions a cycle</span>
+          <span class="v num">${short(r.made)}</span></div>
+        <div class="bar-row"><span class="n">Plots on the chain</span>
+          <span class="v num">${r.chainPlots} of ${r.budget}</span></div>
+        <div class="bar-row"><span class="n">Focus per craft, which makes ${r.target.amount}</span>
+          <span class="v num">${r.targetFocus ? short(r.focusPerTarget) : 'none'}</span></div>
+        <div class="warn-note" style="color:var(--dim)">${esc(LIMIT_NOTE[r.limit] || '')}</div>
+        ${priced.missing ? `<div class="warn-note">${priced.missing} of the
+          ${priced.total} items in this chain have no market price, so the plan
+          is built on incomplete numbers. Fetch them and work it out again.</div>`
+          : `<div class="warn-note" style="color:var(--dim)">Worked out from
+            ${esc(serverName(state.settings.server))} prices in
+            ${esc(state.settings.priceCity)}. Fetch them again before you commit
+            to a cycle \u2014 a herb doubling in price changes the answer.</div>`}
+        ${!r.targetFocus ? `<div class="warn-note" style="color:var(--dim)">
+          It brews without focus: you can grow more than ${short(sim.focusAtCraft)}
+          focus is able to process, and a bigger batch at a worse return rate beats
+          a small one at a good rate when the herbs are your own.</div>` : ''}
+        ${buys.length ? `<div class="warn-note" style="color:var(--dim)">
+          Buy rather than grow: ${buys.map((b) => esc(nameOf(b.itemId))).join(', ')}.
+          The land pays better under something else.</div>` : ''}
+      </div>
+    </section>
+
+    ${r.spare ? `
+    <section>
+      <button class="row" data-add-spare="1" style="border-color:var(--gold)">
+        <span class="ico">\u{1F331}</span>
+        <span class="body">
+          <span class="title">${r.spare.plots} spare ${r.spare.plots === 1 ? 'plot' : 'plots'}
+            → ${esc(r.spare.ref?.name || nameOf(r.spare.itemId))}</span>
+          <span class="meta">The chain does not need them. This is the best they could earn.</span>
+        </span>
+        <span class="amt good num">+${short(r.spare.perDay)}/d</span>
+      </button>
+    </section>` : ''}
+
+    ${alt.length || ties.length ? `
+    <section>
+      <div class="section-head"><h2>Other cycles</h2></div>
+      <div class="card">
+        ${alt.map((a) => `
+          <div class="bar-row">
+            <span class="n">${esc(shape(a.sched))}</span>
+            <span class="v num" style="color:var(--dim)">${short(a.perDay)}/d</span></div>`).join('')}
+        <div class="bar-row total"><span class="n">This plan · ${esc(shape(r.sched))}</span>
+          <span class="v num good">${short(r.perDay)}/d</span></div>
+        ${ties.length ? `<div class="warn-note" style="color:var(--dim)">
+          ${ties.map((t) => esc(shape(t.sched))).join(' and a ')} ${
+            ties.length === 1 ? 'earns' : 'earn'} the same. Take whichever suits how
+          often you can log in \u2014 this one is just the shortest.</div>` : ''}
+      </div>
+    </section>` : ''}`;
 }
 
 /**
@@ -147,6 +360,12 @@ export function plan() {
  * The warnings are the point — capped focus and unwaterable plots are both
  * silent losses otherwise.
  */
+/** What one craft of the cheapest job costs, or infinity if none use focus. */
+function oneCraftOf(sim) {
+  return Math.min(...sim.craftLines
+    .filter((l) => l.batch.focus > 0).map((l) => l.batch.focus), Infinity);
+}
+
 function cycleCard(sim) {
   const s = state.settings;
   const l = sim.ledger;
@@ -182,7 +401,9 @@ function cycleCard(sim) {
       the extra seeds \u2014 the figures above already account for it. Fewer plots,
       or farming less often, would water more of them.`);
   }
-  if (sim.focusLeft > 0 && sim.craftLines.length) {
+  // A few focus left over is the remainder of a division, not money on the
+  // table. A whole craft's worth of it is.
+  if (sim.focusLeft >= oneCraftOf(sim) && sim.craftLines.length) {
     warn.push(`${short(sim.focusLeft)} focus is left unspent \u2014 your crafting
       ran out of materials first.`);
   }
@@ -228,9 +449,20 @@ function farmRow(line, sim) {
     </button>`;
 }
 
+/**
+ * One craft job.
+ *
+ * The figure is what this step's output actually sold for, so the farm rows
+ * above and the craft rows here add up to the profit at the top of the screen.
+ * Whether the step was worth doing is a different question, and it goes in the
+ * meta line: the margin there counts your own produce at what it cost you to
+ * grow, not at what it would have fetched, because you never sold it. A step
+ * that only feeds the next one has no figure at all — nothing of it reaches
+ * the market, and its cost simply carries forward.
+ */
 function craftRow(line) {
-  const { batch, recipe, crafts, made, limitedBy, job, useFocus, bottleneck } = line;
-  const destroys = crafts > 0 && batch.profit < 0;
+  const { recipe, crafts, made, limitedBy, job, bottleneck } = line;
+  const destroys = crafts > 0 && line.terminal && line.gain < 0;
 
   // Naming the input that ran out is the difference between "materials run
   // out" and knowing what to go and plant, or which step you forgot to add.
@@ -242,21 +474,27 @@ function craftRow(line) {
       : 'materials run out')
     : limitedBy === 'focus' ? 'focus runs out' : 'you set the number';
 
+  const margin = line.feeds
+    ? `feeds ${nameOf(line.feeds.id)}`
+    : destroys ? `${short(-line.gain)} less than it cost`
+      : `${short(line.gain)} over cost`;
+
   return `
     <button class="row ${crafts === 0 ? 'warn' : ''}" data-craft="${esc(job.id)}">
       <span class="ico">${EMOJI[recipe.category] || EMOJI.potion}</span>
       <span class="body">
-        <span class="title">T${recipe.tier} ${esc(recipe.name)} \u00d7${short(made)}</span>
-        <span class="meta">${destroys
-          ? 'inputs sell for more than the output'
-          : `${short(crafts)} crafts · ${esc(why)} · ${useFocus
-            ? `${short(line.focusUsed)} focus` : 'no focus'}`}</span>
+        <span class="title">T${recipe.tier} ${esc(recipe.name)} ×${short(made)}</span>
+        <span class="meta">${short(crafts)} crafts · ${esc(why)}${
+          crafts ? ` · ${esc(margin)}` : ''}</span>
       </span>
-      <span class="amt num ${crafts ? '' : 'flat'}">${crafts
-        ? `${short(batch.profit * crafts)}` : '\u2014'}</span>
+      <span class="amt num ${!crafts || !line.terminal ? 'flat'
+        : destroys ? 'bad' : 'good'}">${
+        !crafts ? '—' : line.terminal ? short(line.revenue) : '→'}</span>
     </button>
     ${missingStepRow(line)}`;
 }
+
+
 
 /**
  * When a craft makes nothing because an input is simply absent, and some other

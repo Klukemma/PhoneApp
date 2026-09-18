@@ -1,12 +1,12 @@
 // Cache-first shell so the app opens instantly and works with no signal.
 // Bump CACHE when the shell or the game data changes.
 
-const CACHE = 'albionfarm-v10';  // v10: free rows skip rest days, stock cap
+const CACHE = 'albionfarm-v11';  // v11: the solver — pick a potion, get a plan
 const SHELL = [
   './', './index.html', './manifest.webmanifest',
   './css/app.css',
   './js/app.js', './js/views.js', './js/sheets.js', './js/store.js',
-  './js/calc.js', './js/prices.js', './js/ui.js', './js/util.js',
+  './js/calc.js', './js/solve.js', './js/prices.js', './js/ui.js', './js/util.js',
   './data/gamedata.json',
   './icons/icon.svg', './icons/icon-192.png', './icons/icon-512.png',
 ];
