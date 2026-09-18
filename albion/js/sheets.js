@@ -178,15 +178,23 @@ export function acceptSpare() {
 
 /* -------------------------------------------------------------- land --- */
 
+/** The four farm buildings, as the game draws them. */
+const PLOT_ICON = {
+  farm: '\u{1F33E}', herbgarden: '\u{1F33F}', pasture: '\u{1F404}', kennel: '\u{1F43A}',
+};
+
+
 /**
  * The land you actually own.
  *
- * A Farm grows crops and herbs and a Pasture holds animals; they are separate
- * buildings and the game will not let you swap them, so knowing which you have
- * is the difference between a plan you can carry out and a plan that quietly
- * assumes a pasture you never built. The city matters too: each one grows a
- * handful of things ten percent better, and that is per crop, so where a plot
- * is changes what is worth putting in it.
+ * The game has four farm buildings and will not let you mix them: a Farm takes
+ * crops, a Herb Garden takes herbs, a Pasture takes livestock and a Kennel
+ * takes the exotic mounts. Five plots of carrots and seven of agaric are not
+ * twelve interchangeable plots, and a plan that treats them as such will tell
+ * you to grow foxglove somewhere foxglove cannot go.
+ *
+ * The city matters too, and per crop: Martlock grows foxglove and potatoes ten
+ * percent better, Lymhurst does the same for geese.
  */
 export function openFarm() {
   const cities = (state.settings.cities || []).filter((c) => c.id !== 'island');
@@ -199,6 +207,7 @@ export function openFarm() {
   const nameOfCity = (id) => (state.settings.cities || [])
     .find((c) => c.id === id)?.name || id;
 
+  // What this city is worth growing, said in terms of the buildings above.
   const bonusHere = (id) => {
     const city = (state.settings.cities || []).find((c) => c.id === id);
     const items = Object.keys(city?.farmBonus || {});
@@ -207,45 +216,58 @@ export function openFarm() {
       items.length > 2 ? ` and ${items.length - 2} more` : ''}`;
   };
 
-  const cityBlock = (id) => `
+  const box = (cityId, kind, label) => `
+    <div class="field" style="margin:0">
+      <label>${PLOT_ICON[kind]} ${label}</label>
+      <input type="number" inputmode="numeric" min="0" max="99"
+        data-land="${esc(cityId)}" data-kind="${kind}"
+        value="${mine.get(`${cityId}:${kind}`) || ''}" placeholder="0"></div>`;
+
+  const cityBlock = (id) => {
+    const loose = (mine.get(`${id}:plant`) || 0) + (mine.get(`${id}:animal`) || 0);
+    return `
     <div class="card" style="padding:10px 12px;margin-bottom:10px">
       <div style="margin-bottom:8px">
         <div style="font-size:14px;font-weight:600">${esc(nameOfCity(id))}</div>
         <div class="muted small">${esc(bonusHere(id))}</div>
       </div>
-      <div class="two">
-        <div class="field" style="margin:0">
-          <label>\u{1F33F} Farms</label>
-          <input type="number" inputmode="numeric" min="0" max="99"
-            data-land="${esc(id)}" data-kind="farm"
-            value="${mine.get(`${id}:farm`) || ''}" placeholder="0"></div>
-        <div class="field" style="margin:0">
-          <label>\u{1F404} Pastures</label>
-          <input type="number" inputmode="numeric" min="0" max="99"
-            data-land="${esc(id)}" data-kind="pasture"
-            value="${mine.get(`${id}:pasture`) || ''}" placeholder="0"></div>
-      </div>
+      <div class="two">${box(id, 'farm', 'Farms')}${box(id, 'herbgarden', 'Herb Gardens')}</div>
+      <div class="two" style="margin-top:8px">${box(id, 'pasture', 'Pastures')}${
+        box(id, 'kennel', 'Kennels')}</div>
+      ${loose ? `<div class="warn-note" style="margin-top:8px">
+        ${loose} ${loose === 1 ? 'plot' : 'plots'} here were saved before the app
+        told the buildings apart. Put the real numbers in above and
+        <button class="linkish" data-drop="${esc(id)}">clear the old ones</button>.
+        </div>` : ''}
     </div>`;
+  };
 
   openSheet(`
     <h2>Your land</h2>
-    <p class="muted">Count whole 3\u00d73 plots, not tiles. A Farm takes crops and
-      herbs, a Pasture takes animals \u2014 the game keeps them apart and so does
-      the plan, so a herb will never be put somewhere you cannot grow it.</p>
+    <p class="muted">Count whole 3\u00d73 plots, not tiles. The game keeps these four
+      apart and so does the plan: crops only grow in a Farm, herbs only in a
+      Herb Garden, livestock only in a Pasture and the exotic mounts only in a
+      Kennel. Five plots of carrots and seven of agaric are not twelve
+      interchangeable plots.</p>
 
     ${state.farm.length ? `
       <div class="card" style="margin-bottom:12px">
-        <div class="bar-row"><span class="n">Farms</span>
-          <span class="v num">${sum.farm}</span></div>
-        <div class="bar-row"><span class="n">Pastures</span>
-          <span class="v num">${sum.pasture}</span></div>
+        ${[['farm', 'Farms', 'crops'], ['herbgarden', 'Herb Gardens', 'herbs'],
+          ['pasture', 'Pastures', 'livestock'], ['kennel', 'Kennels', 'mounts']]
+          .filter(([k]) => sum[k] > 0)
+          .map(([k, label, what]) => `
+            <div class="bar-row"><span class="n">${label} <small>${what}</small></span>
+              <span class="v num">${sum[k]}</span></div>`).join('')}
+        ${sum.vague ? `<div class="bar-row"><span class="n">Not yet sorted</span>
+          <span class="v num bad">${sum.vague}</span></div>` : ''}
         <div class="bar-row total"><span class="n">Across</span>
           <span class="v num">${sum.cities.size} ${
             sum.cities.size === 1 ? 'city' : 'cities'}</span></div>
       </div>`
     : `<div class="warn-note" style="margin-bottom:12px">Nothing described yet, so
         the plan is working from ${state.goal.plots} plots that can grow anything,
-        anywhere. Fill this in and it will stop assuming pastures you may not own.</div>`}
+        anywhere. Fill this in and it will stop telling you to grow herbs
+        somewhere herbs cannot go.</div>`}
 
     ${listed.map(cityBlock).join('')}
 
@@ -260,6 +282,12 @@ export function openFarm() {
       for (const input of $$('[data-land]', root)) {
         input.onchange = () => {
           setHolding(input.dataset.land, input.dataset.kind, input.value);
+          openFarm();
+        };
+      }
+      for (const btn of $$('[data-drop]', root)) {
+        btn.onclick = () => {
+          for (const kind of ['plant', 'animal']) setHolding(btn.dataset.drop, kind, 0);
           openFarm();
         };
       }

@@ -8,8 +8,9 @@
 // simulator always scores.
 
 import {
-  TILES_PER_PLOT, cityBonus, cityFor, focusCostAt, focusLedger, harvestsFor,
-  plotKindOf, returnRate, rowCycle, rowOutput, simulateCycle, specFor,
+  PLOTS, TILES_PER_PLOT, cityBonus, cityFor, focusCostAt, focusLedger,
+  harvestsFor, plotKindOf, returnRate, rowCycle, rowOutput, simulateCycle,
+  specFor,
 } from './calc.js';
 import { uid } from './util.js';
 
@@ -179,7 +180,7 @@ export function requirements(chain, assign, settings) {
 export function capacityOf(holdings) {
   const cap = {};
   for (const h of holdings || []) {
-    const kind = h.kind === 'pasture' ? 'pasture' : h.kind === 'any' ? 'any' : 'farm';
+    const kind = KNOWN_POOLS.has(h.kind) ? h.kind : 'farm';
     const n = Math.max(0, Math.round(Number(h.count)) || 0);
     if (!n) continue;
     const key = `${kind}:${h.cityId}`;
@@ -191,8 +192,22 @@ export function capacityOf(holdings) {
 export const totalPlots = (holdings) => (holdings || [])
   .reduce((t, h) => t + Math.max(0, Math.round(Number(h.count)) || 0), 0);
 
-/** A herb row may draw on a Farm, or on the undifferentiated heap. */
-const poolsFor = (kind) => [kind, 'any'];
+/**
+ * The four buildings, plus the looser sorts a farm may have been described
+ * with before the app told them apart: "plant" is a Farm or a Herb Garden,
+ * "animal" is a Pasture or a Kennel, and "any" is a plot that grows anything.
+ */
+const KNOWN_POOLS = new Set([
+  ...PLOTS, 'plant', 'animal', 'any',
+]);
+
+const LOOSER = {
+  farm: 'plant', herbgarden: 'plant',
+  pasture: 'animal', kennel: 'animal',
+};
+
+/** A herb row draws on a Herb Garden first, then on anything vaguer. */
+const poolsFor = (kind) => [kind, LOOSER[kind], 'any'].filter(Boolean);
 
 export const cityOfPool = (key) => key.slice(key.indexOf(':') + 1);
 
@@ -845,16 +860,16 @@ function describe(best, chain, data, ctx, budget, opts = {}, grid = null) {
 
 /** Ingredients the chain would grow, if you had anywhere to grow them. */
 function landGapsFor(chain, data, ctx, holdings) {
-  const owned = holdings || [];
+  const owned = (holdings || []).filter((h) => (Number(h.count) || 0) > 0);
   if (!owned.length) return [];
-  const have = new Set(owned
-    .filter((h) => (Number(h.count) || 0) > 0)
-    .map((h) => (h.kind === 'pasture' ? 'pasture' : h.kind === 'any' ? 'any' : 'farm')));
-  if (have.has('any')) return [];
+  const have = new Set(owned.map((h) => h.kind));
+  // A Herb Garden is covered by owning one, or by having described your land
+  // more loosely than the game does.
+  const covered = (kind) => poolsFor(kind).some((pool) => have.has(pool));
 
   const byKind = new Map();
   for (const [itemId, kind] of landNeeds(chain, data, ctx)) {
-    if (have.has(kind)) continue;
+    if (covered(kind)) continue;
     if (!byKind.has(kind)) byKind.set(kind, []);
     byKind.get(kind).push(itemId);
   }

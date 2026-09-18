@@ -504,27 +504,53 @@ test('the fingerprint of a plan moves when its mastery does', () => {
 
 const LAND = (...h) => h.map((x, i) => ({ id: `h${i}`, ...x }));
 
-test('a plan never puts a herb in a pasture', () => {
-  // Farms in Martlock, pastures in Lymhurst: the herbs and potatoes belong in
-  // one, the geese in the other, and neither may wander.
+// Which building each thing belongs in, straight from the game data.
+const plotOf = (itemId) => (data.plants.find((p) => p.id === itemId)
+  || data.animals.find((a) => a.id === itemId))?.plot;
+
+test('every row lands in the building the game would make you use', () => {
+  // A healing potion needs a herb (foxglove), a crop (potato) and livestock
+  // (geese) — three different buildings, which is the whole point.
   const r = solve(POTION, 12, data, ctx(), {
     cycleDays: 7,
     holdings: LAND(
-      { cityId: 'martlock', kind: 'farm', count: 6 },
+      { cityId: 'martlock', kind: 'herbgarden', count: 6 },
+      { cityId: 'martlock', kind: 'farm', count: 2 },
       { cityId: 'lymhurst', kind: 'pasture', count: 2 }),
   });
   assert.equal(r.ok, true);
+  const where = { herbgarden: 'martlock', farm: 'martlock', pasture: 'lymhurst' };
   for (const row of r.plan.plots) {
-    const isAnimal = data.animals.some((a) => a.id === row.itemId);
-    assert.equal(row.cityId, isAnimal ? 'lymhurst' : 'martlock',
-      `${row.itemId} ended up in ${row.cityId}`);
+    assert.equal(row.cityId, where[plotOf(row.itemId)],
+      `${row.itemId} (${plotOf(row.itemId)}) ended up in ${row.cityId}`);
   }
+  assert.ok(r.plan.plots.some((x) => plotOf(x.itemId) === 'herbgarden'), 'herbs grown');
+  assert.ok(r.plan.plots.some((x) => plotOf(x.itemId) === 'pasture'), 'geese kept');
+});
+
+test('a Farm is not a Herb Garden', () => {
+  // Eight Farms and nothing else: the potatoes can be grown, the foxglove
+  // cannot, whatever the prices say.
+  const r = solve(POTION, 8, data, ctx(), {
+    cycleDays: 7,
+    holdings: LAND({ cityId: 'martlock', kind: 'farm', count: 8 }),
+  });
+  assert.ok(r.plan.plots.every((x) => plotOf(x.itemId) === 'farm'),
+    'nothing but crops went in');
+  // Both missing buildings are named, so "you cannot make this here" is an
+  // answer rather than an empty plan.
+  const kinds = r.landGaps.map((g) => g.kind).sort();
+  assert.deepEqual(kinds, ['herbgarden', 'pasture']);
+  assert.ok(r.landGaps.find((g) => g.kind === 'herbgarden').items.includes('T6_FOXGLOVE'));
+  assert.ok(r.landGaps.find((g) => g.kind === 'pasture').items.includes('T5_EGG'));
 });
 
 test('with no pastures it buys the eggs instead of imagining a pasture', () => {
   const r = solve(POTION, 9, data, ctx(), {
     cycleDays: 7,
-    holdings: LAND({ cityId: 'martlock', kind: 'farm', count: 9 }),
+    holdings: LAND(
+      { cityId: 'martlock', kind: 'herbgarden', count: 7 },
+      { cityId: 'martlock', kind: 'farm', count: 2 }),
   });
   assert.ok(!r.plan.plots.some((p) => data.animals.some((a) => a.id === p.itemId)),
     'nothing is being kept in a pasture you do not have');
@@ -532,6 +558,9 @@ test('with no pastures it buys the eggs instead of imagining a pasture', () => {
   // And it says why, rather than leaving that looking like a price decision.
   assert.deepEqual(r.landGaps.map((g) => g.kind), ['pasture']);
   assert.ok(r.landGaps[0].items.includes('T5_EGG'));
+  // The herbs and the crops both got somewhere to go.
+  assert.ok(r.plan.plots.some((x) => plotOf(x.itemId) === 'herbgarden'));
+  assert.ok(r.plan.plots.some((x) => plotOf(x.itemId) === 'farm'));
 });
 
 test('land the plan cannot use is named rather than silently ignored', () => {
@@ -541,33 +570,36 @@ test('land the plan cannot use is named rather than silently ignored', () => {
   });
   assert.equal(r.plan.plots.length, 0, 'herbs cannot go in a pasture');
   assert.ok(r.idleLand.some((x) => x.kind === 'pasture' && x.city === 'lymhurst'));
-  assert.deepEqual(r.landGaps.map((g) => g.kind), ['farm']);
+  const kinds = r.landGaps.map((g) => g.kind).sort();
+  assert.deepEqual(kinds, ['farm', 'herbgarden']);
 });
 
 test('plots go to the city that grows the thing best, then spill over', () => {
-  // Martlock gives foxglove and potatoes +10%; Caerleon gives them nothing.
+  // Martlock gives foxglove +10%; Caerleon gives it nothing.
   const r = solve(POTION, 14, data, ctx(), {
     cycleDays: 7,
     holdings: LAND(
-      { cityId: 'caerleon', kind: 'farm', count: 8 },
-      { cityId: 'martlock', kind: 'farm', count: 4 },
+      { cityId: 'caerleon', kind: 'herbgarden', count: 8 },
+      { cityId: 'martlock', kind: 'herbgarden', count: 4 },
+      { cityId: 'martlock', kind: 'farm', count: 2 },
       { cityId: 'lymhurst', kind: 'pasture', count: 2 }),
   });
-  const farmRows = r.plan.plots.filter((p) => !data.animals.some((a) => a.id === p.itemId));
-  const inMartlock = farmRows.filter((p) => p.cityId === 'martlock')
+  const herbs = r.plan.plots.filter((p) => plotOf(p.itemId) === 'herbgarden');
+  const inMartlock = herbs.filter((p) => p.cityId === 'martlock')
     .reduce((t, p) => t + p.count, 0);
   assert.equal(inMartlock, 4, 'the favouring city is filled before the other');
 });
 
 test('the plan never uses more of a kind of plot than you own', () => {
   const holdings = LAND(
-    { cityId: 'martlock', kind: 'farm', count: 5 },
+    { cityId: 'martlock', kind: 'herbgarden', count: 4 },
+    { cityId: 'martlock', kind: 'farm', count: 1 },
     { cityId: 'lymhurst', kind: 'pasture', count: 1 });
   for (const cycleDays of [3, 7, 14]) {
     const r = solve(POTION, 6, data, ctx(), { cycleDays, holdings });
-    const used = { farm: {}, pasture: {} };
+    const used = { farm: {}, herbgarden: {}, pasture: {}, kennel: {} };
     for (const row of r.plan.plots) {
-      const kind = data.animals.some((a) => a.id === row.itemId) ? 'pasture' : 'farm';
+      const kind = plotOf(row.itemId);
       used[kind][row.cityId] = (used[kind][row.cityId] || 0) + row.count;
     }
     for (const h of holdings) {
@@ -580,10 +612,25 @@ test('the plan never uses more of a kind of plot than you own', () => {
 test('describing your land never invents plots you did not describe', () => {
   const r = solve(POTION, 999, data, ctx(), {
     cycleDays: 7,
-    holdings: LAND({ cityId: 'martlock', kind: 'farm', count: 3 }),
+    holdings: LAND({ cityId: 'martlock', kind: 'herbgarden', count: 3 }),
   });
   assert.equal(r.budget, 3, 'the land you described is the budget');
   assert.ok(r.plan.plots.reduce((t, p) => t + p.count, 0) <= 3);
+});
+
+test('a farm described before the buildings were told apart still works', () => {
+  // "plant" was what a Farm used to mean: crops and herbs together. A save
+  // written then has to keep giving the same answer.
+  const loose = solve(POTION, 12, data, ctx(), {
+    cycleDays: 7,
+    holdings: LAND(
+      { cityId: 'martlock', kind: 'plant', count: 10 },
+      { cityId: 'lymhurst', kind: 'animal', count: 2 }),
+  });
+  assert.ok(loose.plan.plots.some((x) => plotOf(x.itemId) === 'herbgarden'));
+  assert.ok(loose.plan.plots.some((x) => plotOf(x.itemId) === 'farm'));
+  assert.ok(loose.plan.plots.some((x) => plotOf(x.itemId) === 'pasture'));
+  assert.deepEqual(loose.landGaps, [], 'a loose description leaves no gaps');
 });
 
 test('saying nothing about your land works exactly as before', () => {

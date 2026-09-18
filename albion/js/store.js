@@ -16,7 +16,7 @@ export async function loadGameData() {
 
 function defaults() {
   return {
-    schema: 1,
+    schema: LAND_SCHEMA,
     settings: {
       premium: true,
       watered: false,          // water plots with focus
@@ -82,6 +82,28 @@ function withConstants(state, data) {
   return state;
 }
 
+/**
+ * The four buildings the game actually has, and the two vaguer sorts a farm
+ * could have been described with before the app knew the difference.
+ *
+ * A save written then said "farm" meaning crops and herbs together, which was
+ * true of the old model and is not true of the game. Rather than silently
+ * reinterpreting it as crops only \u2014 which would stop a herb plan dead \u2014 it
+ * becomes "plant", a plot that takes either, and the land screen asks you to
+ * split it properly.
+ */
+const LAND_KINDS = new Set(['farm', 'herbgarden', 'pasture', 'kennel', 'plant', 'animal']);
+
+/**
+ * Schema 2 is where the four buildings were told apart. Before it, "farm" was
+ * a save's way of saying "somewhere plants grow", which covered herbs too, and
+ * the word is the same either side \u2014 so the version is the only way to know
+ * which was meant. Read it wrong and ten herb gardens quietly become ten crop
+ * farms with nowhere to put the foxglove.
+ */
+const LAND_SCHEMA = 2;
+const LEGACY_KIND = { farm: 'plant', pasture: 'animal' };
+
 function normalize(raw) {
   const base = defaults();
   const s = {
@@ -96,7 +118,9 @@ function normalize(raw) {
       .map((h) => ({
         id: h.id || uid(),
         cityId: h.cityId || 'island',
-        kind: h.kind === 'pasture' ? 'pasture' : 'farm',
+        kind: (Number(raw.schema) || 1) < LAND_SCHEMA
+          ? (LEGACY_KIND[h.kind] || h.kind)
+          : (LAND_KINDS.has(h.kind) ? h.kind : 'farm'),
         count: Math.max(0, Math.round(Number(h.count)) || 0),
       }))
       .filter((h) => h.count > 0),
@@ -124,6 +148,7 @@ function normalize(raw) {
       if (!Number.isFinite(n) || n < 0) delete map[k];
     }
   }
+  s.schema = LAND_SCHEMA;
   // Older saves carried one global "am I in a bonus city" flag, which applied
   // the specialty to every recipe. The city now decides, per item.
   delete s.settings.citySpecialty;
@@ -277,12 +302,18 @@ export const plotsOwned = () => (state.farm.length
   ? state.farm.reduce((t, h) => t + h.count, 0)
   : (Number(state.goal.plots) || 0));
 
-/** Farms and pastures, counted separately. */
+/** Each sort of building, counted separately. */
 export function landSummary() {
-  const out = { farm: 0, pasture: 0, cities: new Set() };
+  const out = {
+    farm: 0, herbgarden: 0, pasture: 0, kennel: 0,
+    plant: 0, animal: 0, cities: new Set(), vague: 0,
+  };
   for (const h of state.farm) {
-    out[h.kind] += h.count;
+    out[h.kind] = (out[h.kind] || 0) + h.count;
     out.cities.add(h.cityId);
+    // Land carried over from before the buildings were told apart. Counted,
+    // but worth asking you to be precise about.
+    if (h.kind === 'plant' || h.kind === 'animal') out.vague += h.count;
   }
   return out;
 }

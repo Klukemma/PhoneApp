@@ -482,13 +482,27 @@ export function rowCycle(row, data, ctx, wateredFraction) {
 }
 
 /**
- * Which sort of plot a row has to go in.
+ * Which building a row has to go in.
  *
- * The game will not let you keep geese on a herb patch: a Farm grows crops and
- * herbs, a Pasture holds animals, and the two are separate buildings you have
- * to have built. So the plan does not get to mix them either.
+ * The game has four and keeps them strictly apart: a Farm takes crops, a Herb
+ * Garden takes herbs, a Pasture takes livestock and a Kennel takes the exotic
+ * mounts. Carrots will not grow in a herb garden and a goose will not live in
+ * either, so the plan does not get to pretend otherwise. Which is which comes
+ * straight out of the game files rather than being inferred from whether a
+ * thing looks like a plant.
  */
-export const plotKindOf = (cycle) => (cycle?.kind === 'plant' ? 'farm' : 'pasture');
+export const PLOTS = ['farm', 'herbgarden', 'pasture', 'kennel'];
+
+export const plotKindOf = (cycle) => cycle?.ref?.plot
+  || (cycle?.kind === 'plant' ? 'farm' : 'pasture');
+
+/** Labels for the four, as the game names the buildings. */
+export const PLOT_LABEL = {
+  farm: 'Farm', herbgarden: 'Herb Garden',
+  pasture: 'Pasture', kennel: 'Kennel',
+  // Kept so a farm described before the four were told apart still works.
+  plant: 'Farm or Herb Garden', animal: 'Pasture or Kennel', any: 'Any plot',
+};
 
 /** What one tile of a row yields, and what it yields it as. */
 export function rowOutput(row, cycle, data) {

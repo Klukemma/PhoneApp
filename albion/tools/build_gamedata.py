@@ -306,6 +306,11 @@ def main() -> None:
             "name": pretty(crop) if crop else pretty(f.get("uniquename")),
             "tier": int(f.get("tier")),
             "kind": "herb" if is_herb else "crop",
+            # Which building it has to go in. The game keeps Farms, Herb
+            # Gardens, Pastures and Kennels apart, and shopsubcategory1 is
+            # where it says so, so take it from there rather than guessing
+            # from whether a thing looks like a plant.
+            "plot": f.get("shopsubcategory1") or "farm",
             "seedId": f.get("uniquename"),
             "cropId": crop,
             "seedNpc": int(float(req.get("silver", 0))) if req is not None else 0,
@@ -358,6 +363,9 @@ def main() -> None:
             "name": pretty(grown_id),
             "tier": int(f.get("tier")),
             "kind": "livestock" if species in LIVESTOCK else "mount",
+            # Pasture or Kennel, straight from the game rather than inferred:
+            # horses and oxen live in a Pasture, the exotic mounts in a Kennel.
+            "plot": f.get("shopsubcategory1") or "pasture",
             "babyId": u, "grownId": grown_id,
             "babyNpc": int(float(req.get("silver", 0))) if req is not None else 0,
             "growSeconds": int(grown_el.get("growtime")),

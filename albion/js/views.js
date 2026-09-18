@@ -246,9 +246,17 @@ function goalCard() {
 function landLine() {
   const sum = landSummary();
   const total = plotsOwned();
+  const NAMED = [
+    ['farm', 'Farm', 'Farms'], ['herbgarden', 'Herb Garden', 'Herb Gardens'],
+    ['pasture', 'Pasture', 'Pastures'], ['kennel', 'Kennel', 'Kennels'],
+  ];
   const bits = [];
-  if (sum.farm) bits.push(`${sum.farm} ${sum.farm === 1 ? 'Farm' : 'Farms'}`);
-  if (sum.pasture) bits.push(`${sum.pasture} ${sum.pasture === 1 ? 'Pasture' : 'Pastures'}`);
+  for (const [key, one, many] of NAMED) {
+    if (sum[key] > 0) bits.push(`${sum[key]} ${sum[key] === 1 ? one : many}`);
+  }
+  // Land carried over from before the buildings were told apart counts as one
+  // figure, not as two mysterious halves.
+  if (sum.vague) bits.push(`${sum.vague} to sort`);
   const what = bits.length
     ? `${bits.join(' · ')}${sum.cities.size > 1 ? `, ${sum.cities.size} cities` : ''}`
     : `${total} ${total === 1 ? 'plot' : 'plots'}`;
@@ -369,7 +377,10 @@ function routineCard(sim) {
 
 /* -------------------------------------------------- what it worked out - */
 
-const KIND_LABEL = { farm: 'Farm', pasture: 'Pasture' };
+const KIND_LABEL = {
+  farm: 'Farm', herbgarden: 'Herb Garden', pasture: 'Pasture', kennel: 'Kennel',
+  plant: 'Farm or Herb Garden', animal: 'Pasture or Kennel',
+};
 const cityName = (id) => (state.settings.cities || [])
   .find((c) => c.id === id)?.name || id;
 
@@ -442,7 +453,8 @@ function answerCard(sim) {
           You own no ${esc(KIND_LABEL[g.kind] || g.kind)} plots, so
           ${esc(sentence(g.items.map(nameOf)))} ${g.items.length === 1 ? 'has' : 'have'}
           to be bought however cheap ${g.items.length === 1 ? 'it is' : 'they are'} to grow.
-          Building ${g.kind === 'pasture' ? 'a Pasture' : 'a Farm'} would change this plan.
+          Building ${/^[aeiou]/i.test(KIND_LABEL[g.kind] || '') ? 'an' : 'a'}
+          ${esc(KIND_LABEL[g.kind] || g.kind)} would change this plan.
           </div>`).join('') : ''}
         ${buys.length && !gaps.length ? `<div class="warn-note" style="color:var(--dim)">
           Buy rather than grow: ${buys.map((b) => esc(nameOf(b.itemId))).join(', ')}.
