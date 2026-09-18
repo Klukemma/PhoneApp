@@ -128,6 +128,14 @@ const rrrFor = (recipe, useFocus, settings) => returnRate(
   cityBonus(cityFor(settings), recipe.category, settings).total
   + (useFocus ? settings.focusCraftBonus : 0));
 
+/**
+ * How many items one craft really makes. Butchering pays its return rate out
+ * in product rather than in resources, so a cow yields more than the 18 cuts
+ * the recipe names \u2014 see craftBatch, which is where that reading is set out.
+ */
+const madeBy = (recipe, useFocus, settings) => recipe.amount
+  * (recipe.returnProduct ? 1 + rrrFor(recipe, useFocus, settings) : 1);
+
 const focusFor = (recipe, settings) =>
   focusCostAt(recipe.focus, specFor(settings, recipe.id), settings.focusCostConstant);
 
@@ -157,7 +165,8 @@ export function requirements(chain, assign, settings) {
       const need = multiplier * inp.count * (inp.noReturn ? 1 : 1 - rrr);
       const mode = assign[inp.itemId] || 'buy';
       if ((mode === 'craft' || mode === 'craftNoFocus') && inp.sub) {
-        walk(inp.sub, need / inp.sub.recipe.amount, mode === 'craft');
+        const subFocus = mode === 'craft';
+        walk(inp.sub, need / madeBy(inp.sub.recipe, subFocus, settings), subFocus);
       } else {
         const at = raw.get(inp.itemId) || { need: 0, node: inp };
         at.need += need;
@@ -302,6 +311,11 @@ export function bestCashCrop(data, ctx, sched, exclude = new Set(), free = null)
       // A crop nobody has priced looks free and worthless at the same time;
       // never recommend one on the strength of a missing number.
       if (!out || !ctx.priceOf(out.itemId)) continue;
+      // The same goes for what it costs to start. Ten of the babies the game
+      // ships have no merchant ask \u2014 every kennel animal and two stags \u2014 and
+      // no meat is priced out of the box, so a direbear whose output you have
+      // priced and whose input you have not reads as pure profit.
+      if (unpricedInput(cycle, ctx)) continue;
       const perPlot = cycle.profit * tiles * harvestsFor(cycle, sched);
       if (!Number.isFinite(perPlot)) continue;
       if (!best || perPlot > best.perPlot) {
@@ -310,6 +324,19 @@ export function bestCashCrop(data, ctx, sched, exclude = new Set(), free = null)
     }
   }
   return best && best.perPlot > 0 ? best : null;
+}
+
+/**
+ * Is anything this row has to buy still missing a price? A zero there is not a
+ * free input, it is a number nobody has filled in, and it makes the row look
+ * better than anything you could really grow.
+ */
+function unpricedInput(cycle, ctx) {
+  const cost = ctx.costOf || ctx.priceOf;
+  const needs = cycle.kind === 'plant'
+    ? [cycle.ref.seedId]
+    : [cycle.feedId, cycle.kind === 'animal' ? cycle.ref.babyId : null];
+  return needs.some((id) => id && !cost(id));
 }
 
 /** Which cities have a free plot of this sort, after the chain has taken its share. */
@@ -879,6 +906,9 @@ function describe(best, chain, data, ctx, budget, opts = {}, grid = null) {
     focusPerTarget: built.focusPer || 0,
     targetCrafts: line?.crafts || 0,
     made: line?.made || 0,
+    // What one craft of the target really hands over. Butchering pays its
+    // return rate out in product, so it is not always recipe.amount.
+    targetMade: line?.batch?.made || chain.recipe.amount,
     targetFocus: best.assign.__target !== false,
     limit,
     bottleneck: line?.bottleneck?.id || null,

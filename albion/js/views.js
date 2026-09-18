@@ -1,7 +1,7 @@
 // The four screens. Each returns { title, sub, html }.
 
 import {
-  animalCycle, cityFor, craftBatch, farmCityFor, perPeriod, plantCycle,
+  animalCycle, cityFor, craftBatch, farmCityFor, feedFor, perPeriod, plantCycle,
   productCycle, rankFarmables, rankRecipes, returnRate, simulateCycle,
 } from './calc.js';
 import {
@@ -40,7 +40,7 @@ export function solveStamp() {
     mastery: JSON.stringify([state.nodeLevels, state.spec, s.specLevel]),
     prices: JSON.stringify([state.prices, state.buyPrices]),
     setup: JSON.stringify([s.premium, s.useFocus, s.favouriteFood, s.craftCity,
-      s.farmCity, s.feedItemId, s.cadenceHours, s.startFocus, s.stockCap,
+      s.farmCity, s.feedItemIds, s.cadenceHours, s.startFocus, s.stockCap,
       s.focusPerDay, s.focusCap, s.sellSurplus, s.hideMounts,
       JSON.stringify(s.stationFee || {})]),
     goal: JSON.stringify([state.goal.recipeId, state.goal.plots, state.goal.cycleDays]),
@@ -84,8 +84,12 @@ const label = (id) => `${tierText(tierOf(id), enchantOf(id))} ${nameOf(id)}`;
 
 const EMOJI = {
   crop: '\u{1F33E}', herb: '\u{1F33F}', livestock: '\u{1F414}', mount: '\u{1F40E}',
-  potion: '\u{1F9EA}', food: '\u{1F35E}', product: '\u{1F95A}',
+  potion: '\u{1F9EA}', food: '\u{1F35E}', product: '\u{1F95A}', meat: '\u{1F969}',
 };
+
+/** Butchering is a crafting category per species, so it needs collapsing. */
+const craftEmoji = (category) => EMOJI[
+  (category || '').startsWith('meat_') ? 'meat' : category] || EMOJI.potion;
 
 const empty = (emoji, text) =>
   `<div class="empty"><span class="e">${emoji}</span>${esc(text)}</div>`;
@@ -406,14 +410,15 @@ function answerCard(sim) {
         ${r.profitable ? '' : `<div class="warn-note">At your prices this loses
           money \u2014 every way of making it that was tried came out
           negative. Check the prices, or make something else.</div>`}
-        <div class="bar-row"><span class="n">Potions a cycle</span>
+        <div class="bar-row"><span class="n">${esc(r.target.name)} a cycle</span>
           <span class="v num">${short(r.made)}</span></div>
         <div class="bar-row"><span class="n">Plots on the chain</span>
           <span class="v num">${r.chainPlots} of ${r.budget}</span></div>
         ${r.pinnedCycle ? `<div class="bar-row"><span class="n">Cycle you set</span>
           <span class="v num">${r.sched.cycleDays} days, farming ${r.sched.farmDays}
             </span></div>` : ''}
-        <div class="bar-row"><span class="n">Focus per craft, which makes ${r.target.amount}</span>
+        <div class="bar-row"><span class="n">Focus per craft, which makes ${
+          round1(r.targetMade ?? r.target.amount)}</span>
           <span class="v num">${r.targetFocus ? short(r.focusPerTarget) : 'none'}</span></div>
         <div class="warn-note" style="color:var(--dim)">${esc(LIMIT_NOTE[r.limit] || '')}</div>
         ${r.pinnedCycle && r.sim.focusWasted > 0 ? `<div class="warn-note">
@@ -526,9 +531,9 @@ function cycleCard(sim) {
     const free = sim.farmLines.filter((l) => !l.rests).length;
     warn.push(`You skip ${sim.restDays} ${sim.restDays === 1 ? 'day' : 'days'} of
       farming to bank focus, worth ${short(sim.restDays * s.focusPerDay)} more to
-      water and craft with.${free
-        ? ` ${free} of your rows cost no focus, so they keep producing through
-            the rest days anyway.` : ''}`);
+      water and craft with. Nothing is collected on a day you do not log in.${free
+        ? ` ${free} of your rows cost no focus to keep \u2014 you just have to be
+            there on the day to pick them up.` : ''}`);
   }
   if (sim.wateringShortfall > 0) {
     const pct = Math.round(sim.wateredFraction * 100);
@@ -587,7 +592,7 @@ function farmRow(line, sim) {
           line.plots === 1 ? 'plot' : 'plots'}</span>
         <span class="meta">${line.tiles} tiles \u2192 ${short(produced)} ${esc(nameOf(itemId))}
           over ${harvests} ${harvests === 1 ? 'harvest' : 'harvests'}${
-          !line.rests && sim.restDays ? ' · no focus, so no rest days' : ''}${
+          !line.rests && sim.restDays ? ' \u00b7 costs no focus to keep' : ''}${
           cycle.farmBonusPct ? ` · ${cycle.city.name} +${cycle.farmBonusPct}%`
             : spread ? ` · ${cycle.city.name}` : ''}</span>
       </span>
@@ -629,7 +634,7 @@ function craftRow(line) {
 
   return `
     <button class="row ${crafts === 0 ? 'warn' : ''}" data-craft="${esc(job.id)}">
-      <span class="ico">${EMOJI[recipe.category] || EMOJI.potion}</span>
+      <span class="ico">${craftEmoji(recipe.category)}</span>
       <span class="body">
         <span class="title">${tierText(recipe.tier, recipe.enchant)} ${esc(recipe.name)} ×${short(made)}</span>
         <span class="meta">${short(crafts)} crafts · ${esc(why)}${
@@ -710,7 +715,7 @@ function missingPrices() {
     add(a.babyId);
     if (row.mode === 'product' && a.product) add(a.product.itemId);
     else add(a.grownId);
-    add(state.settings.favouriteFood ? a.favouriteFood : state.settings.feedItemId);
+    add(feedFor(a, state.settings).id);
   }
   for (const job of state.plan.crafts) {
     const r = DATA.recipes.find((x) => x.id === job.recipeId);
@@ -838,12 +843,12 @@ function craftRank(c) {
 
   const render = ({ b, missing }) => `
     <button class="row rank" data-add-craft="${esc(b.ref.id)}">
-      <span class="ico">${EMOJI[b.ref.category] || EMOJI.potion}</span>
+      <span class="ico">${craftEmoji(b.ref.category)}</span>
       <span class="body">
         <span class="title">T${b.ref.tier} ${esc(b.ref.name)}</span>
         <span class="meta">${missing.length
           ? `needs a price for ${esc(missing.map(nameOf).join(', '))}`
-          : `makes ${b.ref.amount} · ${pct(b.rrr)} returned${useFocus ? ` · ${Math.round(b.focus)} focus` : ''}`}</span>
+          : `makes ${round1(b.made)} \u00b7 ${pct(b.rrr)} ${b.ref.returnProduct ? 'extra meat' : 'returned'}${useFocus ? ` \u00b7 ${Math.round(b.focus)} focus` : ''}`}</span>
       </span>
       <span class="amt num ${missing.length ? 'flat' : toneOf(b.profit)}">
         ${missing.length ? '\u2014'
@@ -956,7 +961,7 @@ function planItemIds() {
     if (!a) continue;
     ids.add(a.babyId); ids.add(a.grownId);
     if (a.product) ids.add(a.product.itemId);
-    if (a.favouriteFood) ids.add(a.favouriteFood);
+    ids.add(feedFor(a, state.settings).id);
   }
   for (const job of state.plan.crafts) {
     const r = DATA.recipes.find((x) => x.id === job.recipeId);
@@ -997,7 +1002,7 @@ export function detailHTML(cycle, rate) {
     line('Cost per unit grown', short(cycle.costPerUnit));
   } else if (cycle.kind === 'animal') {
     const a = cycle.ref;
-    line('Feed needed', `${cycle.plantsNeeded} × ${nameOf(cycle.feedId)}`);
+    line('Feed needed', `${round1(cycle.plantsNeeded)} × ${nameOf(cycle.feedId)}`);
     line('Feed cost', short(-cycle.feedCost), 'bad');
     line(`Babies back (${s.watered ? 'watered' : 'dry'})`, pct(cycle.babiesBack, 0));
     line(cycle.babyCost >= 0 ? 'Baby cost' : 'Spare babies',
@@ -1010,7 +1015,7 @@ export function detailHTML(cycle, rate) {
       line(`${cycle.city.name} farming bonus`, `+${cycle.farmBonusPct}% yield`, 'good');
     }
     line('Sale after tax', short(cycle.revenue), 'good');
-    line('Upkeep feed', `${cycle.plantsNeeded} × ${nameOf(cycle.feedId)}`);
+    line('Upkeep feed', `${round1(cycle.plantsNeeded)} × ${nameOf(cycle.feedId)}`);
     line('Feed cost', short(-cycle.feedCost), 'bad');
   } else if (cycle.kind === 'craft') {
     for (const i of cycle.inputs) {
@@ -1023,10 +1028,16 @@ export function detailHTML(cycle, rate) {
         : `+${cycle.bonus.base} base, no specialty`);
     }
     if (cycle.focus) line('Focus bonus', `+${s.focusCraftBonus}`);
-    line(`Returned (${pct(cycle.rrr)})`, short(cycle.materials - cycle.materialsAfterReturn), 'good');
+    if (cycle.ref.returnProduct) {
+      // The animal is never handed back, so the rate is paid in extra meat.
+      line(`Product yield (+${pct(cycle.rrr)})`,
+        `${round1(cycle.made)} not ${cycle.ref.amount}`, 'good');
+    } else {
+      line(`Returned (${pct(cycle.rrr)})`, short(cycle.materials - cycle.materialsAfterReturn), 'good');
+    }
     line('Net materials', short(-cycle.materialsAfterReturn), 'bad');
     if (cycle.fees) line('Fees', short(-cycle.fees), 'bad');
-    line(`Sale of ${cycle.ref.amount} after tax`, short(cycle.revenue), 'good');
+    line(`Sale of ${round1(cycle.made)} after tax`, short(cycle.revenue), 'good');
     if (cycle.focus) line(`Focus at ${cycle.spec} mastery`, short(cycle.focus));
     if (cycle.silverPerFocus != null) line('Silver per focus', short(cycle.silverPerFocus), 'good');
   }

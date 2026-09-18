@@ -1,7 +1,7 @@
 // Cache-first shell so the app opens instantly and works with no signal.
 // Bump CACHE when the shell or the game data changes.
 
-const CACHE = 'albionfarm-v20';  // v20: station usage fees and Premium's farming benefits
+const CACHE = 'albionfarm-v21';  // v21: butchering, the full recipe closure and real animal feed
 const SHELL = [
   './', './index.html', './manifest.webmanifest',
   './css/app.css',

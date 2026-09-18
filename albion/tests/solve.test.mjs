@@ -35,7 +35,8 @@ const ctx = (prices = PRICES, over = {}) => ({
     craftCity: 'brecilien', farmCity: 'martlock',
     spec: {}, nodeLevels: {}, specLevel: 0,
     cadenceHours: 24, cycleDays: 14, farmDays: 10, farmEvery: 1, startFocus: 0,
-    stockCap: 5000, stationFee: {}, feedItemId: 'T3_WHEAT', hideMounts: true,
+    stockCap: 5000, stationFee: {}, feeds: data.feeds, hideMounts: true,
+    feedItemIds: { plants: 'T3_WHEAT', meat: 'T3_MEAT', mount: 'T8_FARM_OX_GROWN' },
     ...over,
   },
 });
@@ -317,6 +318,28 @@ test('the best cash crop is never one nobody has priced', () => {
   const best = bestCashCrop(data, c, SCHED);
   assert.equal(best.itemId, 'T5_FARM_CABBAGE_SEED');
   assert.equal(bestCashCrop(data, ctx({}, SCHED), SCHED), null);
+});
+
+test('the solver will not recommend a plot on an unpriced baby', () => {
+  // Every kennel animal ships without a merchant ask for its baby, and no
+  // meat comes priced. Price only the direbear you mean to sell and the row
+  // reads as pure profit, because the thing you have to buy reads as free.
+  const P = {
+    T8_FARM_DIREBEAR_GROWN: 4000000, T3_WHEAT: 250, T8_PUMPKIN: 400,
+    T8_MILK: 2000, T8_FARM_COW_GROWN: 120000, T8_FARM_COW_BABY: 30000,
+  };
+  const kennel = { ...SCHED, hideMounts: false };
+  const best = bestCashCrop(data, ctx(P, kennel), SCHED);
+  assert.notEqual(best.itemId, 'T8_FARM_DIREBEAR_BABY');
+  assert.equal(best.itemId, 'T8_FARM_COW_BABY');
+
+  // Price what it actually costs and the direbear is allowed back, on numbers
+  // that are all real.
+  const priced = ctx({ ...P, T3_MEAT: 200, T8_FARM_DIREBEAR_BABY: 2500000 }, kennel);
+  const withBaby = bestCashCrop(data, priced, SCHED);
+  assert.equal(withBaby.itemId, 'T8_FARM_DIREBEAR_BABY');
+  assert.ok(withBaby.perPlot < best.perPlot * 3,
+    'and it ranks on what it earns, not on a missing number');
 });
 
 /* --------------------------------------------------------- the solve --- */

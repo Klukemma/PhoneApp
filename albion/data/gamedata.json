@@ -1780,6 +1780,7 @@
    "careSeconds": 79200,
    "nutrition": 864,
    "nutritionTotal": 864,
+   "foodCategory": "plants",
    "favouriteFood": "T3_WHEAT",
    "favouriteBonus": 1.0,
    "product": {
@@ -1807,6 +1808,7 @@
    "careSeconds": 79200,
    "nutrition": 864,
    "nutritionTotal": 864,
+   "foodCategory": "plants",
    "favouriteFood": "T4_TURNIP",
    "favouriteBonus": 1.0,
    "product": {
@@ -1834,6 +1836,7 @@
    "careSeconds": 79200,
    "nutrition": 864,
    "nutritionTotal": 864,
+   "foodCategory": "plants",
    "favouriteFood": "T5_CABBAGE",
    "favouriteBonus": 1.0,
    "product": {
@@ -1861,6 +1864,7 @@
    "careSeconds": 79200,
    "nutrition": 864,
    "nutritionTotal": 864,
+   "foodCategory": "plants",
    "favouriteFood": "T6_POTATO",
    "favouriteBonus": 1.0,
    "product": {
@@ -1888,6 +1892,7 @@
    "careSeconds": 79200,
    "nutrition": 864,
    "nutritionTotal": 864,
+   "foodCategory": "plants",
    "favouriteFood": "T7_CORN",
    "favouriteBonus": 1.0,
    "product": null
@@ -1909,6 +1914,7 @@
    "careSeconds": 79200,
    "nutrition": 864,
    "nutritionTotal": 864,
+   "foodCategory": "plants",
    "favouriteFood": "T8_PUMPKIN",
    "favouriteBonus": 1.0,
    "product": {
@@ -1936,6 +1942,7 @@
    "careSeconds": 79200,
    "nutrition": 480,
    "nutritionTotal": 480,
+   "foodCategory": "plants",
    "favouriteFood": null,
    "favouriteBonus": 0.0,
    "product": null
@@ -1957,6 +1964,7 @@
    "careSeconds": 79200,
    "nutrition": 480,
    "nutritionTotal": 480,
+   "foodCategory": "plants",
    "favouriteFood": null,
    "favouriteBonus": 0.0,
    "product": null
@@ -1978,6 +1986,7 @@
    "careSeconds": 79200,
    "nutrition": 768,
    "nutritionTotal": 1440,
+   "foodCategory": "plants",
    "favouriteFood": null,
    "favouriteBonus": 0.0,
    "product": null
@@ -1999,6 +2008,7 @@
    "careSeconds": 79200,
    "nutrition": 768,
    "nutritionTotal": 1440,
+   "foodCategory": "plants",
    "favouriteFood": null,
    "favouriteBonus": 0.0,
    "product": null
@@ -2020,6 +2030,7 @@
    "careSeconds": 79200,
    "nutrition": 768,
    "nutritionTotal": 1440,
+   "foodCategory": "plants",
    "favouriteFood": null,
    "favouriteBonus": 0.0,
    "product": null
@@ -2041,6 +2052,7 @@
    "careSeconds": 79200,
    "nutrition": 1488,
    "nutritionTotal": 4320,
+   "foodCategory": "plants",
    "favouriteFood": null,
    "favouriteBonus": 0.0,
    "product": null
@@ -2062,6 +2074,7 @@
    "careSeconds": 79200,
    "nutrition": 1488,
    "nutritionTotal": 4320,
+   "foodCategory": "plants",
    "favouriteFood": null,
    "favouriteBonus": 0.0,
    "product": null
@@ -2083,6 +2096,7 @@
    "careSeconds": 79200,
    "nutrition": 1488,
    "nutritionTotal": 4320,
+   "foodCategory": "meat",
    "favouriteFood": null,
    "favouriteBonus": 0.0,
    "product": null
@@ -2104,6 +2118,7 @@
    "careSeconds": 79200,
    "nutrition": 3312,
    "nutritionTotal": 12961,
+   "foodCategory": "plants",
    "favouriteFood": null,
    "favouriteBonus": 0.0,
    "product": null
@@ -2125,6 +2140,7 @@
    "careSeconds": 79200,
    "nutrition": 3312,
    "nutritionTotal": 12961,
+   "foodCategory": "plants",
    "favouriteFood": null,
    "favouriteBonus": 0.0,
    "product": null
@@ -2146,6 +2162,7 @@
    "careSeconds": 79200,
    "nutrition": 3312,
    "nutritionTotal": 12961,
+   "foodCategory": "meat",
    "favouriteFood": null,
    "favouriteBonus": 0.0,
    "product": null
@@ -2167,6 +2184,7 @@
    "careSeconds": 79200,
    "nutrition": 3312,
    "nutritionTotal": 12961,
+   "foodCategory": "plants",
    "favouriteFood": null,
    "favouriteBonus": 0.0,
    "product": null
@@ -2188,6 +2206,7 @@
    "careSeconds": 79200,
    "nutrition": 7920,
    "nutritionTotal": 38883,
+   "foodCategory": "plants",
    "favouriteFood": null,
    "favouriteBonus": 0.0,
    "product": null
@@ -2209,6 +2228,7 @@
    "careSeconds": 79200,
    "nutrition": 7920,
    "nutritionTotal": 38883,
+   "foodCategory": "plants",
    "favouriteFood": null,
    "favouriteBonus": 0.0,
    "product": null
@@ -2230,6 +2250,7 @@
    "careSeconds": 79200,
    "nutrition": 7920,
    "nutritionTotal": 38883,
+   "foodCategory": "meat",
    "favouriteFood": null,
    "favouriteBonus": 0.0,
    "product": null
@@ -2251,6 +2272,7 @@
    "careSeconds": 79200,
    "nutrition": 7920,
    "nutritionTotal": 38883,
+   "foodCategory": "meat",
    "favouriteFood": null,
    "favouriteBonus": 0.0,
    "product": null
@@ -2272,6 +2294,7 @@
    "careSeconds": 79200,
    "nutrition": 147696,
    "nutritionTotal": 2055385,
+   "foodCategory": "mount",
    "favouriteFood": null,
    "favouriteBonus": 0.0,
    "product": null
@@ -2293,6 +2316,7 @@
    "careSeconds": 79200,
    "nutrition": 19728,
    "nutritionTotal": 116579,
+   "foodCategory": "plants",
    "favouriteFood": null,
    "favouriteBonus": 0.0,
    "product": null
@@ -2314,6 +2338,7 @@
    "careSeconds": 79200,
    "nutrition": 19728,
    "nutritionTotal": 116579,
+   "foodCategory": "plants",
    "favouriteFood": null,
    "favouriteBonus": 0.0,
    "product": null
@@ -2335,6 +2360,7 @@
    "careSeconds": 79200,
    "nutrition": 19728,
    "nutritionTotal": 116579,
+   "foodCategory": "meat",
    "favouriteFood": null,
    "favouriteBonus": 0.0,
    "product": null
@@ -2356,6 +2382,7 @@
    "careSeconds": 79200,
    "nutrition": 19728,
    "nutritionTotal": 116579,
+   "foodCategory": "plants",
    "favouriteFood": null,
    "favouriteBonus": 0.0,
    "product": null
@@ -2377,12 +2404,145 @@
    "careSeconds": 79200,
    "nutrition": 19728,
    "nutritionTotal": 116579,
+   "foodCategory": "meat",
    "favouriteFood": null,
    "favouriteBonus": 0.0,
    "product": null
   }
  ],
  "recipes": [
+  {
+   "id": "T8_MEAL_SANDWICH_AVALON",
+   "name": "Avalonian Beef Sandwich",
+   "tier": 8,
+   "enchant": 0,
+   "category": "food",
+   "amount": 10,
+   "focus": 494,
+   "silver": 0,
+   "itemValue": 1080.0,
+   "inputs": [
+    {
+     "id": "T4_BREAD",
+     "count": 36
+    },
+    {
+     "id": "T8_MEAT",
+     "count": 72
+    },
+    {
+     "id": "T8_BUTTER",
+     "count": 18
+    },
+    {
+     "id": "QUESTITEM_TOKEN_AVALON",
+     "count": 90,
+     "noReturn": true
+    }
+   ]
+  },
+  {
+   "id": "T8_MEAL_SANDWICH_AVALON@1",
+   "name": "Avalonian Beef Sandwich",
+   "tier": 8,
+   "enchant": 1,
+   "category": "food",
+   "amount": 10,
+   "focus": 694,
+   "silver": 0,
+   "itemValue": 1080.0,
+   "inputs": [
+    {
+     "id": "T4_BREAD",
+     "count": 36
+    },
+    {
+     "id": "T8_MEAT",
+     "count": 72
+    },
+    {
+     "id": "T8_BUTTER",
+     "count": 18
+    },
+    {
+     "id": "QUESTITEM_TOKEN_AVALON",
+     "count": 90,
+     "noReturn": true
+    },
+    {
+     "id": "T1_FISHSAUCE_LEVEL1",
+     "count": 90
+    }
+   ]
+  },
+  {
+   "id": "T8_MEAL_SANDWICH_AVALON@2",
+   "name": "Avalonian Beef Sandwich",
+   "tier": 8,
+   "enchant": 2,
+   "category": "food",
+   "amount": 10,
+   "focus": 1094,
+   "silver": 0,
+   "itemValue": 1080.0,
+   "inputs": [
+    {
+     "id": "T4_BREAD",
+     "count": 36
+    },
+    {
+     "id": "T8_MEAT",
+     "count": 72
+    },
+    {
+     "id": "T8_BUTTER",
+     "count": 18
+    },
+    {
+     "id": "QUESTITEM_TOKEN_AVALON",
+     "count": 90,
+     "noReturn": true
+    },
+    {
+     "id": "T1_FISHSAUCE_LEVEL2",
+     "count": 90
+    }
+   ]
+  },
+  {
+   "id": "T8_MEAL_SANDWICH_AVALON@3",
+   "name": "Avalonian Beef Sandwich",
+   "tier": 8,
+   "enchant": 3,
+   "category": "food",
+   "amount": 10,
+   "focus": 2295,
+   "silver": 0,
+   "itemValue": 1080.0,
+   "inputs": [
+    {
+     "id": "T4_BREAD",
+     "count": 36
+    },
+    {
+     "id": "T8_MEAT",
+     "count": 72
+    },
+    {
+     "id": "T8_BUTTER",
+     "count": 18
+    },
+    {
+     "id": "QUESTITEM_TOKEN_AVALON",
+     "count": 90,
+     "noReturn": true
+    },
+    {
+     "id": "T1_FISHSAUCE_LEVEL3",
+     "count": 90
+    }
+   ]
+  },
   {
    "id": "T8_MEAL_STEW_AVALON",
    "name": "Avalonian Beef Stew",
@@ -2648,6 +2808,138 @@
    ]
   },
   {
+   "id": "T4_MEAL_SANDWICH_AVALON",
+   "name": "Avalonian Goat Sandwich",
+   "tier": 4,
+   "enchant": 0,
+   "category": "food",
+   "amount": 10,
+   "focus": 55,
+   "silver": 0,
+   "itemValue": 120.0,
+   "inputs": [
+    {
+     "id": "T4_BREAD",
+     "count": 4
+    },
+    {
+     "id": "T4_MEAT",
+     "count": 8
+    },
+    {
+     "id": "T4_BUTTER",
+     "count": 2
+    },
+    {
+     "id": "QUESTITEM_TOKEN_AVALON",
+     "count": 10,
+     "noReturn": true
+    }
+   ]
+  },
+  {
+   "id": "T4_MEAL_SANDWICH_AVALON@1",
+   "name": "Avalonian Goat Sandwich",
+   "tier": 4,
+   "enchant": 1,
+   "category": "food",
+   "amount": 10,
+   "focus": 77,
+   "silver": 0,
+   "itemValue": 120.0,
+   "inputs": [
+    {
+     "id": "T4_BREAD",
+     "count": 4
+    },
+    {
+     "id": "T4_MEAT",
+     "count": 8
+    },
+    {
+     "id": "T4_BUTTER",
+     "count": 2
+    },
+    {
+     "id": "QUESTITEM_TOKEN_AVALON",
+     "count": 10,
+     "noReturn": true
+    },
+    {
+     "id": "T1_FISHSAUCE_LEVEL1",
+     "count": 10
+    }
+   ]
+  },
+  {
+   "id": "T4_MEAL_SANDWICH_AVALON@2",
+   "name": "Avalonian Goat Sandwich",
+   "tier": 4,
+   "enchant": 2,
+   "category": "food",
+   "amount": 10,
+   "focus": 122,
+   "silver": 0,
+   "itemValue": 120.0,
+   "inputs": [
+    {
+     "id": "T4_BREAD",
+     "count": 4
+    },
+    {
+     "id": "T4_MEAT",
+     "count": 8
+    },
+    {
+     "id": "T4_BUTTER",
+     "count": 2
+    },
+    {
+     "id": "QUESTITEM_TOKEN_AVALON",
+     "count": 10,
+     "noReturn": true
+    },
+    {
+     "id": "T1_FISHSAUCE_LEVEL2",
+     "count": 10
+    }
+   ]
+  },
+  {
+   "id": "T4_MEAL_SANDWICH_AVALON@3",
+   "name": "Avalonian Goat Sandwich",
+   "tier": 4,
+   "enchant": 3,
+   "category": "food",
+   "amount": 10,
+   "focus": 255,
+   "silver": 0,
+   "itemValue": 120.0,
+   "inputs": [
+    {
+     "id": "T4_BREAD",
+     "count": 4
+    },
+    {
+     "id": "T4_MEAT",
+     "count": 8
+    },
+    {
+     "id": "T4_BUTTER",
+     "count": 2
+    },
+    {
+     "id": "QUESTITEM_TOKEN_AVALON",
+     "count": 10,
+     "noReturn": true
+    },
+    {
+     "id": "T1_FISHSAUCE_LEVEL3",
+     "count": 10
+    }
+   ]
+  },
+  {
    "id": "T4_MEAL_STEW_AVALON",
    "name": "Avalonian Goat Stew",
    "tier": 4,
@@ -2898,6 +3190,138 @@
     },
     {
      "id": "T5_EGG",
+     "count": 6
+    },
+    {
+     "id": "QUESTITEM_TOKEN_AVALON",
+     "count": 30,
+     "noReturn": true
+    },
+    {
+     "id": "T1_FISHSAUCE_LEVEL3",
+     "count": 30
+    }
+   ]
+  },
+  {
+   "id": "T6_MEAL_SANDWICH_AVALON",
+   "name": "Avalonian Mutton Sandwich",
+   "tier": 6,
+   "enchant": 0,
+   "category": "food",
+   "amount": 10,
+   "focus": 165,
+   "silver": 0,
+   "itemValue": 360.0,
+   "inputs": [
+    {
+     "id": "T4_BREAD",
+     "count": 12
+    },
+    {
+     "id": "T6_MEAT",
+     "count": 24
+    },
+    {
+     "id": "T6_BUTTER",
+     "count": 6
+    },
+    {
+     "id": "QUESTITEM_TOKEN_AVALON",
+     "count": 30,
+     "noReturn": true
+    }
+   ]
+  },
+  {
+   "id": "T6_MEAL_SANDWICH_AVALON@1",
+   "name": "Avalonian Mutton Sandwich",
+   "tier": 6,
+   "enchant": 1,
+   "category": "food",
+   "amount": 10,
+   "focus": 231,
+   "silver": 0,
+   "itemValue": 360.0,
+   "inputs": [
+    {
+     "id": "T4_BREAD",
+     "count": 12
+    },
+    {
+     "id": "T6_MEAT",
+     "count": 24
+    },
+    {
+     "id": "T6_BUTTER",
+     "count": 6
+    },
+    {
+     "id": "QUESTITEM_TOKEN_AVALON",
+     "count": 30,
+     "noReturn": true
+    },
+    {
+     "id": "T1_FISHSAUCE_LEVEL1",
+     "count": 30
+    }
+   ]
+  },
+  {
+   "id": "T6_MEAL_SANDWICH_AVALON@2",
+   "name": "Avalonian Mutton Sandwich",
+   "tier": 6,
+   "enchant": 2,
+   "category": "food",
+   "amount": 10,
+   "focus": 365,
+   "silver": 0,
+   "itemValue": 360.0,
+   "inputs": [
+    {
+     "id": "T4_BREAD",
+     "count": 12
+    },
+    {
+     "id": "T6_MEAT",
+     "count": 24
+    },
+    {
+     "id": "T6_BUTTER",
+     "count": 6
+    },
+    {
+     "id": "QUESTITEM_TOKEN_AVALON",
+     "count": 30,
+     "noReturn": true
+    },
+    {
+     "id": "T1_FISHSAUCE_LEVEL2",
+     "count": 30
+    }
+   ]
+  },
+  {
+   "id": "T6_MEAL_SANDWICH_AVALON@3",
+   "name": "Avalonian Mutton Sandwich",
+   "tier": 6,
+   "enchant": 3,
+   "category": "food",
+   "amount": 10,
+   "focus": 765,
+   "silver": 0,
+   "itemValue": 360.0,
+   "inputs": [
+    {
+     "id": "T4_BREAD",
+     "count": 12
+    },
+    {
+     "id": "T6_MEAT",
+     "count": 24
+    },
+    {
+     "id": "T6_BUTTER",
      "count": 6
     },
     {
@@ -3272,6 +3696,118 @@
    ]
   },
   {
+   "id": "T8_MEAL_SANDWICH",
+   "name": "Beef Sandwich",
+   "tier": 8,
+   "enchant": 0,
+   "category": "food",
+   "amount": 10,
+   "focus": 494,
+   "silver": 0,
+   "itemValue": 504.0,
+   "inputs": [
+    {
+     "id": "T4_BREAD",
+     "count": 36
+    },
+    {
+     "id": "T8_MEAT",
+     "count": 72
+    },
+    {
+     "id": "T8_BUTTER",
+     "count": 18
+    }
+   ]
+  },
+  {
+   "id": "T8_MEAL_SANDWICH@1",
+   "name": "Beef Sandwich",
+   "tier": 8,
+   "enchant": 1,
+   "category": "food",
+   "amount": 10,
+   "focus": 694,
+   "silver": 0,
+   "itemValue": 504.0,
+   "inputs": [
+    {
+     "id": "T4_BREAD",
+     "count": 36
+    },
+    {
+     "id": "T8_MEAT",
+     "count": 72
+    },
+    {
+     "id": "T8_BUTTER",
+     "count": 18
+    },
+    {
+     "id": "T1_FISHSAUCE_LEVEL1",
+     "count": 90
+    }
+   ]
+  },
+  {
+   "id": "T8_MEAL_SANDWICH@2",
+   "name": "Beef Sandwich",
+   "tier": 8,
+   "enchant": 2,
+   "category": "food",
+   "amount": 10,
+   "focus": 1094,
+   "silver": 0,
+   "itemValue": 504.0,
+   "inputs": [
+    {
+     "id": "T4_BREAD",
+     "count": 36
+    },
+    {
+     "id": "T8_MEAT",
+     "count": 72
+    },
+    {
+     "id": "T8_BUTTER",
+     "count": 18
+    },
+    {
+     "id": "T1_FISHSAUCE_LEVEL2",
+     "count": 90
+    }
+   ]
+  },
+  {
+   "id": "T8_MEAL_SANDWICH@3",
+   "name": "Beef Sandwich",
+   "tier": 8,
+   "enchant": 3,
+   "category": "food",
+   "amount": 10,
+   "focus": 2295,
+   "silver": 0,
+   "itemValue": 504.0,
+   "inputs": [
+    {
+     "id": "T4_BREAD",
+     "count": 36
+    },
+    {
+     "id": "T8_MEAT",
+     "count": 72
+    },
+    {
+     "id": "T8_BUTTER",
+     "count": 18
+    },
+    {
+     "id": "T1_FISHSAUCE_LEVEL3",
+     "count": 90
+    }
+   ]
+  },
+  {
    "id": "T8_MEAL_STEW",
    "name": "Beef Stew",
    "tier": 8,
@@ -3508,6 +4044,23 @@
     {
      "id": "T1_FISHSAUCE_LEVEL3",
      "count": 27
+    }
+   ]
+  },
+  {
+   "id": "T4_BREAD",
+   "name": "Bread",
+   "tier": 4,
+   "enchant": 0,
+   "category": "food",
+   "amount": 1,
+   "focus": 42,
+   "silver": 0,
+   "itemValue": 40.0,
+   "inputs": [
+    {
+     "id": "T3_FLOUR",
+     "count": 1
     }
    ]
   },
@@ -5000,6 +5553,118 @@
    ]
   },
   {
+   "id": "T4_MEAL_SANDWICH",
+   "name": "Goat Sandwich",
+   "tier": 4,
+   "enchant": 0,
+   "category": "food",
+   "amount": 10,
+   "focus": 55,
+   "silver": 0,
+   "itemValue": 56.0,
+   "inputs": [
+    {
+     "id": "T4_BREAD",
+     "count": 4
+    },
+    {
+     "id": "T4_MEAT",
+     "count": 8
+    },
+    {
+     "id": "T4_BUTTER",
+     "count": 2
+    }
+   ]
+  },
+  {
+   "id": "T4_MEAL_SANDWICH@1",
+   "name": "Goat Sandwich",
+   "tier": 4,
+   "enchant": 1,
+   "category": "food",
+   "amount": 10,
+   "focus": 77,
+   "silver": 0,
+   "itemValue": 56.0,
+   "inputs": [
+    {
+     "id": "T4_BREAD",
+     "count": 4
+    },
+    {
+     "id": "T4_MEAT",
+     "count": 8
+    },
+    {
+     "id": "T4_BUTTER",
+     "count": 2
+    },
+    {
+     "id": "T1_FISHSAUCE_LEVEL1",
+     "count": 10
+    }
+   ]
+  },
+  {
+   "id": "T4_MEAL_SANDWICH@2",
+   "name": "Goat Sandwich",
+   "tier": 4,
+   "enchant": 2,
+   "category": "food",
+   "amount": 10,
+   "focus": 122,
+   "silver": 0,
+   "itemValue": 56.0,
+   "inputs": [
+    {
+     "id": "T4_BREAD",
+     "count": 4
+    },
+    {
+     "id": "T4_MEAT",
+     "count": 8
+    },
+    {
+     "id": "T4_BUTTER",
+     "count": 2
+    },
+    {
+     "id": "T1_FISHSAUCE_LEVEL2",
+     "count": 10
+    }
+   ]
+  },
+  {
+   "id": "T4_MEAL_SANDWICH@3",
+   "name": "Goat Sandwich",
+   "tier": 4,
+   "enchant": 3,
+   "category": "food",
+   "amount": 10,
+   "focus": 255,
+   "silver": 0,
+   "itemValue": 56.0,
+   "inputs": [
+    {
+     "id": "T4_BREAD",
+     "count": 4
+    },
+    {
+     "id": "T4_MEAT",
+     "count": 8
+    },
+    {
+     "id": "T4_BUTTER",
+     "count": 2
+    },
+    {
+     "id": "T1_FISHSAUCE_LEVEL3",
+     "count": 10
+    }
+   ]
+  },
+  {
    "id": "T4_MEAL_STEW",
    "name": "Goat Stew",
    "tier": 4,
@@ -6069,6 +6734,118 @@
     {
      "id": "T1_FISHSAUCE_LEVEL3",
      "count": 9
+    }
+   ]
+  },
+  {
+   "id": "T6_MEAL_SANDWICH",
+   "name": "Mutton Sandwich",
+   "tier": 6,
+   "enchant": 0,
+   "category": "food",
+   "amount": 10,
+   "focus": 165,
+   "silver": 0,
+   "itemValue": 168.0,
+   "inputs": [
+    {
+     "id": "T4_BREAD",
+     "count": 12
+    },
+    {
+     "id": "T6_MEAT",
+     "count": 24
+    },
+    {
+     "id": "T6_BUTTER",
+     "count": 6
+    }
+   ]
+  },
+  {
+   "id": "T6_MEAL_SANDWICH@1",
+   "name": "Mutton Sandwich",
+   "tier": 6,
+   "enchant": 1,
+   "category": "food",
+   "amount": 10,
+   "focus": 231,
+   "silver": 0,
+   "itemValue": 168.0,
+   "inputs": [
+    {
+     "id": "T4_BREAD",
+     "count": 12
+    },
+    {
+     "id": "T6_MEAT",
+     "count": 24
+    },
+    {
+     "id": "T6_BUTTER",
+     "count": 6
+    },
+    {
+     "id": "T1_FISHSAUCE_LEVEL1",
+     "count": 30
+    }
+   ]
+  },
+  {
+   "id": "T6_MEAL_SANDWICH@2",
+   "name": "Mutton Sandwich",
+   "tier": 6,
+   "enchant": 2,
+   "category": "food",
+   "amount": 10,
+   "focus": 365,
+   "silver": 0,
+   "itemValue": 168.0,
+   "inputs": [
+    {
+     "id": "T4_BREAD",
+     "count": 12
+    },
+    {
+     "id": "T6_MEAT",
+     "count": 24
+    },
+    {
+     "id": "T6_BUTTER",
+     "count": 6
+    },
+    {
+     "id": "T1_FISHSAUCE_LEVEL2",
+     "count": 30
+    }
+   ]
+  },
+  {
+   "id": "T6_MEAL_SANDWICH@3",
+   "name": "Mutton Sandwich",
+   "tier": 6,
+   "enchant": 3,
+   "category": "food",
+   "amount": 10,
+   "focus": 765,
+   "silver": 0,
+   "itemValue": 168.0,
+   "inputs": [
+    {
+     "id": "T4_BREAD",
+     "count": 12
+    },
+    {
+     "id": "T6_MEAT",
+     "count": 24
+    },
+    {
+     "id": "T6_BUTTER",
+     "count": 6
+    },
+    {
+     "id": "T1_FISHSAUCE_LEVEL3",
+     "count": 30
     }
    ]
   },
@@ -8168,6 +8945,120 @@
     {
      "id": "T1_FISHSAUCE_LEVEL3",
      "count": 30
+    }
+   ]
+  },
+  {
+   "id": "T3_MEAT",
+   "name": "Raw Chicken",
+   "tier": 3,
+   "enchant": 0,
+   "category": "meat_chicken",
+   "returnProduct": true,
+   "amount": 18,
+   "focus": 38,
+   "silver": 0,
+   "itemValue": 40.0,
+   "inputs": [
+    {
+     "id": "T3_FARM_CHICKEN_GROWN",
+     "count": 1,
+     "noReturn": true
+    }
+   ]
+  },
+  {
+   "id": "T8_MEAT",
+   "name": "Raw Beef",
+   "tier": 8,
+   "enchant": 0,
+   "category": "meat_cow",
+   "returnProduct": true,
+   "amount": 18,
+   "focus": 38,
+   "silver": 0,
+   "itemValue": 40.0,
+   "inputs": [
+    {
+     "id": "T8_FARM_COW_GROWN",
+     "count": 1,
+     "noReturn": true
+    }
+   ]
+  },
+  {
+   "id": "T4_MEAT",
+   "name": "Raw Goat",
+   "tier": 4,
+   "enchant": 0,
+   "category": "meat_goat",
+   "returnProduct": true,
+   "amount": 18,
+   "focus": 38,
+   "silver": 0,
+   "itemValue": 40.0,
+   "inputs": [
+    {
+     "id": "T4_FARM_GOAT_GROWN",
+     "count": 1,
+     "noReturn": true
+    }
+   ]
+  },
+  {
+   "id": "T5_MEAT",
+   "name": "Raw Goose",
+   "tier": 5,
+   "enchant": 0,
+   "category": "meat_goose",
+   "returnProduct": true,
+   "amount": 18,
+   "focus": 38,
+   "silver": 0,
+   "itemValue": 40.0,
+   "inputs": [
+    {
+     "id": "T5_FARM_GOOSE_GROWN",
+     "count": 1,
+     "noReturn": true
+    }
+   ]
+  },
+  {
+   "id": "T7_MEAT",
+   "name": "Raw Pork",
+   "tier": 7,
+   "enchant": 0,
+   "category": "meat_pig",
+   "returnProduct": true,
+   "amount": 18,
+   "focus": 38,
+   "silver": 0,
+   "itemValue": 40.0,
+   "inputs": [
+    {
+     "id": "T7_FARM_PIG_GROWN",
+     "count": 1,
+     "noReturn": true
+    }
+   ]
+  },
+  {
+   "id": "T6_MEAT",
+   "name": "Raw Mutton",
+   "tier": 6,
+   "enchant": 0,
+   "category": "meat_sheep",
+   "returnProduct": true,
+   "amount": 18,
+   "focus": 38,
+   "silver": 0,
+   "itemValue": 40.0,
+   "inputs": [
+    {
+     "id": "T6_FARM_SHEEP_GROWN",
+     "count": 1,
+     "noReturn": true
     }
    ]
   },
@@ -12120,6 +13011,106 @@
    ]
   },
   {
+   "id": "T4_POTION_GATHER",
+   "name": "Minor Gathering Potion",
+   "tier": 4,
+   "enchant": 0,
+   "category": "potion",
+   "amount": 10,
+   "focus": 61,
+   "silver": 0,
+   "itemValue": 64.0,
+   "inputs": [
+    {
+     "id": "T3_ALCHEMY_RARE_ELEMENTAL",
+     "count": 1,
+     "noReturn": true
+    },
+    {
+     "id": "T4_BUTTER",
+     "count": 16
+    }
+   ]
+  },
+  {
+   "id": "T4_POTION_GATHER@1",
+   "name": "Minor Gathering Potion",
+   "tier": 4,
+   "enchant": 1,
+   "category": "potion",
+   "amount": 10,
+   "focus": 84,
+   "silver": 0,
+   "itemValue": 64.0,
+   "inputs": [
+    {
+     "id": "T3_ALCHEMY_RARE_ELEMENTAL",
+     "count": 1,
+     "noReturn": true
+    },
+    {
+     "id": "T4_BUTTER",
+     "count": 16
+    },
+    {
+     "id": "T1_ALCHEMY_EXTRACT_LEVEL1",
+     "count": 10
+    }
+   ]
+  },
+  {
+   "id": "T4_POTION_GATHER@2",
+   "name": "Minor Gathering Potion",
+   "tier": 4,
+   "enchant": 2,
+   "category": "potion",
+   "amount": 10,
+   "focus": 128,
+   "silver": 0,
+   "itemValue": 64.0,
+   "inputs": [
+    {
+     "id": "T3_ALCHEMY_RARE_ELEMENTAL",
+     "count": 1,
+     "noReturn": true
+    },
+    {
+     "id": "T4_BUTTER",
+     "count": 16
+    },
+    {
+     "id": "T1_ALCHEMY_EXTRACT_LEVEL2",
+     "count": 10
+    }
+   ]
+  },
+  {
+   "id": "T4_POTION_GATHER@3",
+   "name": "Minor Gathering Potion",
+   "tier": 4,
+   "enchant": 3,
+   "category": "potion",
+   "amount": 10,
+   "focus": 262,
+   "silver": 0,
+   "itemValue": 64.0,
+   "inputs": [
+    {
+     "id": "T3_ALCHEMY_RARE_ELEMENTAL",
+     "count": 1,
+     "noReturn": true
+    },
+    {
+     "id": "T4_BUTTER",
+     "count": 16
+    },
+    {
+     "id": "T1_ALCHEMY_EXTRACT_LEVEL3",
+     "count": 10
+    }
+   ]
+  },
+  {
    "id": "T3_POTION_REVIVE",
    "name": "Minor Gigantify Potion",
    "tier": 3,
@@ -13320,6 +14311,57 @@
    ]
   }
  ],
+ "feeds": {
+  "plants": {
+   "T1_CARROT": 48,
+   "T2_AGARIC": 48,
+   "T2_BEAN": 48,
+   "T3_COMFREY": 48,
+   "T3_WHEAT": 48,
+   "T4_BURDOCK": 48,
+   "T4_TURNIP": 48,
+   "T5_CABBAGE": 48,
+   "T5_TEASEL": 48,
+   "T6_FOXGLOVE": 48,
+   "T6_POTATO": 48,
+   "T7_CORN": 48,
+   "T7_MULLEIN": 48,
+   "T8_PUMPKIN": 48,
+   "T8_YARROW": 48
+  },
+  "meat": {
+   "T3_MEAT": 52,
+   "T4_MEAT": 52,
+   "T5_MEAT": 52,
+   "T6_MEAT": 52,
+   "T7_MEAT": 52,
+   "T8_MEAT": 52
+  },
+  "mount": {
+   "T3_FARM_HORSE_GROWN": 170,
+   "T3_FARM_OX_GROWN": 170,
+   "T4_FARM_GIANTSTAG_GROWN": 583,
+   "T4_FARM_HORSE_GROWN": 583,
+   "T4_FARM_OX_GROWN": 583,
+   "T5_FARM_COUGAR_GROWN": 1859,
+   "T5_FARM_HORSE_GROWN": 1859,
+   "T5_FARM_OX_GROWN": 1859,
+   "T6_FARM_DIREWOLF_GROWN": 5905,
+   "T6_FARM_GIANTSTAG_GROWN": 5905,
+   "T6_FARM_HORSE_GROWN": 5905,
+   "T6_FARM_OX_GROWN": 5905,
+   "T7_FARM_DIREBOAR_GROWN": 18699,
+   "T7_FARM_HORSE_GROWN": 18699,
+   "T7_FARM_OX_GROWN": 18699,
+   "T7_FARM_SWAMPDRAGON_GROWN": 18699,
+   "T8_FARM_DIREBEAR_GROWN": 59049,
+   "T8_FARM_DIREWOLF_GROWN": 59049,
+   "T8_FARM_DRAKE_GROWN": 59049,
+   "T8_FARM_HORSE_GROWN": 59049,
+   "T8_FARM_MAMMOTH_GROWN": 59049,
+   "T8_FARM_OX_GROWN": 59049
+  }
+ },
  "items": {
   "T1_FARM_CARROT_SEED": {
    "name": "Carrot Seeds",
@@ -14571,6 +15613,31 @@
    "tier": 8,
    "cat": "potion"
   },
+  "T3_ALCHEMY_RARE_ELEMENTAL": {
+   "name": "Rugged Runestone Tooth",
+   "tier": 3,
+   "cat": "material"
+  },
+  "T4_POTION_GATHER": {
+   "name": "Minor Gathering Potion",
+   "tier": 4,
+   "cat": "potion"
+  },
+  "T4_POTION_GATHER@1": {
+   "name": "Minor Gathering Potion",
+   "tier": 4,
+   "cat": "potion"
+  },
+  "T4_POTION_GATHER@2": {
+   "name": "Minor Gathering Potion",
+   "tier": 4,
+   "cat": "potion"
+  },
+  "T4_POTION_GATHER@3": {
+   "name": "Minor Gathering Potion",
+   "tier": 4,
+   "cat": "potion"
+  },
   "T5_ALCHEMY_RARE_ELEMENTAL": {
    "name": "Fine Runestone Tooth",
    "tier": 5,
@@ -15706,6 +16773,66 @@
    "tier": 8,
    "cat": "food"
   },
+  "T4_MEAL_SANDWICH": {
+   "name": "Goat Sandwich",
+   "tier": 4,
+   "cat": "food"
+  },
+  "T4_MEAL_SANDWICH@1": {
+   "name": "Goat Sandwich",
+   "tier": 4,
+   "cat": "food"
+  },
+  "T4_MEAL_SANDWICH@2": {
+   "name": "Goat Sandwich",
+   "tier": 4,
+   "cat": "food"
+  },
+  "T4_MEAL_SANDWICH@3": {
+   "name": "Goat Sandwich",
+   "tier": 4,
+   "cat": "food"
+  },
+  "T6_MEAL_SANDWICH": {
+   "name": "Mutton Sandwich",
+   "tier": 6,
+   "cat": "food"
+  },
+  "T6_MEAL_SANDWICH@1": {
+   "name": "Mutton Sandwich",
+   "tier": 6,
+   "cat": "food"
+  },
+  "T6_MEAL_SANDWICH@2": {
+   "name": "Mutton Sandwich",
+   "tier": 6,
+   "cat": "food"
+  },
+  "T6_MEAL_SANDWICH@3": {
+   "name": "Mutton Sandwich",
+   "tier": 6,
+   "cat": "food"
+  },
+  "T8_MEAL_SANDWICH": {
+   "name": "Beef Sandwich",
+   "tier": 8,
+   "cat": "food"
+  },
+  "T8_MEAL_SANDWICH@1": {
+   "name": "Beef Sandwich",
+   "tier": 8,
+   "cat": "food"
+  },
+  "T8_MEAL_SANDWICH@2": {
+   "name": "Beef Sandwich",
+   "tier": 8,
+   "cat": "food"
+  },
+  "T8_MEAL_SANDWICH@3": {
+   "name": "Beef Sandwich",
+   "tier": 8,
+   "cat": "food"
+  },
   "T3_FISH_FRESHWATER_HIGHLANDS_RARE": {
    "name": "Stonestream Lurcher",
    "tier": 3,
@@ -15778,6 +16905,66 @@
   },
   "T8_MEAL_SANDWICH_FISH@3": {
    "name": "Thunderfall Lurcher Sandwich",
+   "tier": 8,
+   "cat": "food"
+  },
+  "T4_MEAL_SANDWICH_AVALON": {
+   "name": "Avalonian Goat Sandwich",
+   "tier": 4,
+   "cat": "food"
+  },
+  "T4_MEAL_SANDWICH_AVALON@1": {
+   "name": "Avalonian Goat Sandwich",
+   "tier": 4,
+   "cat": "food"
+  },
+  "T4_MEAL_SANDWICH_AVALON@2": {
+   "name": "Avalonian Goat Sandwich",
+   "tier": 4,
+   "cat": "food"
+  },
+  "T4_MEAL_SANDWICH_AVALON@3": {
+   "name": "Avalonian Goat Sandwich",
+   "tier": 4,
+   "cat": "food"
+  },
+  "T6_MEAL_SANDWICH_AVALON": {
+   "name": "Avalonian Mutton Sandwich",
+   "tier": 6,
+   "cat": "food"
+  },
+  "T6_MEAL_SANDWICH_AVALON@1": {
+   "name": "Avalonian Mutton Sandwich",
+   "tier": 6,
+   "cat": "food"
+  },
+  "T6_MEAL_SANDWICH_AVALON@2": {
+   "name": "Avalonian Mutton Sandwich",
+   "tier": 6,
+   "cat": "food"
+  },
+  "T6_MEAL_SANDWICH_AVALON@3": {
+   "name": "Avalonian Mutton Sandwich",
+   "tier": 6,
+   "cat": "food"
+  },
+  "T8_MEAL_SANDWICH_AVALON": {
+   "name": "Avalonian Beef Sandwich",
+   "tier": 8,
+   "cat": "food"
+  },
+  "T8_MEAL_SANDWICH_AVALON@1": {
+   "name": "Avalonian Beef Sandwich",
+   "tier": 8,
+   "cat": "food"
+  },
+  "T8_MEAL_SANDWICH_AVALON@2": {
+   "name": "Avalonian Beef Sandwich",
+   "tier": 8,
+   "cat": "food"
+  },
+  "T8_MEAL_SANDWICH_AVALON@3": {
+   "name": "Avalonian Beef Sandwich",
    "tier": 8,
    "cat": "food"
   },

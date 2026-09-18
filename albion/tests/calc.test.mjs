@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
 import {
-  TILES_PER_PLOT, animalCycle, cityBonus, cityFor, craftBatch, farmBonus,
+  TILES_PER_PLOT, animalCycle, cityBonus, cityFor, craftBatch, farmBonus, feedFor,
   farmCityFor, farmDayCount, focusCostAt, focusEfficiency, focusLedger,
   harvestsFor, isFarmDay, perPeriod, planTotals, plantCycle, productCycle,
   craftNutrition, focusPerDayOf, rankRecipes, returnRate, ruleCovers,
@@ -30,9 +30,59 @@ const ctx = (prices = {}, over = {}) => ({
     craftCity: 'martlock', farmCity: 'caerleon', spec: {}, specLevel: 0,
     cadenceHours: 24, cycleDays: 14, farmDays: 10, farmEvery: 1, startFocus: 0,
     focusNodes: data.focusNodes, nodeLevels: {}, stockCap: 5000,
-    stationFee: {}, feedItemId: 'T3_WHEAT',
+    stationFee: {}, feeds: data.feeds,
+    feedItemIds: { plants: 'T3_WHEAT', meat: 'T3_MEAT', mount: 'T8_FARM_OX_GROWN' },
     ...over,
   },
+});
+
+/* ------------------------------------------------------- the recipe list */
+
+test('a grown animal can be butchered, not only sold whole', () => {
+  const meat = recipe('T8_MEAT');
+  assert.ok(meat, 'the butcher recipe exists');
+  assert.equal(meat.category, 'meat_cow');
+  assert.equal(meat.amount, 18);
+  assert.equal(meat.focus, 38);
+  assert.equal(meat.returnProduct, true);
+  assert.deepEqual(meat.inputs,
+    [{ id: 'T8_FARM_COW_GROWN', count: 1, noReturn: true }]);
+  // One per species, and no more: the game has exactly six.
+  assert.equal(data.recipes.filter((r) => r.category.startsWith('meat_')).length, 6);
+});
+
+test('butchering pays its return rate in meat, because a cow cannot come back', () => {
+  const meat = recipe('T8_MEAT');
+  const prices = { T8_FARM_COW_GROWN: 120000, T8_MEAT: 9000 };
+  // Martlock is the specialty city for beef, straight out of the modifiers.
+  const at = (over) => craftBatch(meat, ctx(prices, { craftCity: 'martlock', ...over }));
+
+  const plain = at({ useFocus: false });
+  assert.equal(plain.bonusTotal, 28);              // 18 base + 10 specialty
+  assert.ok(plain.made > 18 && plain.made < 22);
+
+  const focused = at({ useFocus: true });
+  assert.equal(focused.bonusTotal, 87);            // + the 59 focus gives
+  assert.equal(Math.round(focused.rrr * 10000) / 100, 46.52);
+  assert.equal(Math.round(focused.made * 100) / 100,
+    Math.round(18 * (1 + focused.rrr) * 100) / 100);
+  // The cow itself is charged in full either way: maxreturnamount is 0.
+  assert.equal(focused.materialsAfterReturn, 120000);
+  // And focus is worth having, which it was not while the rate applied to
+  // nothing at all.
+  assert.ok(focused.revenue > plain.revenue);
+});
+
+test('the recipe list reaches what farm produce is made into, not just what it touches', () => {
+  // Bread is flour is wheat. Reading the inputs one level deep kept the
+  // flour and dropped the bread, and with it the whole sandwich line.
+  assert.ok(recipe('T3_FLOUR'), 'flour, which is wheat');
+  assert.ok(recipe('T4_BREAD'), 'bread, which is flour');
+  assert.ok(recipe('T8_MEAL_SANDWICH'), 'a sandwich, which is bread');
+  assert.ok(recipe('T4_POTION_GATHER'), 'and a potion made of butter');
+  // Fish is not farmed and never becomes farmed, so the closure must stop.
+  assert.equal(recipe('T1_MEAL_GRILLEDFISH'), undefined);
+  assert.equal(recipe('T1_MEAL_SEAWEEDSALAD'), undefined);
 });
 
 /* ------------------------------------------------- the return-rate curve */
@@ -130,15 +180,46 @@ test('a chicken eats 18 plants, or 9 if they are its favourite', () => {
   const p = { 'T3_WHEAT': 100, 'T3_FARM_CHICKEN_BABY': 5000, 'T3_FARM_CHICKEN_GROWN': 9000 };
   const plain = { premium: false };
   const fav = animalCycle(chick, ctx(p, { ...plain, favouriteFood: true }));
-  const any = animalCycle(chick, ctx(p, { ...plain, favouriteFood: false, feedItemId: 'T3_WHEAT' }));
+  const any = animalCycle(chick, ctx(p, { ...plain, favouriteFood: false }));
   assert.equal(fav.plantsNeeded, 9);
   assert.equal(any.plantsNeeded, 18);
   assert.equal(fav.feedCost, 900);
   assert.equal(any.feedCost, 1800);
 
-  const quick = animalCycle(chick, ctx(p, { favouriteFood: false, feedItemId: 'T3_WHEAT' }));
+  const quick = animalCycle(chick, ctx(p, { favouriteFood: false }));
   assert.equal(quick.plantsNeeded, 9, 'Premium halves the growth, so half the feed');
   assert.equal(quick.hours, any.hours / 2);
+});
+
+test('an animal is fed what the game lets it eat, not the cheapest crop', () => {
+  // items.xml gives every animal an <acceptedfood foodcategory>, and the game
+  // refuses anything else outright: "{0} does not eat {1}".
+  const wolf = animal('T8_FARM_DIREWOLF_BABY');
+  const drake = animal('T8_FARM_DRAKE_BABY');
+  assert.equal(wolf.foodCategory, 'meat');
+  assert.equal(drake.foodCategory, 'mount');
+  assert.equal(animal('T8_FARM_COW_BABY').foodCategory, 'plants');
+
+  const s = ctx().settings;
+  assert.equal(feedFor(wolf, s).id, 'T3_MEAT');
+  assert.equal(feedFor(wolf, s).nutrition, 52);      // meat is a flat 52
+  assert.equal(feedFor(drake, s).id, 'T8_FARM_OX_GROWN');
+  // Mount food is the one tiered list: 8 at T2 up to 59,049 at T8, which is
+  // why "48 a plant" could never have covered it.
+  assert.equal(feedFor(drake, s).nutrition, 59049);
+  assert.equal(data.feeds.plants.T3_WHEAT, 48);
+  assert.equal(Object.keys(data.feeds.mount).length, 22);
+
+  // And the cycle spends the right amount of the right thing.
+  const wolfCycle = animalCycle(wolf, ctx({ T3_MEAT: 300 }));
+  assert.equal(wolfCycle.feedId, 'T3_MEAT');
+  assert.equal(wolfCycle.feedCategory, 'meat');
+  assert.equal(Math.round(wolfCycle.plantsNeeded),
+    Math.round(wolfCycle.eaten / 52));
+  const drakeCycle = animalCycle(drake, ctx({ T8_FARM_OX_GROWN: 900000 }));
+  assert.equal(drakeCycle.feedId, 'T8_FARM_OX_GROWN');
+  // A drake on wheat wanted twenty thousand of it; on its own food it is 18.
+  assert.ok(drakeCycle.plantsNeeded < 20);
 });
 
 test('offspring offsets the cost of the next baby', () => {
@@ -635,7 +716,8 @@ const cyclePrices = {
 };
 const cycleCtx = (over = {}) => ctx(cyclePrices, {
   watered: true, useFocus: true, craftCity: 'brecilien', farmCity: 'martlock',
-  feedItemId: 'T5_CABBAGE', ...over,
+  feedItemIds: { plants: 'T5_CABBAGE', meat: 'T3_MEAT', mount: 'T8_FARM_OX_GROWN' },
+  ...over,
 });
 const cyclePlan = (crafts) => ({
   plots: [
@@ -1285,7 +1367,7 @@ test('a farm sized to its crafting leaves nothing on the pile', () => {
 
 /* ----------------------------------- rows that cost no focus ----------- */
 
-test('collecting eggs costs no focus, so it needs no rest days', () => {
+test('you cannot collect eggs on a day you were not there', () => {
   const geese = { id: 'g', itemId: 'T5_FARM_GOOSE_BABY', count: 4, mode: 'product', cityId: 'lymhurst' };
   const herbs = { id: 'f', itemId: 'T6_FARM_FOXGLOVE_SEED', count: 9, mode: 'grow', cityId: 'martlock' };
   const plan = { plots: [herbs, geese], crafts: [] };
@@ -1297,14 +1379,32 @@ test('collecting eggs costs no focus, so it needs no rest days', () => {
   assert.equal(eggs.cycle.focus, 0, 'eggs cost nothing to collect');
   assert.equal(eggs.rests, false);
   assert.equal(foxglove.rests, true);
-  // The herbs halve with the rhythm; the geese carry on every day.
+  // Costing no focus is about what you pay while you are standing there, not
+  // about whether you turned up. Both rows halve with the login rhythm.
   assert.equal(foxglove.harvests, 6);
-  assert.equal(eggs.harvests, 12);
+  assert.equal(eggs.harvests, foxglove.harvests);
 
   // And they add nothing to the watering bill.
   const onlyGeese = simulateCycle({ plots: [geese], crafts: [] }, data, cycleCtx());
   assert.equal(onlyGeese.wateringPerDay, 0);
   assert.equal(onlyGeese.wateringShortfall, 0);
+});
+
+test('no row harvests more often than you go to the farm', () => {
+  const plan = {
+    plots: [
+      { id: 'f', itemId: 'T6_FARM_FOXGLOVE_SEED', count: 9, mode: 'grow', cityId: 'martlock' },
+      { id: 'g', itemId: 'T5_FARM_GOOSE_BABY', count: 4, mode: 'product', cityId: 'lymhurst' },
+    ],
+    crafts: [],
+  };
+  // Watering off is the shipped default, and it used to let every row ignore
+  // the rhythm entirely \u2014 twelve harvests on six farm days.
+  const dry = simulateCycle(plan, data, cycleCtx({ watered: false, farmDays: 12, farmEvery: 2 }));
+  for (const line of dry.farmLines) {
+    assert.ok(line.harvests <= dry.farmingDays,
+      `${line.itemId} harvested ${line.harvests} times on ${dry.farmingDays} farm days`);
+  }
 });
 
 test('raising goslings does cost focus, so it does rest', () => {

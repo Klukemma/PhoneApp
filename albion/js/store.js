@@ -41,7 +41,9 @@ function defaults() {
       // What each city's station owner charges, per 100 nutrition consumed.
       // Your own island charges nothing. Posted on the station in game.
       stationFee: {},
-      feedItemId: 'T3_WHEAT',
+      // What goes in the trough, per food category. The game will not let a
+      // direwolf eat wheat, so one field could never cover all three.
+      feedItemIds: { plants: 'T3_WHEAT', meat: 'T3_MEAT', mount: 'T8_FARM_OX_GROWN' },
       server: 'americas',      // Albion Americas, Asia or Europe
       priceCity: 'Caerleon',
       // These come from gamedata.json constants at first run; kept here so
@@ -77,6 +79,9 @@ function withConstants(state, data) {
   // Cities live outside constants and are always taken fresh from the game
   // data, never from a saved copy.
   state.settings.cities = data.cities;
+  // And so does the feed table: which items each category accepts, and the
+  // nutrition each carries.
+  state.settings.feeds = data.feeds;
   /* The NPC sells seeds and babies at a fixed price. That is a ceiling on what
    * one can ever cost you — you can always walk to the merchant — and it is
    * not a saved price of yours, so it lives apart from both price maps.
@@ -162,6 +167,15 @@ function normalize(raw) {
       if (!Number.isFinite(n) || n < 0) delete map[k];
     }
   }
+  // One trough setting became three, one per food category. Whatever was in
+  // the old single field was a plant, so that is where it goes.
+  s.settings.feedItemIds = {
+    ...base.settings.feedItemIds,
+    ...(raw.settings?.feedItemIds || {}),
+    ...(raw.settings?.feedItemId && !raw.settings?.feedItemIds
+      ? { plants: raw.settings.feedItemId } : {}),
+  };
+  delete s.settings.feedItemId;
   s.schema = LAND_SCHEMA;
   // "island" was offered as a place to farm, which it never was: every island
   // is bound to a city and farms with that city's bonus. Anyone who picked it

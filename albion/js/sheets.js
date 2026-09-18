@@ -22,12 +22,30 @@ import {
 
 const nameOf = (id) => DATA.items[id]?.name || id;
 
+/**
+ * Which list a recipe belongs in. Butchering is its own crafting category per
+ * species \u2014 meat_cow, meat_goose and four more \u2014 so anything that is not a
+ * potion or a cooked meal would otherwise be filed with the potions and drawn
+ * with a flask beside it.
+ */
+const groupOf = (r) => (r.category === 'food' ? 'food'
+  : r.category.startsWith('meat_') ? 'meat' : 'potion');
+
+const GROUP_ICON = { food: '\u{1F35E}', meat: '\u{1F969}', potion: '\u{1F9EA}' };
+
+/** The three troughs, in the order the animals that eat from them appear. */
+const FEED_LABELS = [
+  ['plants', 'Crops, for livestock and pack animals'],
+  ['meat', 'Meat, for the kennel carnivores'],
+  ['mount', 'Grown mounts, which only the drake eats'],
+];
+
 /* ------------------------------------------------------------- goal --- */
 
 /** What you are making, and how much land you have to make it with. */
 export function openGoal() {
   const goal = state.goal;
-  const byCat = { potion: [], food: [] };
+  const byCat = { potion: [], food: [], meat: [] };
   // Enchanted versions hang off their base rather than trebling the list: the
   // game writes them T6.1, T6.2 and T6.3, and they are the same potion made
   // with alchemy extract stirred in, for a lot more focus and a lot more money.
@@ -38,7 +56,7 @@ export function openGoal() {
       if (!enchantsOf.has(base)) enchantsOf.set(base, []);
       enchantsOf.get(base).push(r);
     } else {
-      (byCat[r.category] || byCat.potion).push(r);
+      byCat[groupOf(r)].push(r);
     }
   }
   for (const list of enchantsOf.values()) list.sort((a, b) => a.enchant - b.enchant);
@@ -60,7 +78,7 @@ export function openGoal() {
     .map((r) => `
       <button class="row" data-recipe="${esc(r.id)}"
         ${r.id === goal.recipeId ? 'style="border-color:var(--gold)"' : ''}>
-        <span class="ico">${r.category === 'food' ? '\u{1F35E}' : '\u{1F9EA}'}</span>
+        <span class="ico">${GROUP_ICON[groupOf(r)]}</span>
         <span class="body"><span class="title">${tierText(r.tier, r.enchant)} ${esc(r.name)}</span>
           <span class="meta">${r.inputs.map((i) => `${i.count}\u00d7 ${nameOf(i.id)}`).join(', ')}
             \u2192 ${r.amount}${priceOf(r.id) ? '' : ' \u00b7 no price yet'}</span></span>
@@ -116,6 +134,9 @@ export function openGoal() {
 
     <div class="section-head"><h2>Potions</h2></div>${list(byCat.potion)}
     <div class="section-head"><h2>Food</h2></div>${list(byCat.food)}
+    ${byCat.meat.length ? `<div class="section-head"><h2>Butchering</h2></div>
+      <p class="muted" style="margin:0 0 8px">One grown animal, 38 focus, 18 cuts
+        of meat. The animal does not come back.</p>${list(byCat.meat)}` : ''}
   `, {
     onMount(root) {
       const save = () => setGoal({
@@ -525,14 +546,14 @@ function addPlotBack(row) {
 /* ------------------------------------------------------ pick a recipe -- */
 
 export function openAddCraft() {
-  const byCat = { potion: [], food: [] };
-  for (const r of DATA.recipes) (byCat[r.category] || byCat.potion).push(r);
+  const byCat = { potion: [], food: [], meat: [] };
+  for (const r of DATA.recipes) byCat[groupOf(r)].push(r);
 
   const list = (rs) => rs
     .sort((a, b) => a.tier - b.tier || a.name.localeCompare(b.name))
     .map((r) => `
       <button class="row" data-recipe="${esc(r.id)}">
-        <span class="ico">${r.category === 'food' ? '\u{1F35E}' : '\u{1F9EA}'}</span>
+        <span class="ico">${GROUP_ICON[groupOf(r)]}</span>
         <span class="body"><span class="title">${tierText(r.tier, r.enchant)} ${esc(r.name)}</span>
           <span class="meta">${r.inputs.map((i) => `${i.count}× ${nameOf(i.id)}`).join(', ')}
             → ${r.amount}</span></span>
@@ -543,6 +564,9 @@ export function openAddCraft() {
     <h2>What are you crafting?</h2>
     <div class="section-head"><h2>Potions</h2></div>${list(byCat.potion)}
     <div class="section-head"><h2>Food</h2></div>${list(byCat.food)}
+    ${byCat.meat.length ? `<div class="section-head"><h2>Butchering</h2></div>
+      <p class="muted" style="margin:0 0 8px">One grown animal, 38 focus, 18 cuts
+        of meat. The animal does not come back.</p>${list(byCat.meat)}` : ''}
   `, {
     onMount(root) {
       root.onclick = (e) => {
@@ -667,7 +691,11 @@ function cityHint(cityId, category) {
   const b = cityBonus(city, category, s);
   const withFocus = s.useFocus ? b.total + s.focusCraftBonus : b.total;
   const rate = (1 - 100 / (100 + withFocus)) * 100;
-  const what = category === 'potion' ? 'Potions' : 'Cooked food';
+  const what = category === 'potion' ? 'Potions'
+    : category === 'food' ? 'Cooked food'
+      // Butchering is specialised per species, so name the species: Martlock
+      // is the city for beef and nowhere else.
+      : `${category.replace('meat_', '').replace(/^./, (c) => c.toUpperCase())} meat`;
   return b.specialises
     ? `${what} get this city's specialty: +${b.base} base and +${b.specialty} specialty, ` +
       `so ${rate.toFixed(1)}% of materials come back.`
@@ -1005,6 +1033,31 @@ export function openSettings() {
         that is away.</div></div>
 
     <div class="field">
+      <label>What goes in the trough</label>
+      ${FEED_LABELS.map(([cat, what]) => {
+        const table = s.feeds?.[cat] || {};
+        const opts = Object.entries(table)
+          .map(([id, nut]) => ({ id, nut, per: priceOf(id) ? priceOf(id) / nut : Infinity }))
+          .sort((a, b) => a.per - b.per || a.id.localeCompare(b.id));
+        const picked = (s.feedItemIds || {})[cat];
+        return `
+          <div class="field" style="margin:8px 0 0">
+            <label style="font-size:11px">${esc(what)}</label>
+            <select data-feed="${esc(cat)}">${opts.map((o) => `
+              <option value="${esc(o.id)}" ${o.id === picked ? 'selected' : ''}>
+                ${esc(nameOf(o.id))} \u00b7 ${o.nut} nutrition${
+                  Number.isFinite(o.per) ? ` \u00b7 ${o.per.toFixed(2)} silver each`
+                    : ' \u00b7 no price yet'}</option>`).join('')}
+            </select></div>`;
+      }).join('')}
+      <div class="hint">The game refuses food from the wrong list outright, so
+        a direwolf eats meat whatever wheat costs and a drake eats grown mounts.
+        Crops are all 48 nutrition and meat all 52, but mount food runs from 8
+        to 59,049, so the cheapest item is not the cheapest feed. Sorted by
+        silver per nutrition, which is the number that matters.</div>
+    </div>
+
+    <div class="field">
       <label>Station usage fee, per 100 nutrition</label>
       <div class="two">
         ${(s.cities || []).filter((c) => !c.craftOnly).slice(0, 8).map((c) => `
@@ -1100,6 +1153,10 @@ export function openSettings() {
           if (v > 0) stationFee[box.dataset.fee] = v;
         }
         patch.stationFee = stationFee;
+        // One trough per food category: the game will not let them share.
+        const feedItemIds = { ...s.feedItemIds };
+        for (const box of $$('[data-feed]', root)) feedItemIds[box.dataset.feed] = box.value;
+        patch.feedItemIds = feedItemIds;
         setSettings(patch);
         closeSheet();
         toast('Saved');
@@ -1181,7 +1238,7 @@ export function openMastery(filter = '') {
     const focus = Math.round(focusAt(r.focus, own ?? s.specLevel));
     return `
       <div class="row" style="gap:8px">
-        <span class="ico">${r.category === 'food' ? '\u{1F35E}' : '\u{1F9EA}'}</span>
+        <span class="ico">${GROUP_ICON[groupOf(r)]}</span>
         <span class="body"><span class="title">${tierText(r.tier, r.enchant)} ${esc(r.name)}</span>
           <span class="meta">${focus} focus each${own == null ? ', default' : ''}</span></span>
         <input type="number" class="spec-input" data-spec="${esc(r.id)}"

@@ -35,6 +35,14 @@ LIVESTOCK = ["CHICKEN", "GOAT", "GOOSE", "SHEEP", "PIG", "COW"]
 MOUNT_STOCK = ["OX", "HORSE", "DIREWOLF", "DIREBOAR", "DIREBEAR", "SWAMPDRAGON",
                "GIANTSTAG", "MAMMOTH", "COUGAR", "DRAKE"]
 
+# Butchering is its own crafting category per species, one per livestock
+# animal, and each is specialised in exactly one royal city. Without these
+# the grown animal can only ever be sold whole, and every meat recipe in the
+# game - stews, sandwiches, roasts - reads as buy-only.
+MEAT_CATEGORIES = ("meat_chicken", "meat_goat", "meat_goose",
+                   "meat_sheep", "meat_pig", "meat_cow")
+CRAFT_CATEGORIES = ("potion", "food") + MEAT_CATEGORIES
+
 
 
 def fetch(name: str) -> bytes:
@@ -398,6 +406,18 @@ def main() -> None:
         register(crop, "herb" if is_herb else "crop")
     plants.sort(key=lambda p: (p["kind"], p["tier"]))
 
+    # --- what animals eat -------------------------------------------------
+    # Nutrition per item, by the category the item belongs to. Plants are a
+    # flat 48 and meat a flat 52, but mount food is tiered from 8 to 59,049,
+    # so "48 a plant" was only ever right for two of the four categories.
+    feed_nutrition: dict[str, dict[str, int]] = {}
+    for el in items.iter():
+        cat = el.get("foodcategory")
+        nut = el.get("nutrition")
+        name = el.get("uniquename")
+        if cat and nut and name:
+            feed_nutrition.setdefault(cat, {})[name] = int(float(nut))
+
     # --- animals ----------------------------------------------------------
     grown_by_id = {
         f.get("uniquename"): f for f in items.findall(".//farmableitem")
@@ -463,6 +483,11 @@ def main() -> None:
             # two coincide; a T8 ox eats six bars' worth.
             "nutrition": int(float(food.get("nutritionmax"))) if food is not None else 0,
             "nutritionTotal": _eaten(food, int(grown_el.get("growtime"))),
+            # What it will actually eat. The game refuses anything else
+            # outright - "{0} does not eat {1}" - and a direwolf is not going
+            # to eat wheat however cheap wheat is.
+            "foodCategory": (accepted.get("foodcategory") or "plants")
+                            if accepted is not None else "plants",
             "favouriteFood": accepted.get("favorite") if accepted is not None else None,
             "favouriteBonus": float(accepted.get("favoritebonus", 0)) if accepted is not None else 0,
             "product": product,
@@ -472,14 +497,44 @@ def main() -> None:
     animals.sort(key=lambda a: (a["kind"], a["tier"]))
 
     # --- recipes that consume something you farmed ------------------------
-    recipes = []
+    # A grown animal is a farm output too: you butcher it for meat. It lives
+    # in <farmableitem> rather than <simpleitem>, so it never reached the set
+    # the filter below reads.
+    farm_out |= {a["grownId"] for a in animals}
+
+    candidates = []
     for el in items.iter():
         req = el.find("craftingrequirements")
         cat = el.get("craftingcategory")
-        if req is None or cat not in ("potion", "food"):
+        if req is None or cat not in CRAFT_CATEGORIES:
             continue
         unique = el.get("uniquename")
         if not unique or "PROTOTYPE" in unique:
+            continue
+        candidates.append((el, req, cat, unique))
+
+    # An input counts as farmed if it comes off your own land, or if it is
+    # itself something on this list that you could make. Bread is flour is
+    # wheat. One pass kept the flour and threw away the bread the flour is
+    # for, which took the whole sandwich and stew line with it, so this runs
+    # to a fixpoint - it settles in two passes.
+    reachable = set(farm_out)
+    kept = set()
+    changed = True
+    while changed:
+        changed = False
+        for _el, req, _cat, unique in candidates:
+            if unique in kept:
+                continue
+            if any(c.get("uniquename") in reachable
+                   for c in req.findall("craftresource")):
+                kept.add(unique)
+                reachable.add(unique)
+                changed = True
+
+    recipes = []
+    for el, req, cat, unique in candidates:
+        if unique not in kept:
             continue
 
         def add_recipe(rid, rreq, enchant):   # noqa: C901 - reads top to bottom
@@ -493,11 +548,15 @@ def main() -> None:
                 if c.get("maxreturnamount") == "0":
                     item["noReturn"] = True
                 inputs.append(item)
-            if not any(i["id"] in farm_out for i in inputs):
-                return
+            # Whether to keep this item was settled above, over the whole
+            # list at once. An enchanted row is the base row's inputs plus
+            # extract, so base and enchants always answer the same way.
             for i in inputs:
                 register(i["id"], item_meta.get(i["id"], {}).get("cat", "material"))
-            register(rid, cat)
+            # Meat is an ingredient wherever it turns up again, so it is
+            # filed with the materials rather than under its own butchering
+            # category, which would otherwise depend on iteration order.
+            register(rid, "material" if cat in MEAT_CATEGORIES else cat)
             recipes.append({
                 "id": rid,
                 "name": pretty(rid),
@@ -506,6 +565,10 @@ def main() -> None:
                 # writes as T6.1, T6.2 and T6.3.
                 "enchant": enchant,
                 "category": cat,
+                # Butchering hands back meat rather than the animal, which is
+                # the game's own flag on exactly these six recipes.
+                **({"returnProduct": True}
+                   if rreq.get("returnproductnotresource") == "true" else {}),
                 "amount": int(rreq.get("amountcrafted", 1)),
                 "focus": int(float(rreq.get("craftingfocus", 0))),
                 "silver": int(float(rreq.get("silver", 0))),
@@ -570,6 +633,15 @@ def main() -> None:
         "plants": plants,
         "animals": animals,
         "recipes": recipes,
+        # What you are allowed to put in the trough, per category, with the
+        # nutrition each item carries. Restricted to the three categories the
+        # app's animals actually accept and to items it already knows about,
+        # so the picker never offers a chocolate egg from a 2020 event.
+        "feeds": {
+            cat: {i: n for i, n in sorted(feed_nutrition.get(cat, {}).items())
+                  if i in item_meta}
+            for cat in ("plants", "meat", "mount")
+        },
         "items": item_meta,
     }
 

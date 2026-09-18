@@ -3,6 +3,38 @@
 
 export const HOUR = 3600;
 export const NUTRITION_PER_PLANT = 48;   // every crop and herb is 48 (items.xml)
+
+/**
+ * What goes in the trough when you have not said. Wheat is the cheap plant,
+ * raw chicken the cheap meat, and a T8 ox the cheap mount feed per nutrition.
+ */
+export const FEED_DEFAULTS = {
+  plants: 'T3_WHEAT', meat: 'T3_MEAT', mount: 'T8_FARM_OX_GROWN',
+};
+
+/**
+ * What this animal eats, and how much of it one nutrition point costs.
+ *
+ * The game refuses food from the wrong category outright \u2014 "{0} does not eat
+ * {1}" \u2014 so a direwolf is fed meat whatever wheat costs, and the drake eats
+ * grown mounts. Plants are a flat 48 nutrition and meat a flat 52, but mount
+ * food runs from 8 to 59,049, so one number for "a plant" was only ever right
+ * for two of the three categories.
+ */
+export function feedFor(animal, settings) {
+  const category = animal.foodCategory || 'plants';
+  const table = settings.feeds?.[category] || {};
+  // The favourite is read off the same element as the category, so it is
+  // always something this animal will eat.
+  const useFav = !!(settings.favouriteFood && animal.favouriteFood);
+  const id = useFav ? animal.favouriteFood
+    : (settings.feedItemIds?.[category] || FEED_DEFAULTS[category]);
+  return {
+    id, category,
+    nutrition: table[id] || (category === 'meat' ? 52 : NUTRITION_PER_PLANT),
+    bonus: useFav ? animal.favouriteBonus : 0,
+  };
+}
 /** An island farm plot and a pasture are both 3x3, so nine things per plot. */
 export const TILES_PER_PLOT = 9;
 
@@ -205,15 +237,14 @@ export function animalCycle(animal, {
    * growth that finishes twice as fast eats half as much. */
   const growthMult = settings.premium ? (settings.premiumGrowthMultiplier ?? 2) : 1;
   const city = farmCityFor(settings, cityId);
-  const useFav = settings.favouriteFood && animal.favouriteFood;
 
   /* What it eats over the whole growth, not one bar of it. The bar refills
    * once per nurture, so a T8 ox gets through nearly six of them; livestock
    * eat exactly one, which is why a single bar looked right for so long. */
   const eaten = (animal.nutritionTotal || animal.nutrition) / growthMult;
-  const plantsNeeded = eaten / NUTRITION_PER_PLANT /
-    (useFav ? 1 + animal.favouriteBonus : 1);
-  const feedId = useFav ? animal.favouriteFood : settings.feedItemId;
+  const feed = feedFor(animal, settings);
+  const plantsNeeded = eaten / feed.nutrition / (1 + feed.bonus);
+  const feedId = feed.id;
   const feedCost = plantsNeeded * costOf(feedId);
 
   /* A nurture's bonus is per nurture, and a growth allows activefarmmaxcycles
@@ -237,7 +268,7 @@ export function animalCycle(animal, {
   return {
     kind: 'animal', ref: animal, hours, focus, city, farmBonusPct: 0,
     wateredShare: share, focusEfficiency: focusEff, nurtures,
-    plantsNeeded, eaten, feedId, feedCost, babiesBack, netBabies,
+    plantsNeeded, eaten, feedId, feedCategory: feed.category, feedCost, babiesBack, netBabies,
     babiesBought, babySurplus, babyCost,
     revenue, profit,
   };
@@ -262,16 +293,15 @@ export function productCycle(animal, { priceOf, costOf = priceOf, settings, city
   /* Upkeep: what it eats during one production cycle, which is not a whole
    * food bar. A goose lays every 22 hours and eats 432 nutrition doing it, so
    * charging the full 864 doubled the feed bill on every egg. */
-  const useFav = settings.favouriteFood && animal.favouriteFood;
   const eaten = p.nutrition || animal.nutrition;
-  const plantsNeeded = eaten / NUTRITION_PER_PLANT /
-    (useFav ? 1 + animal.favouriteBonus : 1);
-  const feedId = useFav ? animal.favouriteFood : settings.feedItemId;
+  const feed = feedFor(animal, settings);
+  const plantsNeeded = eaten / feed.nutrition / (1 + feed.bonus);
+  const feedId = feed.id;
   const feedCost = plantsNeeded * costOf(feedId);
 
   return {
     kind: 'product', ref: animal, hours, focus: 0, city, farmBonusPct: bonusPct,
-    perCycle, feedId, plantsNeeded, feedCost, eaten,
+    perCycle, feedId, feedCategory: feed.category, plantsNeeded, feedCost, eaten,
     revenue, profit: revenue - feedCost,
   };
 }
@@ -410,7 +440,14 @@ export function craftBatch(recipe, {
     ? focusCostAt(recipe.focus, spec, settings.focusCostConstant)
     : 0;
 
-  const revenue = recipe.amount * priceOf(recipe.id) * (1 - taxRate(settings));
+  /* Butchering is the game's one "product yield" recipe. A cow cannot come
+   * back half-refunded, so what the return rate would have handed back in
+   * resources is handed over as extra meat instead \u2014 which is why the station
+   * swaps its "Resource Return Rate" label for "Product Yield" on exactly
+   * these six. The dumps carry the flag and not the number, so this reads it
+   * as the same rate paid in product. */
+  const made = recipe.amount * (recipe.returnProduct ? 1 + rrr : 1);
+  const revenue = made * priceOf(recipe.id) * (1 - taxRate(settings));
   const stationNutrition = craftNutrition(recipe, settings);
   const usageFee = usageFeeFor(recipe, settings, cityId);
   const fees = (recipe.silver || 0) + usageFee;
@@ -418,7 +455,7 @@ export function craftBatch(recipe, {
 
   return {
     kind: 'craft', ref: recipe, rrr, bonusTotal, focus,
-    city, bonus, spec,
+    city, bonus, spec, made,
     inputs, materials, materialsAfterReturn, fees, stationNutrition, usageFee,
     revenue, profit,
     margin: revenue > 0 ? profit / revenue : 0,
@@ -567,9 +604,10 @@ export function farmDayCount(farmDays, farmEvery = 1) {
 }
 
 /**
- * Rest days exist to bank focus, so a row that spends none has no reason to
- * pause: collecting eggs costs nothing, and you collect them every day even on
- * a day you skip watering the herbs.
+ * Does this row cost focus while you are standing there? Watering and
+ * nurturing do; collecting eggs and milk do not. That answers what you pay
+ * on a farm day \u2014 never whether you were there, which is what `farmEvery`
+ * is for. A goose does not lay into your bag on a day you did not log in.
  */
 export const restsWith = (cycle) => (cycle?.focus || 0) > 0;
 
@@ -587,7 +625,7 @@ export function harvestsFor(cycle, {
   // you are not there. Counting only farm days let a slow row finish more
   // growths than the calendar has room for.
   const span = Math.max(farmDays, cycleDays || farmDays);
-  const every = restsWith(cycle) ? Math.max(1, Math.round(farmEvery) || 1) : 1;
+  const every = Math.max(1, Math.round(farmEvery) || 1);
   /* You harvest no faster than the thing grows, no faster than you log in, and
    * no faster than the rhythm you chose to farm on. Whichever of those three is
    * slowest sets the gap between harvests: a 44-hour cow does not give you a
@@ -943,7 +981,7 @@ export function simulateCycle(plan, data, ctx) {
       pool[i.id] = Math.max(0, have - need);
       consumed[i.id] = need;
     }
-    const made = recipe.amount * crafts;
+    const made = batch.made * crafts;
     add(pool, recipe.id, made);
     focusLeft -= batch.focus * crafts;
     // batch already knows the city this job crafts in, so its fee is the
