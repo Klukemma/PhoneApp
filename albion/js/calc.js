@@ -195,7 +195,11 @@ export function plantCycle(plant, {
   // valued on its own.
   const seedsBought = Math.max(0, netSeeds);
   const seedSurplus = Math.max(0, -netSeeds);
-  const seedCost = seedsBought * costOf(plant.seedId) - seedSurplus * priceOf(plant.seedId);
+  // Silver is taxed once, on the way out. A spare seed is something you sell,
+  // so it is credited net of tax like any other sale \u2014 not at the sticker
+  // price, which is 10.5% more than the market will ever hand you.
+  const seedCost = seedsBought * costOf(plant.seedId)
+    - seedSurplus * priceOf(plant.seedId) * (1 - taxRate(settings));
   const revenue = yieldPerTile * cropPrice * (1 - taxRate(settings));
   // The full ask, not the discounted one: the ledger decides what gets paid.
   // Farming nodes on the destiny board make watering cheaper, same as crafting
@@ -256,7 +260,8 @@ export function animalCycle(animal, {
   const netBabies = 1 - babiesBack;
   const babiesBought = Math.max(0, netBabies);
   const babySurplus = Math.max(0, -netBabies);
-  const babyCost = babiesBought * costOf(animal.babyId) - babySurplus * priceOf(animal.babyId);
+  const babyCost = babiesBought * costOf(animal.babyId)
+    - babySurplus * priceOf(animal.babyId) * (1 - taxRate(settings));
 
   const revenue = priceOf(animal.grownId) * (1 - taxRate(settings));
   const hours = animal.growSeconds / growthMult / HOUR;
@@ -884,6 +889,19 @@ export function simulateCycle(plan, data, ctx) {
   const farmLines = [];
   let farmCost = 0;
 
+  /* The shopping list. Seeds, babies and feed are bought before a single
+   * craft runs, so they belong on it too \u2014 a farmer's only certain purchase
+   * was the one thing the list left out. They stay out of buyCost, which
+   * counts crafting purchases, because farmCost already carries this silver. */
+  const bought = {};
+  const buy = (id, qty, bill, forWhat = 'craft') => {
+    if (!(qty > 0)) return;
+    const at = bought[id] || (bought[id] = { qty: 0, cost: 0, forFarm: false });
+    at.qty += qty;
+    at.cost += bill;
+    if (forWhat === 'farm') at.forFarm = true;
+  };
+
   for (const row of plan.plots) {
     const cycle = cycleFor(row, wateredFraction);
     if (!cycle) continue;
@@ -897,17 +915,36 @@ export function simulateCycle(plan, data, ctx) {
     const produced = perHarvest * tiles * harvests;
     add(pool, itemId, produced);
 
-    // Seeds that came back beyond what was replanted are stock, not a discount.
+    /* Seeds and calves that came back beyond what was replanted or re-penned
+     * are stock, not a discount. They go on the pile with a cost basis of
+     * zero and leave through the sales list, where the market takes its tax
+     * like it does on everything else. Babies used to be netted off the cost
+     * instead, untaxed and invisible: a watered T8 ox leaves 190k of spare
+     * oxen a tile that never appeared on any screen. */
     if (plant && cycle.seedSurplus > 0) {
       add(pool, plant.seedId, cycle.seedSurplus * tiles * harvests);
+    }
+    if (cycle.kind === 'animal' && cycle.babySurplus > 0) {
+      add(pool, cycle.ref.babyId, cycle.babySurplus * tiles * harvests);
     }
 
     const costPer = plant
       ? cycle.seedsBought * costOf(plant.seedId)        // surplus is produce, above
       : cycle.kind === 'product' ? cycle.feedCost
-        : cycle.feedCost + cycle.babyCost;
+        : cycle.feedCost + cycle.babiesBought * costOf(cycle.ref.babyId);
     const cost = costPer * tiles * harvests;
     farmCost += cost;
+
+    const scale = tiles * harvests;
+    if (plant) {
+      buy(plant.seedId, cycle.seedsBought * scale, cost, 'farm');
+    } else {
+      buy(cycle.feedId, cycle.plantsNeeded * scale, cycle.feedCost * scale, 'farm');
+      if (cycle.kind === 'animal') {
+        buy(cycle.ref.babyId, cycle.babiesBought * scale,
+          cycle.babiesBought * costOf(cycle.ref.babyId) * scale, 'farm');
+      }
+    }
     // The whole bill lands on the crop; surplus seeds are a by-product and
     // carry nothing, which is why they read as pure profit when sold.
     cost0.put(itemId, cost);
@@ -922,9 +959,6 @@ export function simulateCycle(plan, data, ctx) {
 
   /* ---- craft ---- */
   const craftLines = [];
-  // What the farm could not supply and the plan had to buy. A lump sum in the
-  // costs line is no use: you cannot go to market with it.
-  const bought = {};
   let buyCost = 0;
   let feeCost = 0;
 
@@ -1105,9 +1139,35 @@ export function simulateCycle(plan, data, ctx) {
    * absorb it, and only what is over the cap at the end is truly thrown away -
    * the rest you simply start the next cycle holding. */
   const focusUsed = focusBudget - focusLeft;
-  const ledger = ledgerAt(focusUsed / cycleDays);
   const focusCarried = Math.min(s.focusCap, Math.max(0, focusLeft));
   const focusWasted = Math.max(0, focusLeft - s.focusCap);
+
+  /* The chart is a replay of the cycle that was costed, not a second
+   * simulation of it. Re-running the ledger with the crafting spread evenly
+   * over every day used to eat the bank a later watering day was counting on,
+   * so it funded half the crafting that actually happened, under-paid the
+   * watering the farm was priced on, and called the difference waste \u2014 three
+   * numbers on screen that the plan above them disagreed with. So the
+   * watering pass is annotated rather than redone: the days keep the watering
+   * they really paid, and the crafting is laid over them in proportion to the
+   * room each day had left. How it is spread is a drawing choice; that the
+   * three totals match the plan is not. */
+  const room = banked.days.map((d) => Math.max(0, focusPerDayOf(s) - d.spent));
+  const roomTotal = room.reduce((a, b) => a + b, 0);
+  let craftedSoFar = 0;
+  const ledger = {
+    ...banked,
+    spentCrafting: focusUsed,
+    wasted: focusWasted,
+    days: banked.days.map((d, i) => {
+      const craft = roomTotal > 0 ? (room[i] / roomTotal) * focusUsed : 0;
+      craftedSoFar += craft;
+      return { ...d, craft, focus: Math.max(0, d.focus - craftedSoFar) };
+    }),
+  };
+  // Recomputed off the annotated column: the no-crafting pass reaches the cap
+  // on a day the real cycle never would.
+  ledger.cappedOn = ledger.days.find((d) => d.focus >= s.focusCap)?.day ?? null;
 
   return {
     cycleDays, farmDays, farmEvery, idleDays: cycleDays - farmDays,

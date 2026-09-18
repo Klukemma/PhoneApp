@@ -129,9 +129,12 @@ test('watering adds exactly the seed bonus from the game data', () => {
   assert.equal(wet.seedsBack, 1.2000000000000002);   // float, value is 1.2
   assert.equal(dry.focus, 0);
   assert.equal(wet.focus, 1000);
-  // Dry burns 0.2 seeds; watered leaves a 0.2 surplus, so it earns silver back.
+  // Dry burns 0.2 seeds at the merchant's 10,000; watered leaves 0.2 over,
+  // and a spare seed is a sale, so it is credited net of the 6.5% premium
+  // market tax rather than at the sticker price.
   assert.equal(Math.round(dry.seedCost), 2000);
-  assert.equal(Math.round(wet.seedCost), -2000);
+  assert.equal(Math.round(wet.seedCost), -1870);
+  assert.equal(Math.round(wet.seedCost), -Math.round(2000 * (1 - 0.065)));
   assert.ok(wet.profit > dry.profit);
 });
 
@@ -1468,14 +1471,17 @@ test('a plan reports what it had to buy, item by item', () => {
   assert.ok(ids.includes('T5_EGG'), 'eggs are bought');
   assert.ok(ids.includes('T6_ALCOHOL'), 'schnapps is bought');
   assert.ok(!ids.includes('T6_FOXGLOVE'), 'foxglove is grown, not bought');
+  // Seeds are a purchase too, and the only one a farmer is certain to make.
+  assert.ok(ids.includes('T6_FARM_FOXGLOVE_SEED'), 'and the seeds to grow it');
 
-  // Every line is a real quantity at a real price, and they add up to buyCost.
+  // Every line is a real quantity at a real price, and together they are the
+  // whole bill: what the farm bought plus what the crafting bought.
   for (const b of sim.buys) {
     assert.ok(b.qty > 0);
     assert.equal(Math.round(b.cost), Math.round(b.qty * (prices[b.id] || 0)));
   }
   const total = sim.buys.reduce((t, b) => t + b.cost, 0);
-  assert.equal(Math.round(total), Math.round(sim.buyCost));
+  assert.equal(Math.round(total), Math.round(sim.farmCost + sim.buyCost));
 
   // Biggest bill first, so the list opens with what matters.
   for (let i = 1; i < sim.buys.length; i++) {
@@ -1519,8 +1525,12 @@ test('a plan that grows everything has nothing to buy', () => {
     plots: [{ id: 'p1', itemId: 'T6_FARM_FOXGLOVE_SEED', mode: 'grow', count: 4 }],
     crafts: [],
   }, data, c);
-  assert.deepEqual(sim.buys, []);
+  // Nothing goes to market for the crafting, because there is no crafting.
   assert.equal(sim.buyCost, 0);
+  // The seed the plot burns every growth is still a purchase, and the list
+  // says so rather than folding it into a lump in the costs line.
+  assert.deepEqual(sim.buys.map((b) => b.id), ['T6_FARM_FOXGLOVE_SEED']);
+  assert.equal(Math.round(sim.buys[0].cost), Math.round(sim.farmCost));
 });
 
 test('an unpriced purchase is still listed, so it cannot hide', () => {
@@ -1537,6 +1547,68 @@ test('an unpriced purchase is still listed, so it cannot hide', () => {
   assert.ok(schnapps, 'listed despite having no price');
   assert.ok(schnapps.qty > 0);
   assert.equal(schnapps.cost, 0);
+});
+
+/* ------------------------------------------ one tax, on the way out ---- */
+
+test('a spare baby is produce you sell, not a discount on the next one', () => {
+  // A watered T8 ox comes back at 1.0314 per growth: 0.0314 spare oxen a
+  // tile, at an NPC ask of 6,075,000 each. Netting that off the cost line
+  // left it untaxed and invisible on every screen.
+  const ox = animal('T8_FARM_OX_BABY');
+  const prices = { T8_FARM_OX_BABY: 6000000, T8_FARM_OX_GROWN: 9000000, T3_WHEAT: 200 };
+  const wet = animalCycle(ox, ctx(prices, { watered: true }));
+  assert.ok(wet.babySurplus > 0, 'watering leaves oxen over');
+  assert.equal(Math.round(wet.babyCost),
+    -Math.round(wet.babySurplus * 6000000 * (1 - 0.065)));
+
+  // And in the ledger the spare is stock: on the pile, on the sell list, and
+  // taxed there like anything else rather than netted off the feed bill.
+  const plan = {
+    plots: [{ id: 'o', itemId: 'T8_FARM_OX_BABY', count: 1, mode: 'grow', cityId: 'martlock' }],
+    crafts: [],
+  };
+  const sim = simulateCycle(plan, data, ctx(prices, {
+    watered: true, cycleDays: 14, farmDays: 14, focusPerDay: 1000000,
+  }));
+  assert.ok(sim.pool.T8_FARM_OX_BABY > 0, 'the spare oxen are on the pile');
+  // The cost line is only what went to market, never a negative.
+  assert.ok(sim.farmCost >= 0);
+});
+
+test('the shopping list is every purchase, farm and market alike', () => {
+  const sim = simulateCycle(cyclePlan([
+    { id: 'c1', recipeId: 'T6_ALCOHOL', mode: 'fill' },
+    { id: 'c2', recipeId: 'T6_POTION_HEAL', mode: 'fill' },
+  ]), data, cycleCtx());
+  const ids = sim.buys.map((b) => b.id);
+  assert.ok(ids.includes('T6_FARM_FOXGLOVE_SEED'), 'the seeds the plots burn');
+  assert.ok(ids.includes('T5_CABBAGE'), 'and what the geese eat');
+  // Exactly the whole bill, once each: what the farm bought plus what the
+  // crafting bought, with the station fees the only thing left out.
+  assert.equal(
+    Math.round(sim.buys.reduce((t, b) => t + b.cost, 0)),
+    Math.round(sim.farmCost + sim.buyCost));
+  assert.equal(Math.round(sim.spend),
+    Math.round(sim.farmCost + sim.buyCost + sim.feeCost));
+});
+
+test('the day chart is a replay of the cycle, not a second guess at it', () => {
+  const sim = simulateCycle(cyclePlan([
+    { id: 'c1', recipeId: 'T6_ALCOHOL', mode: 'fill' },
+    { id: 'c2', recipeId: 'T6_POTION_HEAL', mode: 'fill' },
+  ]), data, cycleCtx({ farmDays: 7 }));
+  const l = sim.ledger;
+  const focusUsed = sim.focusBudget - sim.focusLeft;
+
+  // The three numbers the screens draw have to be the plan's own.
+  assert.equal(Math.round(l.spentWatering), Math.round(sim.wateringPaid));
+  assert.equal(Math.round(l.spentCrafting), Math.round(focusUsed));
+  assert.equal(Math.round(l.wasted), Math.round(sim.focusWasted));
+
+  // And the bars add up to what was really spent.
+  const bars = l.days.reduce((t, d) => t + d.spent + d.craft, 0);
+  assert.equal(Math.round(bars), Math.round(sim.wateringPaid + focusUsed));
 });
 
 /* ------------------------------------------- buying and selling differ -- */
@@ -1601,7 +1673,7 @@ test('the whole cycle buys at one price and sells at the other', () => {
   assert.ok(keen.profit > plain.profit);
   // And the shopping list still reconciles against the cheaper prices.
   const total = keen.buys.reduce((t, b) => t + b.cost, 0);
-  assert.equal(Math.round(total), Math.round(keen.buyCost));
+  assert.equal(Math.round(total), Math.round(keen.farmCost + keen.buyCost));
 });
 
 test('with no separate buy price the two collapse back into one', () => {

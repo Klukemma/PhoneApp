@@ -61,22 +61,38 @@ export function changedSince(stamp) {
     .map((k) => STAMP_LABEL[k]);
 }
 
-/** Everything the calculator needs, assembled from the current state. */
-export function ctx() {
+/**
+ * Everything the calculator needs, assembled from the current state.
+ *
+ * `wateredFraction` is the share of the farm the plan can actually afford to
+ * water. It matters here because an unwatered tile burns more seed, so what
+ * your own crop cost you to grow depends on it.
+ */
+export function ctx(wateredFraction = 1) {
   return {
     priceOf,
     costOf,
     settings: state.settings,
-    inputCostOf: state.settings.ownInputsAtCost ? ownCostOf : undefined,
+    inputCostOf: state.settings.ownInputsAtCost
+      ? ownCostOf(wateredFraction) : undefined,
   };
 }
 
-/** What a crop costs you to grow, for craft lines fed by your own farm. */
-export function ownCostOf(id) {
+/**
+ * What a crop costs you to grow, for craft lines fed by your own farm.
+ *
+ * The same basis the ledger books, not a second rule: seeds at costOf, which
+ * caps a market listing at the merchant's ask, and watered only as far as the
+ * focus actually stretches. Reading it off a fully watered farm at the sell
+ * price made your own herbs look cheaper than the cycle ever paid for them.
+ */
+export const ownCostOf = (wateredFraction = 1) => (id) => {
   const plant = DATA.plants.find((p) => p.cropId === id);
   if (!plant) return priceOf(id);
-  return plantCycle(plant, { priceOf, settings: state.settings }).costPerUnit;
-}
+  return plantCycle(plant, {
+    priceOf, costOf, settings: state.settings, wateredFraction,
+  }).costPerUnit;
+};
 
 const nameOf = (id) => DATA.items[id]?.name || id;
 const tierOf = (id) => DATA.items[id]?.tier ?? 0;
@@ -116,7 +132,12 @@ export function missingFor(cycle) {
 /* ============================================================== PLAN ==== */
 
 export function plan() {
-  const c = ctx();
+  /* Two passes. What your own crops cost depends on how much of the farm gets
+   * watered, and that is not known until the cycle has been run. The probe is
+   * exact rather than an estimate: inputCostOf reaches only craftBatch's
+   * material and margin figures, and the watering share depends on neither. */
+  const probe = simulateCycle(state.plan, DATA, ctx(1));
+  const c = ctx(probe.wateredFraction);
   const sim = simulateCycle(state.plan, DATA, c);
   const s = state.settings;
   const unpriced = missingPrices();
@@ -740,13 +761,14 @@ function buyCard(sim) {
   const grown = new Set(sim.farmLines.map((l) => l.itemId));
   return `
     <section>
-      <div class="section-head"><h2>Buy · before you craft</h2>
+      <div class="section-head"><h2>Buy · your shopping list</h2>
         <span class="right num bad">${short(-total)}</span></div>
       ${sim.buys.map((b) => {
         const unit = priceOf(b.id);
         const why = !unit ? 'no price set, so this is costing you nothing on paper'
-          : grown.has(b.id) ? `${silver(unit)} each, topping up what your plots grew`
-            : `${silver(unit)} each \u00b7 nothing in your plan grows these`;
+          : b.forFarm ? `${silver(unit)} each · what the plots burn and do not give back`
+            : grown.has(b.id) ? `${silver(unit)} each, topping up what your plots grew`
+              : `${silver(unit)} each · nothing in your plan grows these`;
         return `
         <button class="row ${unit ? '' : 'warn'}" data-price="${esc(b.id)}">
           <span class="ico">\u{1F6D2}</span>
@@ -769,7 +791,10 @@ export function rank() {
   return {
     title: 'Best',
     sub: rankTab === 'farm'
-      ? `${farmCityFor(s)?.name || '\u2014'} · ${s.watered ? 'watered' : 'unwatered'}`
+      // One row at a time, so there is no plan to say how far the focus
+      // stretches: every plot is taken as watered.
+      ? `${farmCityFor(s)?.name || '—'} · ${
+        s.watered ? 'every plot watered' : 'unwatered'}`
       : `In ${cityFor(s)?.name || '\u2014'} · ${s.useFocus ? 'with focus' : 'no focus'}`,
     html: `
       <section>
