@@ -1300,3 +1300,89 @@ test('a balanced crop never reaches the cap', () => {
   assert.ok(potato.leftover < 5, 'potatoes are consumed as fast as they grow');
   assert.equal(potato.overCapNow, false);
 });
+
+/* -------------------------------------------------- the shopping list -- */
+
+test('a plan reports what it had to buy, item by item', () => {
+  const prices = {
+    T6_POTION_HEAL: 2400, T6_FOXGLOVE: 260, T6_FARM_FOXGLOVE_SEED: 2200,
+    T5_EGG: 320, T6_ALCOHOL: 900,
+  };
+  const c = ctx(prices, { useFocus: true, cycleDays: 7, farmDays: 7, craftCity: 'brecilien' });
+  // Foxglove off our own plots; the eggs and the schnapps come from the market.
+  const plan = {
+    plots: [{ id: 'p1', itemId: 'T6_FARM_FOXGLOVE_SEED', mode: 'grow', count: 8 }],
+    crafts: [{ id: 'c1', recipeId: 'T6_POTION_HEAL', mode: 'fixed', perCycle: 20 }],
+  };
+  const sim = simulateCycle(plan, data, c);
+
+  const ids = sim.buys.map((b) => b.id);
+  assert.ok(ids.includes('T5_EGG'), 'eggs are bought');
+  assert.ok(ids.includes('T6_ALCOHOL'), 'schnapps is bought');
+  assert.ok(!ids.includes('T6_FOXGLOVE'), 'foxglove is grown, not bought');
+
+  // Every line is a real quantity at a real price, and they add up to buyCost.
+  for (const b of sim.buys) {
+    assert.ok(b.qty > 0);
+    assert.equal(Math.round(b.cost), Math.round(b.qty * (prices[b.id] || 0)));
+  }
+  const total = sim.buys.reduce((t, b) => t + b.cost, 0);
+  assert.equal(Math.round(total), Math.round(sim.buyCost));
+
+  // Biggest bill first, so the list opens with what matters.
+  for (let i = 1; i < sim.buys.length; i++) {
+    assert.ok(sim.buys[i - 1].cost >= sim.buys[i].cost);
+  }
+  // And the job that did the buying says so.
+  const line = sim.craftLines[0];
+  assert.ok(line.bought.length > 0);
+  assert.equal(
+    Math.round(line.bought.reduce((t, b) => t + b.cost, 0)),
+    Math.round(sim.buyCost));
+});
+
+test('the costs break down into the three things they are made of', () => {
+  const prices = {
+    T6_POTION_HEAL: 2400, T6_FOXGLOVE: 260, T6_FARM_FOXGLOVE_SEED: 2200,
+    T5_EGG: 320, T6_ALCOHOL: 900,
+  };
+  const c = ctx(prices, {
+    useFocus: true, cycleDays: 7, farmDays: 7, stationFeePerCraft: 50,
+  });
+  const sim = simulateCycle({
+    plots: [{ id: 'p1', itemId: 'T6_FARM_FOXGLOVE_SEED', mode: 'grow', count: 8 }],
+    crafts: [{ id: 'c1', recipeId: 'T6_POTION_HEAL', mode: 'fixed', perCycle: 20 }],
+  }, data, c);
+
+  assert.ok(sim.farmCost > 0, 'seeds cost something');
+  assert.ok(sim.buyCost > 0, 'the market bill is real');
+  assert.ok(sim.feeCost > 0, 'the station takes its cut');
+  assert.equal(Math.round(sim.cost), Math.round(sim.farmCost + sim.buyCost + sim.feeCost));
+  assert.equal(Math.round(sim.profit), Math.round(sim.revenue - sim.cost));
+});
+
+test('a plan that grows everything has nothing to buy', () => {
+  const c = ctx({ T6_POTION_HEAL: 2400, T6_FARM_FOXGLOVE_SEED: 2200 }, { useFocus: true });
+  const sim = simulateCycle({
+    plots: [{ id: 'p1', itemId: 'T6_FARM_FOXGLOVE_SEED', mode: 'grow', count: 4 }],
+    crafts: [],
+  }, data, c);
+  assert.deepEqual(sim.buys, []);
+  assert.equal(sim.buyCost, 0);
+});
+
+test('an unpriced purchase is still listed, so it cannot hide', () => {
+  // No price for schnapps: it must not vanish from the shopping list just
+  // because it reads as free.
+  const c = ctx({ T6_POTION_HEAL: 2400, T5_EGG: 320, T6_FOXGLOVE: 260 }, {
+    useFocus: true, cycleDays: 7, farmDays: 7,
+  });
+  const sim = simulateCycle({
+    plots: [],
+    crafts: [{ id: 'c1', recipeId: 'T6_POTION_HEAL', mode: 'fixed', perCycle: 5 }],
+  }, data, c);
+  const schnapps = sim.buys.find((b) => b.id === 'T6_ALCOHOL');
+  assert.ok(schnapps, 'listed despite having no price');
+  assert.ok(schnapps.qty > 0);
+  assert.equal(schnapps.cost, 0);
+});

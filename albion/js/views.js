@@ -168,6 +168,8 @@ export function plan() {
           || empty(EMOJI.crop, 'No plots yet. Add what you are growing.')}
       </section>
 
+      ${buyCard(sim)}
+
       <section>
         <div class="section-head"><h2>Craft · end of cycle</h2>
           <button class="right" data-act="add-craft">+ Add</button></div>
@@ -183,11 +185,8 @@ export function plan() {
           ${sim.sales.slice(0, 10).map((x) => `
             <div class="bar-row"><span class="n">${round1(x.qty)} \u00d7 ${esc(nameOf(x.id))}</span>
               <span class="v num ${x.value ? 'good' : ''}">${short(x.value)}</span></div>`).join('')}
-          <div class="bar-row total">
-            <span class="n">${sim.cost >= 0 ? 'Costs'
-              : 'Seed surplus, beyond what seeds and feed cost'}</span>
-            <span class="v num ${sim.cost >= 0 ? 'bad' : 'good'}">${short(-sim.cost)}</span></div>
-          <div class="bar-row"><span class="n">Profit for the cycle</span>
+          ${costLines(sim)}
+          <div class="bar-row total"><span class="n">Profit for the cycle</span>
             <span class="v num ${toneOf(sim.profit)}">${short(sim.profit)}</span></div>
         </div>
       </section>` : ''}
@@ -277,6 +276,20 @@ function routineCard(sim) {
       what: 'Stop farming and let focus bank',
       note: `Focus reaches ${short(sim.focusAtCraft)} by craft day${
         sim.ledger.cappedOn ? `, capping on day ${sim.ledger.cappedOn}` : ''}`,
+    });
+  }
+
+  // Buying is a thing you have to go and do, so it belongs in the routine and
+  // not only in the costs.
+  if (sim.buys.length) {
+    const list = sim.buys.slice(0, 3)
+      .map((b) => `${short(b.qty)} \u00d7 ${nameOf(b.id)}`).join(', ');
+    const more = sim.buys.length > 3 ? ` and ${sim.buys.length - 3} more` : '';
+    const bill = sim.buys.reduce((t, b) => t + b.cost, 0);
+    steps.push({
+      when: `Day ${sim.cycleDays}`,
+      what: `Buy ${list}${more}`,
+      note: `${short(bill)} at the market \u2014 your plots do not grow enough of these`,
     });
   }
 
@@ -547,7 +560,9 @@ function craftRow(line) {
         ? `no ${nameOf(bottleneck.id)} at all`
         : `short on ${nameOf(bottleneck.id)}`)
       : 'materials run out')
-    : limitedBy === 'focus' ? 'focus runs out' : 'you set the number';
+    : limitedBy === 'focus' ? 'focus runs out'
+      : line.bought?.length ? 'topped up from the market'
+        : `batch set to ${short(job.perCycle || 0)}`;
 
   const margin = line.feeds
     ? `feeds ${nameOf(line.feeds.id)}`
@@ -595,6 +610,29 @@ function missingStepRow(line) {
     </button>`;
 }
 
+/**
+ * The costs, itemised. One "Costs" line cannot be checked against anything;
+ * three that add up to it can.
+ */
+function costLines(sim) {
+  const parts = [
+    ['Seeds, feed and goslings', sim.farmCost],
+    ['Bought from the market', sim.buyCost],
+    ['Station fees', sim.feeCost],
+  ].filter(([, v]) => Math.abs(v) > 0.5);
+
+  if (!parts.length) return '';
+  const rows = parts.map(([label, v]) => `
+    <div class="bar-row"><span class="n">${esc(label)}</span>
+      <span class="v num ${v > 0 ? 'bad' : 'good'}">${short(-v)}</span></div>`).join('');
+  // A subtotal only earns its place when there is more than one thing in it.
+  const sum = parts.length > 1 ? `
+    <div class="bar-row"><span class="n">${sim.cost >= 0 ? 'Costs in all'
+      : 'Seed surplus, beyond what the farm cost'}</span>
+      <span class="v num ${sim.cost >= 0 ? 'bad' : 'good'}">${short(-sim.cost)}</span></div>` : '';
+  return rows + sum;
+}
+
 function missingPrices() {
   const need = new Set();
   const add = (id) => { if (id && !priceOf(id)) need.add(id); };
@@ -615,6 +653,41 @@ function missingPrices() {
     for (const i of r.inputs) add(i.id);
   }
   return [...need];
+}
+
+/**
+ * What the plan has to go to market for.
+ *
+ * Without this the only trace of a bought ingredient is a lump in the costs
+ * line, which tells you nothing about where it is supposed to come from. Every
+ * row is tappable, because a bought ingredient with no price is the fastest
+ * way to get a plan that looks better than it is.
+ */
+function buyCard(sim) {
+  if (!sim.buys.length) return '';
+  const total = sim.buys.reduce((t, b) => t + b.cost, 0);
+  const grown = new Set(sim.farmLines.map((l) => l.itemId));
+  return `
+    <section>
+      <div class="section-head"><h2>Buy · before you craft</h2>
+        <span class="right num bad">${short(-total)}</span></div>
+      ${sim.buys.map((b) => {
+        const unit = priceOf(b.id);
+        const why = !unit ? 'no price set, so this is costing you nothing on paper'
+          : grown.has(b.id) ? `${silver(unit)} each, topping up what your plots grew`
+            : `${silver(unit)} each \u00b7 nothing in your plan grows these`;
+        return `
+        <button class="row ${unit ? '' : 'warn'}" data-price="${esc(b.id)}">
+          <span class="ico">\u{1F6D2}</span>
+          <span class="body">
+            <span class="title">${short(b.qty)} \u00d7 ${esc(nameOf(b.id))}</span>
+            <span class="meta">${why}</span>
+          </span>
+          <span class="amt num ${unit ? 'bad' : 'flat'}">${
+            unit ? short(-b.cost) : '?'}</span>
+        </button>`;
+      }).join('')}
+    </section>`;
 }
 
 /* ============================================================== RANK ==== */

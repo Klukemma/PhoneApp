@@ -668,6 +668,9 @@ export function simulateCycle(plan, data, ctx) {
 
   /* ---- craft ---- */
   const craftLines = [];
+  // What the farm could not supply and the plan had to buy. A lump sum in the
+  // costs line is no use: you cannot go to market with it.
+  const bought = {};
   let buyCost = 0;
   let feeCost = 0;
 
@@ -704,6 +707,7 @@ export function simulateCycle(plan, data, ctx) {
     if (!Number.isFinite(crafts)) crafts = 0;
 
     const consumed = {};
+    const lineBought = [];
     let basisIn = 0;
     for (const i of perCraft) {
       const need = i.net * crafts;
@@ -713,6 +717,10 @@ export function simulateCycle(plan, data, ctx) {
         const bill = short * ctx.priceOf(i.id);
         buyCost += bill;                                     // fixed mode tops up
         basisIn += bill;
+        const at = bought[i.id] || (bought[i.id] = { qty: 0, cost: 0 });
+        at.qty += short;
+        at.cost += bill;
+        lineBought.push({ id: i.id, qty: short, cost: bill });
       }
       basisIn += cost0.take(i.id, Math.min(need, have), have);
       pool[i.id] = Math.max(0, have - need);
@@ -729,6 +737,8 @@ export function simulateCycle(plan, data, ctx) {
     craftLines.push({
       job, recipe, batch, crafts, limitedBy, byMaterial, byFocus,
       consumed, made, useFocus, inputs: perCraft, bottleneck,
+      // What this job in particular had to go to market for.
+      bought: lineBought,
       // What this step really cost, counting your own produce at what you paid
       // to grow it rather than at what it would fetch.
       basisIn,
@@ -823,6 +833,10 @@ export function simulateCycle(plan, data, ctx) {
     restDays: farmDays - farmDayCount(farmDays, farmEvery),
     ledger, focusAtCraft: ledger.atCraft, focusLeft,
     farmLines, craftLines, sales, stock, stockValue, balance, pool, stockCap,
+    // Your shopping list, biggest bill first.
+    buys: Object.entries(bought)
+      .map(([id, x]) => ({ id, ...x }))
+      .sort((a, b) => b.cost - a.cost || b.qty - a.qty),
     // Watering asked for, paid for, and the share that decides how much of the
     // seed bonus the farm above actually earned.
     wateringPerDay, wateringAsked, wateringPaid, wateredFraction,
