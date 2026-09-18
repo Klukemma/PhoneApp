@@ -8,7 +8,12 @@
   "marketTransactionTax": 8.0,
   "focusPerDay": 10000,
   "focusCap": 30000,
-  "premiumYieldMultiplier": 2
+  "premiumYieldMultiplier": 2,
+  "premiumGrowthMultiplier": 2,
+  "focusPerDayNoPremium": 0,
+  "itemValueToNutrition": 0.1125,
+  "freeCraftingMaxTier": 2,
+  "maxUsageFee": 1000
  },
  "cities": [
   {
@@ -1782,7 +1787,7 @@
     "min": 7,
     "max": 11,
     "seconds": 79200,
-    "nutrition": 432
+    "nutrition": 864
    }
   },
   {
@@ -1809,7 +1814,7 @@
     "min": 7,
     "max": 11,
     "seconds": 79200,
-    "nutrition": 432
+    "nutrition": 864
    }
   },
   {
@@ -1836,7 +1841,7 @@
     "min": 7,
     "max": 11,
     "seconds": 79200,
-    "nutrition": 432
+    "nutrition": 864
    }
   },
   {
@@ -1863,7 +1868,7 @@
     "min": 7,
     "max": 11,
     "seconds": 79200,
-    "nutrition": 432
+    "nutrition": 864
    }
   },
   {
@@ -1911,7 +1916,7 @@
     "min": 7,
     "max": 11,
     "seconds": 79200,
-    "nutrition": 432
+    "nutrition": 864
    }
   },
   {
@@ -2387,6 +2392,7 @@
    "amount": 10,
    "focus": 528,
    "silver": 0,
+   "itemValue": 1152.0,
    "inputs": [
     {
      "id": "T7_CORN",
@@ -2416,6 +2422,7 @@
    "amount": 10,
    "focus": 728,
    "silver": 0,
+   "itemValue": 1152.0,
    "inputs": [
     {
      "id": "T7_CORN",
@@ -2449,6 +2456,7 @@
    "amount": 10,
    "focus": 1128,
    "silver": 0,
+   "itemValue": 1152.0,
    "inputs": [
     {
      "id": "T7_CORN",
@@ -2482,6 +2490,7 @@
    "amount": 10,
    "focus": 2329,
    "silver": 0,
+   "itemValue": 1152.0,
    "inputs": [
     {
      "id": "T7_CORN",
@@ -2515,6 +2524,7 @@
    "amount": 10,
    "focus": 52,
    "silver": 0,
+   "itemValue": 120.0,
    "inputs": [
     {
      "id": "T4_MILK",
@@ -2544,6 +2554,7 @@
    "amount": 10,
    "focus": 74,
    "silver": 0,
+   "itemValue": 120.0,
    "inputs": [
     {
      "id": "T4_MILK",
@@ -2577,6 +2588,7 @@
    "amount": 10,
    "focus": 118,
    "silver": 0,
+   "itemValue": 120.0,
    "inputs": [
     {
      "id": "T4_MILK",
@@ -2610,6 +2622,7 @@
    "amount": 10,
    "focus": 252,
    "silver": 0,
+   "itemValue": 120.0,
    "inputs": [
     {
      "id": "T4_MILK",
@@ -2643,6 +2656,7 @@
    "amount": 10,
    "focus": 58,
    "silver": 0,
+   "itemValue": 128.0,
    "inputs": [
     {
      "id": "T1_CARROT",
@@ -2672,6 +2686,7 @@
    "amount": 10,
    "focus": 81,
    "silver": 0,
+   "itemValue": 128.0,
    "inputs": [
     {
      "id": "T1_CARROT",
@@ -2705,6 +2720,7 @@
    "amount": 10,
    "focus": 125,
    "silver": 0,
+   "itemValue": 128.0,
    "inputs": [
     {
      "id": "T1_CARROT",
@@ -2738,6 +2754,7 @@
    "amount": 10,
    "focus": 259,
    "silver": 0,
+   "itemValue": 128.0,
    "inputs": [
     {
      "id": "T1_CARROT",
@@ -2771,6 +2788,7 @@
    "amount": 10,
    "focus": 155,
    "silver": 0,
+   "itemValue": 360.0,
    "inputs": [
     {
      "id": "T6_MILK",
@@ -2800,6 +2818,7 @@
    "amount": 10,
    "focus": 222,
    "silver": 0,
+   "itemValue": 360.0,
    "inputs": [
     {
      "id": "T6_MILK",
@@ -2833,6 +2852,7 @@
    "amount": 10,
    "focus": 355,
    "silver": 0,
+   "itemValue": 360.0,
    "inputs": [
     {
      "id": "T6_MILK",
@@ -2866,6 +2886,7 @@
    "amount": 10,
    "focus": 755,
    "silver": 0,
+   "itemValue": 360.0,
    "inputs": [
     {
      "id": "T6_MILK",
@@ -2899,6 +2920,7 @@
    "amount": 10,
    "focus": 176,
    "silver": 0,
+   "itemValue": 384.0,
    "inputs": [
     {
      "id": "T5_CABBAGE",
@@ -2928,6 +2950,7 @@
    "amount": 10,
    "focus": 243,
    "silver": 0,
+   "itemValue": 384.0,
    "inputs": [
     {
      "id": "T5_CABBAGE",
@@ -2961,6 +2984,7 @@
    "amount": 10,
    "focus": 376,
    "silver": 0,
+   "itemValue": 384.0,
    "inputs": [
     {
      "id": "T5_CABBAGE",
@@ -2994,6 +3018,7 @@
    "amount": 10,
    "focus": 777,
    "silver": 0,
+   "itemValue": 384.0,
    "inputs": [
     {
      "id": "T5_CABBAGE",
@@ -3027,6 +3052,7 @@
    "amount": 10,
    "focus": 464,
    "silver": 0,
+   "itemValue": 1080.0,
    "inputs": [
     {
      "id": "T8_MILK",
@@ -3056,6 +3082,7 @@
    "amount": 10,
    "focus": 665,
    "silver": 0,
+   "itemValue": 1080.0,
    "inputs": [
     {
      "id": "T8_MILK",
@@ -3089,6 +3116,7 @@
    "amount": 10,
    "focus": 1065,
    "silver": 0,
+   "itemValue": 1080.0,
    "inputs": [
     {
      "id": "T8_MILK",
@@ -3122,6 +3150,7 @@
    "amount": 10,
    "focus": 2266,
    "silver": 0,
+   "itemValue": 1080.0,
    "inputs": [
     {
      "id": "T8_MILK",
@@ -3155,6 +3184,7 @@
    "amount": 10,
    "focus": 56,
    "silver": 0,
+   "itemValue": 64.0,
    "inputs": [
     {
      "id": "T2_BEAN",
@@ -3175,6 +3205,7 @@
    "amount": 10,
    "focus": 78,
    "silver": 0,
+   "itemValue": 64.0,
    "inputs": [
     {
      "id": "T2_BEAN",
@@ -3199,6 +3230,7 @@
    "amount": 10,
    "focus": 123,
    "silver": 0,
+   "itemValue": 64.0,
    "inputs": [
     {
      "id": "T2_BEAN",
@@ -3223,6 +3255,7 @@
    "amount": 10,
    "focus": 256,
    "silver": 0,
+   "itemValue": 64.0,
    "inputs": [
     {
      "id": "T2_BEAN",
@@ -3247,6 +3280,7 @@
    "amount": 10,
    "focus": 551,
    "silver": 0,
+   "itemValue": 576.0,
    "inputs": [
     {
      "id": "T8_PUMPKIN",
@@ -3271,6 +3305,7 @@
    "amount": 10,
    "focus": 752,
    "silver": 0,
+   "itemValue": 576.0,
    "inputs": [
     {
      "id": "T8_PUMPKIN",
@@ -3299,6 +3334,7 @@
    "amount": 10,
    "focus": 1152,
    "silver": 0,
+   "itemValue": 576.0,
    "inputs": [
     {
      "id": "T8_PUMPKIN",
@@ -3327,6 +3363,7 @@
    "amount": 10,
    "focus": 2353,
    "silver": 0,
+   "itemValue": 576.0,
    "inputs": [
     {
      "id": "T8_PUMPKIN",
@@ -3355,6 +3392,7 @@
    "amount": 1,
    "focus": 672,
    "silver": 0,
+   "itemValue": 750.0,
    "inputs": [
     {
      "id": "T7_FISH_FRESHWATER_SWAMP_RARE",
@@ -3383,6 +3421,7 @@
    "amount": 1,
    "focus": 1272,
    "silver": 0,
+   "itemValue": 750.0,
    "inputs": [
     {
      "id": "T7_FISH_FRESHWATER_SWAMP_RARE",
@@ -3415,6 +3454,7 @@
    "amount": 1,
    "focus": 2473,
    "silver": 0,
+   "itemValue": 750.0,
    "inputs": [
     {
      "id": "T7_FISH_FRESHWATER_SWAMP_RARE",
@@ -3447,6 +3487,7 @@
    "amount": 1,
    "focus": 6076,
    "silver": 0,
+   "itemValue": 750.0,
    "inputs": [
     {
      "id": "T7_FISH_FRESHWATER_SWAMP_RARE",
@@ -3479,6 +3520,7 @@
    "amount": 1,
    "focus": 225,
    "silver": 0,
+   "itemValue": 260.0,
    "inputs": [
     {
      "id": "T5_FISH_FRESHWATER_DRAGON_AREA_RARE",
@@ -3507,6 +3549,7 @@
    "amount": 1,
    "focus": 425,
    "silver": 0,
+   "itemValue": 260.0,
    "inputs": [
     {
      "id": "T5_FISH_FRESHWATER_DRAGON_AREA_RARE",
@@ -3539,6 +3582,7 @@
    "amount": 1,
    "focus": 825,
    "silver": 0,
+   "itemValue": 260.0,
    "inputs": [
     {
      "id": "T5_FISH_FRESHWATER_DRAGON_AREA_RARE",
@@ -3571,6 +3615,7 @@
    "amount": 1,
    "focus": 2026,
    "silver": 0,
+   "itemValue": 260.0,
    "inputs": [
     {
      "id": "T5_FISH_FRESHWATER_DRAGON_AREA_RARE",
@@ -3603,6 +3648,7 @@
    "amount": 10,
    "focus": 504,
    "silver": 0,
+   "itemValue": 576.0,
    "inputs": [
     {
      "id": "T5_CABBAGE",
@@ -3619,6 +3665,7 @@
    "amount": 10,
    "focus": 704,
    "silver": 0,
+   "itemValue": 576.0,
    "inputs": [
     {
      "id": "T5_CABBAGE",
@@ -3639,6 +3686,7 @@
    "amount": 10,
    "focus": 1105,
    "silver": 0,
+   "itemValue": 576.0,
    "inputs": [
     {
      "id": "T5_CABBAGE",
@@ -3659,6 +3707,7 @@
    "amount": 10,
    "focus": 2306,
    "silver": 0,
+   "itemValue": 576.0,
    "inputs": [
     {
      "id": "T5_CABBAGE",
@@ -3679,6 +3728,7 @@
    "amount": 1,
    "focus": 77,
    "silver": 0,
+   "itemValue": 130.0,
    "inputs": [
     {
      "id": "T3_FISH_FRESHWATER_DRAGON_AREA_RARE",
@@ -3707,6 +3757,7 @@
    "amount": 1,
    "focus": 144,
    "silver": 0,
+   "itemValue": 130.0,
    "inputs": [
     {
      "id": "T3_FISH_FRESHWATER_DRAGON_AREA_RARE",
@@ -3739,6 +3790,7 @@
    "amount": 1,
    "focus": 278,
    "silver": 0,
+   "itemValue": 130.0,
    "inputs": [
     {
      "id": "T3_FISH_FRESHWATER_DRAGON_AREA_RARE",
@@ -3771,6 +3823,7 @@
    "amount": 1,
    "focus": 678,
    "silver": 0,
+   "itemValue": 130.0,
    "inputs": [
     {
      "id": "T3_FISH_FRESHWATER_DRAGON_AREA_RARE",
@@ -3803,6 +3856,7 @@
    "amount": 10,
    "focus": 56,
    "silver": 0,
+   "itemValue": 64.0,
    "inputs": [
     {
      "id": "T1_CARROT",
@@ -3819,6 +3873,7 @@
    "amount": 10,
    "focus": 78,
    "silver": 0,
+   "itemValue": 64.0,
    "inputs": [
     {
      "id": "T1_CARROT",
@@ -3839,6 +3894,7 @@
    "amount": 10,
    "focus": 123,
    "silver": 0,
+   "itemValue": 64.0,
    "inputs": [
     {
      "id": "T1_CARROT",
@@ -3859,6 +3915,7 @@
    "amount": 10,
    "focus": 256,
    "silver": 0,
+   "itemValue": 64.0,
    "inputs": [
     {
      "id": "T1_CARROT",
@@ -3879,6 +3936,7 @@
    "amount": 10,
    "focus": 52,
    "silver": 0,
+   "itemValue": 56.0,
    "inputs": [
     {
      "id": "T3_WHEAT",
@@ -3903,6 +3961,7 @@
    "amount": 10,
    "focus": 74,
    "silver": 0,
+   "itemValue": 56.0,
    "inputs": [
     {
      "id": "T3_WHEAT",
@@ -3931,6 +3990,7 @@
    "amount": 10,
    "focus": 118,
    "silver": 0,
+   "itemValue": 56.0,
    "inputs": [
     {
      "id": "T3_WHEAT",
@@ -3959,6 +4019,7 @@
    "amount": 10,
    "focus": 252,
    "silver": 0,
+   "itemValue": 56.0,
    "inputs": [
     {
      "id": "T3_WHEAT",
@@ -3987,6 +4048,7 @@
    "amount": 10,
    "focus": 53,
    "silver": 0,
+   "itemValue": 56.0,
    "inputs": [
     {
      "id": "T3_WHEAT",
@@ -4011,6 +4073,7 @@
    "amount": 10,
    "focus": 75,
    "silver": 0,
+   "itemValue": 56.0,
    "inputs": [
     {
      "id": "T3_WHEAT",
@@ -4039,6 +4102,7 @@
    "amount": 10,
    "focus": 120,
    "silver": 0,
+   "itemValue": 56.0,
    "inputs": [
     {
      "id": "T3_WHEAT",
@@ -4067,6 +4131,7 @@
    "amount": 10,
    "focus": 253,
    "silver": 0,
+   "itemValue": 56.0,
    "inputs": [
     {
      "id": "T3_WHEAT",
@@ -4095,6 +4160,7 @@
    "amount": 1,
    "focus": 38,
    "silver": 0,
+   "itemValue": 40.0,
    "inputs": [
     {
      "id": "T7_CORN",
@@ -4111,6 +4177,7 @@
    "amount": 1,
    "focus": 38,
    "silver": 0,
+   "itemValue": 40.0,
    "inputs": [
     {
      "id": "T8_MILK",
@@ -4127,6 +4194,7 @@
    "amount": 1,
    "focus": 652,
    "silver": 0,
+   "itemValue": 750.0,
    "inputs": [
     {
      "id": "T7_FISH_FRESHWATER_FOREST_RARE",
@@ -4155,6 +4223,7 @@
    "amount": 1,
    "focus": 1253,
    "silver": 0,
+   "itemValue": 750.0,
    "inputs": [
     {
      "id": "T7_FISH_FRESHWATER_FOREST_RARE",
@@ -4187,6 +4256,7 @@
    "amount": 1,
    "focus": 2454,
    "silver": 0,
+   "itemValue": 750.0,
    "inputs": [
     {
      "id": "T7_FISH_FRESHWATER_FOREST_RARE",
@@ -4219,6 +4289,7 @@
    "amount": 1,
    "focus": 6056,
    "silver": 0,
+   "itemValue": 750.0,
    "inputs": [
     {
      "id": "T7_FISH_FRESHWATER_FOREST_RARE",
@@ -4251,6 +4322,7 @@
    "amount": 1,
    "focus": 672,
    "silver": 0,
+   "itemValue": 750.0,
    "inputs": [
     {
      "id": "T7_FISH_SALTWATER_ALL_RARE",
@@ -4279,6 +4351,7 @@
    "amount": 1,
    "focus": 1272,
    "silver": 0,
+   "itemValue": 750.0,
    "inputs": [
     {
      "id": "T7_FISH_SALTWATER_ALL_RARE",
@@ -4311,6 +4384,7 @@
    "amount": 1,
    "focus": 2473,
    "silver": 0,
+   "itemValue": 750.0,
    "inputs": [
     {
      "id": "T7_FISH_SALTWATER_ALL_RARE",
@@ -4343,6 +4417,7 @@
    "amount": 1,
    "focus": 6076,
    "silver": 0,
+   "itemValue": 750.0,
    "inputs": [
     {
      "id": "T7_FISH_SALTWATER_ALL_RARE",
@@ -4375,6 +4450,7 @@
    "amount": 1,
    "focus": 672,
    "silver": 0,
+   "itemValue": 750.0,
    "inputs": [
     {
      "id": "T7_FISH_FRESHWATER_DRAGON_AREA_RARE",
@@ -4403,6 +4479,7 @@
    "amount": 1,
    "focus": 1272,
    "silver": 0,
+   "itemValue": 750.0,
    "inputs": [
     {
      "id": "T7_FISH_FRESHWATER_DRAGON_AREA_RARE",
@@ -4435,6 +4512,7 @@
    "amount": 1,
    "focus": 2473,
    "silver": 0,
+   "itemValue": 750.0,
    "inputs": [
     {
      "id": "T7_FISH_FRESHWATER_DRAGON_AREA_RARE",
@@ -4467,6 +4545,7 @@
    "amount": 1,
    "focus": 6076,
    "silver": 0,
+   "itemValue": 750.0,
    "inputs": [
     {
      "id": "T7_FISH_FRESHWATER_DRAGON_AREA_RARE",
@@ -4499,6 +4578,7 @@
    "amount": 99,
    "focus": 0,
    "silver": 0,
+   "itemValue": 29.0909,
    "inputs": [
     {
      "id": "T3_FLOUR",
@@ -4527,6 +4607,7 @@
    "amount": 1,
    "focus": 225,
    "silver": 0,
+   "itemValue": 260.0,
    "inputs": [
     {
      "id": "T5_FISH_FRESHWATER_STEPPE_RARE",
@@ -4555,6 +4636,7 @@
    "amount": 1,
    "focus": 425,
    "silver": 0,
+   "itemValue": 260.0,
    "inputs": [
     {
      "id": "T5_FISH_FRESHWATER_STEPPE_RARE",
@@ -4587,6 +4669,7 @@
    "amount": 1,
    "focus": 825,
    "silver": 0,
+   "itemValue": 260.0,
    "inputs": [
     {
      "id": "T5_FISH_FRESHWATER_STEPPE_RARE",
@@ -4619,6 +4702,7 @@
    "amount": 1,
    "focus": 2026,
    "silver": 0,
+   "itemValue": 260.0,
    "inputs": [
     {
      "id": "T5_FISH_FRESHWATER_STEPPE_RARE",
@@ -4651,6 +4735,7 @@
    "amount": 1,
    "focus": 672,
    "silver": 0,
+   "itemValue": 750.0,
    "inputs": [
     {
      "id": "T7_FISH_FRESHWATER_STEPPE_RARE",
@@ -4679,6 +4764,7 @@
    "amount": 1,
    "focus": 1272,
    "silver": 0,
+   "itemValue": 750.0,
    "inputs": [
     {
      "id": "T7_FISH_FRESHWATER_STEPPE_RARE",
@@ -4711,6 +4797,7 @@
    "amount": 1,
    "focus": 2473,
    "silver": 0,
+   "itemValue": 750.0,
    "inputs": [
     {
      "id": "T7_FISH_FRESHWATER_STEPPE_RARE",
@@ -4743,6 +4830,7 @@
    "amount": 1,
    "focus": 6076,
    "silver": 0,
+   "itemValue": 750.0,
    "inputs": [
     {
      "id": "T7_FISH_FRESHWATER_STEPPE_RARE",
@@ -4775,6 +4863,7 @@
    "amount": 1,
    "focus": 38,
    "silver": 0,
+   "itemValue": 40.0,
    "inputs": [
     {
      "id": "T3_WHEAT",
@@ -4791,6 +4880,7 @@
    "amount": 1,
    "focus": 672,
    "silver": 0,
+   "itemValue": 750.0,
    "inputs": [
     {
      "id": "T7_FISH_FRESHWATER_MOUNTAIN_RARE",
@@ -4819,6 +4909,7 @@
    "amount": 1,
    "focus": 1272,
    "silver": 0,
+   "itemValue": 750.0,
    "inputs": [
     {
      "id": "T7_FISH_FRESHWATER_MOUNTAIN_RARE",
@@ -4851,6 +4942,7 @@
    "amount": 1,
    "focus": 2473,
    "silver": 0,
+   "itemValue": 750.0,
    "inputs": [
     {
      "id": "T7_FISH_FRESHWATER_MOUNTAIN_RARE",
@@ -4883,6 +4975,7 @@
    "amount": 1,
    "focus": 6076,
    "silver": 0,
+   "itemValue": 750.0,
    "inputs": [
     {
      "id": "T7_FISH_FRESHWATER_MOUNTAIN_RARE",
@@ -4915,6 +5008,7 @@
    "amount": 10,
    "focus": 61,
    "silver": 0,
+   "itemValue": 64.0,
    "inputs": [
     {
      "id": "T4_TURNIP",
@@ -4939,6 +5033,7 @@
    "amount": 10,
    "focus": 84,
    "silver": 0,
+   "itemValue": 64.0,
    "inputs": [
     {
      "id": "T4_TURNIP",
@@ -4967,6 +5062,7 @@
    "amount": 10,
    "focus": 128,
    "silver": 0,
+   "itemValue": 64.0,
    "inputs": [
     {
      "id": "T4_TURNIP",
@@ -4995,6 +5091,7 @@
    "amount": 10,
    "focus": 262,
    "silver": 0,
+   "itemValue": 64.0,
    "inputs": [
     {
      "id": "T4_TURNIP",
@@ -5023,6 +5120,7 @@
    "amount": 1,
    "focus": 38,
    "silver": 0,
+   "itemValue": 40.0,
    "inputs": [
     {
      "id": "T4_MILK",
@@ -5039,6 +5137,7 @@
    "amount": 10,
    "focus": 155,
    "silver": 0,
+   "itemValue": 168.0,
    "inputs": [
     {
      "id": "T5_CABBAGE",
@@ -5063,6 +5162,7 @@
    "amount": 10,
    "focus": 222,
    "silver": 0,
+   "itemValue": 168.0,
    "inputs": [
     {
      "id": "T5_CABBAGE",
@@ -5091,6 +5191,7 @@
    "amount": 10,
    "focus": 355,
    "silver": 0,
+   "itemValue": 168.0,
    "inputs": [
     {
      "id": "T5_CABBAGE",
@@ -5119,6 +5220,7 @@
    "amount": 10,
    "focus": 755,
    "silver": 0,
+   "itemValue": 168.0,
    "inputs": [
     {
      "id": "T5_CABBAGE",
@@ -5147,6 +5249,7 @@
    "amount": 10,
    "focus": 180,
    "silver": 0,
+   "itemValue": 192.0,
    "inputs": [
     {
      "id": "T5_CABBAGE",
@@ -5175,6 +5278,7 @@
    "amount": 10,
    "focus": 246,
    "silver": 0,
+   "itemValue": 192.0,
    "inputs": [
     {
      "id": "T5_CABBAGE",
@@ -5207,6 +5311,7 @@
    "amount": 10,
    "focus": 380,
    "silver": 0,
+   "itemValue": 192.0,
    "inputs": [
     {
      "id": "T5_CABBAGE",
@@ -5239,6 +5344,7 @@
    "amount": 10,
    "focus": 780,
    "silver": 0,
+   "itemValue": 192.0,
    "inputs": [
     {
      "id": "T5_CABBAGE",
@@ -5271,6 +5377,7 @@
    "amount": 1,
    "focus": 77,
    "silver": 0,
+   "itemValue": 90.0,
    "inputs": [
     {
      "id": "T3_FISH_FRESHWATER_SWAMP_RARE",
@@ -5291,6 +5398,7 @@
    "amount": 1,
    "focus": 144,
    "silver": 0,
+   "itemValue": 90.0,
    "inputs": [
     {
      "id": "T3_FISH_FRESHWATER_SWAMP_RARE",
@@ -5315,6 +5423,7 @@
    "amount": 1,
    "focus": 278,
    "silver": 0,
+   "itemValue": 90.0,
    "inputs": [
     {
      "id": "T3_FISH_FRESHWATER_SWAMP_RARE",
@@ -5339,6 +5448,7 @@
    "amount": 1,
    "focus": 678,
    "silver": 0,
+   "itemValue": 90.0,
    "inputs": [
     {
      "id": "T3_FISH_FRESHWATER_SWAMP_RARE",
@@ -5363,6 +5473,7 @@
    "amount": 1,
    "focus": 77,
    "silver": 0,
+   "itemValue": 90.0,
    "inputs": [
     {
      "id": "T3_FISH_FRESHWATER_FOREST_RARE",
@@ -5387,6 +5498,7 @@
    "amount": 1,
    "focus": 144,
    "silver": 0,
+   "itemValue": 90.0,
    "inputs": [
     {
      "id": "T3_FISH_FRESHWATER_FOREST_RARE",
@@ -5415,6 +5527,7 @@
    "amount": 1,
    "focus": 278,
    "silver": 0,
+   "itemValue": 90.0,
    "inputs": [
     {
      "id": "T3_FISH_FRESHWATER_FOREST_RARE",
@@ -5443,6 +5556,7 @@
    "amount": 1,
    "focus": 678,
    "silver": 0,
+   "itemValue": 90.0,
    "inputs": [
     {
      "id": "T3_FISH_FRESHWATER_FOREST_RARE",
@@ -5471,6 +5585,7 @@
    "amount": 1,
    "focus": 77,
    "silver": 0,
+   "itemValue": 90.0,
    "inputs": [
     {
      "id": "T3_FISH_FRESHWATER_STEPPE_RARE",
@@ -5495,6 +5610,7 @@
    "amount": 1,
    "focus": 144,
    "silver": 0,
+   "itemValue": 90.0,
    "inputs": [
     {
      "id": "T3_FISH_FRESHWATER_STEPPE_RARE",
@@ -5523,6 +5639,7 @@
    "amount": 1,
    "focus": 278,
    "silver": 0,
+   "itemValue": 90.0,
    "inputs": [
     {
      "id": "T3_FISH_FRESHWATER_STEPPE_RARE",
@@ -5551,6 +5668,7 @@
    "amount": 1,
    "focus": 678,
    "silver": 0,
+   "itemValue": 90.0,
    "inputs": [
     {
      "id": "T3_FISH_FRESHWATER_STEPPE_RARE",
@@ -5579,6 +5697,7 @@
    "amount": 1,
    "focus": 231,
    "silver": 0,
+   "itemValue": 260.0,
    "inputs": [
     {
      "id": "T5_FISH_SALTWATER_ALL_RARE",
@@ -5607,6 +5726,7 @@
    "amount": 1,
    "focus": 432,
    "silver": 0,
+   "itemValue": 260.0,
    "inputs": [
     {
      "id": "T5_FISH_SALTWATER_ALL_RARE",
@@ -5639,6 +5759,7 @@
    "amount": 1,
    "focus": 832,
    "silver": 0,
+   "itemValue": 260.0,
    "inputs": [
     {
      "id": "T5_FISH_SALTWATER_ALL_RARE",
@@ -5671,6 +5792,7 @@
    "amount": 1,
    "focus": 2033,
    "silver": 0,
+   "itemValue": 260.0,
    "inputs": [
     {
      "id": "T5_FISH_SALTWATER_ALL_RARE",
@@ -5703,6 +5825,7 @@
    "amount": 1,
    "focus": 225,
    "silver": 0,
+   "itemValue": 260.0,
    "inputs": [
     {
      "id": "T5_FISH_FRESHWATER_MOUNTAIN_RARE",
@@ -5731,6 +5854,7 @@
    "amount": 1,
    "focus": 425,
    "silver": 0,
+   "itemValue": 260.0,
    "inputs": [
     {
      "id": "T5_FISH_FRESHWATER_MOUNTAIN_RARE",
@@ -5763,6 +5887,7 @@
    "amount": 1,
    "focus": 825,
    "silver": 0,
+   "itemValue": 260.0,
    "inputs": [
     {
      "id": "T5_FISH_FRESHWATER_MOUNTAIN_RARE",
@@ -5795,6 +5920,7 @@
    "amount": 1,
    "focus": 2026,
    "silver": 0,
+   "itemValue": 260.0,
    "inputs": [
     {
      "id": "T5_FISH_FRESHWATER_MOUNTAIN_RARE",
@@ -5827,6 +5953,7 @@
    "amount": 1,
    "focus": 231,
    "silver": 0,
+   "itemValue": 260.0,
    "inputs": [
     {
      "id": "T5_FISH_FRESHWATER_SWAMP_RARE",
@@ -5855,6 +5982,7 @@
    "amount": 1,
    "focus": 432,
    "silver": 0,
+   "itemValue": 260.0,
    "inputs": [
     {
      "id": "T5_FISH_FRESHWATER_SWAMP_RARE",
@@ -5887,6 +6015,7 @@
    "amount": 1,
    "focus": 832,
    "silver": 0,
+   "itemValue": 260.0,
    "inputs": [
     {
      "id": "T5_FISH_FRESHWATER_SWAMP_RARE",
@@ -5919,6 +6048,7 @@
    "amount": 1,
    "focus": 2033,
    "silver": 0,
+   "itemValue": 260.0,
    "inputs": [
     {
      "id": "T5_FISH_FRESHWATER_SWAMP_RARE",
@@ -5951,6 +6081,7 @@
    "amount": 10,
    "focus": 184,
    "silver": 0,
+   "itemValue": 192.0,
    "inputs": [
     {
      "id": "T6_POTATO",
@@ -5975,6 +6106,7 @@
    "amount": 10,
    "focus": 251,
    "silver": 0,
+   "itemValue": 192.0,
    "inputs": [
     {
      "id": "T6_POTATO",
@@ -6003,6 +6135,7 @@
    "amount": 10,
    "focus": 384,
    "silver": 0,
+   "itemValue": 192.0,
    "inputs": [
     {
      "id": "T6_POTATO",
@@ -6031,6 +6164,7 @@
    "amount": 10,
    "focus": 785,
    "silver": 0,
+   "itemValue": 192.0,
    "inputs": [
     {
      "id": "T6_POTATO",
@@ -6059,6 +6193,7 @@
    "amount": 10,
    "focus": 464,
    "silver": 0,
+   "itemValue": 504.0,
    "inputs": [
     {
      "id": "T7_CORN",
@@ -6083,6 +6218,7 @@
    "amount": 10,
    "focus": 665,
    "silver": 0,
+   "itemValue": 504.0,
    "inputs": [
     {
      "id": "T7_CORN",
@@ -6111,6 +6247,7 @@
    "amount": 10,
    "focus": 1065,
    "silver": 0,
+   "itemValue": 504.0,
    "inputs": [
     {
      "id": "T7_CORN",
@@ -6139,6 +6276,7 @@
    "amount": 10,
    "focus": 2266,
    "silver": 0,
+   "itemValue": 504.0,
    "inputs": [
     {
      "id": "T7_CORN",
@@ -6167,6 +6305,7 @@
    "amount": 10,
    "focus": 540,
    "silver": 0,
+   "itemValue": 576.0,
    "inputs": [
     {
      "id": "T7_CORN",
@@ -6195,6 +6334,7 @@
    "amount": 10,
    "focus": 739,
    "silver": 0,
+   "itemValue": 576.0,
    "inputs": [
     {
      "id": "T7_CORN",
@@ -6227,6 +6367,7 @@
    "amount": 10,
    "focus": 1140,
    "silver": 0,
+   "itemValue": 576.0,
    "inputs": [
     {
      "id": "T7_CORN",
@@ -6259,6 +6400,7 @@
    "amount": 10,
    "focus": 2341,
    "silver": 0,
+   "itemValue": 576.0,
    "inputs": [
     {
      "id": "T7_CORN",
@@ -6291,6 +6433,7 @@
    "amount": 10,
    "focus": 504,
    "silver": 0,
+   "itemValue": 576.0,
    "inputs": [
     {
      "id": "T6_POTATO",
@@ -6311,6 +6454,7 @@
    "amount": 10,
    "focus": 704,
    "silver": 0,
+   "itemValue": 576.0,
    "inputs": [
     {
      "id": "T6_POTATO",
@@ -6335,6 +6479,7 @@
    "amount": 10,
    "focus": 1105,
    "silver": 0,
+   "itemValue": 576.0,
    "inputs": [
     {
      "id": "T6_POTATO",
@@ -6359,6 +6504,7 @@
    "amount": 10,
    "focus": 2306,
    "silver": 0,
+   "itemValue": 576.0,
    "inputs": [
     {
      "id": "T6_POTATO",
@@ -6383,6 +6529,7 @@
    "amount": 1,
    "focus": 38,
    "silver": 0,
+   "itemValue": 40.0,
    "inputs": [
     {
      "id": "T6_POTATO",
@@ -6399,6 +6546,7 @@
    "amount": 1,
    "focus": 38,
    "silver": 0,
+   "itemValue": 40.0,
    "inputs": [
     {
      "id": "T8_PUMPKIN",
@@ -6415,6 +6563,7 @@
    "amount": 1,
    "focus": 225,
    "silver": 0,
+   "itemValue": 260.0,
    "inputs": [
     {
      "id": "T5_FISH_FRESHWATER_FOREST_RARE",
@@ -6443,6 +6592,7 @@
    "amount": 1,
    "focus": 425,
    "silver": 0,
+   "itemValue": 260.0,
    "inputs": [
     {
      "id": "T5_FISH_FRESHWATER_FOREST_RARE",
@@ -6475,6 +6625,7 @@
    "amount": 1,
    "focus": 825,
    "silver": 0,
+   "itemValue": 260.0,
    "inputs": [
     {
      "id": "T5_FISH_FRESHWATER_FOREST_RARE",
@@ -6507,6 +6658,7 @@
    "amount": 1,
    "focus": 2026,
    "silver": 0,
+   "itemValue": 260.0,
    "inputs": [
     {
      "id": "T5_FISH_FRESHWATER_FOREST_RARE",
@@ -6539,6 +6691,7 @@
    "amount": 10,
    "focus": 58,
    "silver": 0,
+   "itemValue": 64.0,
    "inputs": [
     {
      "id": "T3_MEAT",
@@ -6563,6 +6716,7 @@
    "amount": 10,
    "focus": 81,
    "silver": 0,
+   "itemValue": 64.0,
    "inputs": [
     {
      "id": "T3_MEAT",
@@ -6591,6 +6745,7 @@
    "amount": 10,
    "focus": 125,
    "silver": 0,
+   "itemValue": 64.0,
    "inputs": [
     {
      "id": "T3_MEAT",
@@ -6619,6 +6774,7 @@
    "amount": 10,
    "focus": 259,
    "silver": 0,
+   "itemValue": 64.0,
    "inputs": [
     {
      "id": "T3_MEAT",
@@ -6647,6 +6803,7 @@
    "amount": 10,
    "focus": 176,
    "silver": 0,
+   "itemValue": 192.0,
    "inputs": [
     {
      "id": "T5_MEAT",
@@ -6671,6 +6828,7 @@
    "amount": 10,
    "focus": 243,
    "silver": 0,
+   "itemValue": 192.0,
    "inputs": [
     {
      "id": "T5_MEAT",
@@ -6699,6 +6857,7 @@
    "amount": 10,
    "focus": 376,
    "silver": 0,
+   "itemValue": 192.0,
    "inputs": [
     {
      "id": "T5_MEAT",
@@ -6727,6 +6886,7 @@
    "amount": 10,
    "focus": 777,
    "silver": 0,
+   "itemValue": 192.0,
    "inputs": [
     {
      "id": "T5_MEAT",
@@ -6755,6 +6915,7 @@
    "amount": 10,
    "focus": 528,
    "silver": 0,
+   "itemValue": 576.0,
    "inputs": [
     {
      "id": "T7_MEAT",
@@ -6779,6 +6940,7 @@
    "amount": 10,
    "focus": 728,
    "silver": 0,
+   "itemValue": 576.0,
    "inputs": [
     {
      "id": "T7_MEAT",
@@ -6807,6 +6969,7 @@
    "amount": 10,
    "focus": 1128,
    "silver": 0,
+   "itemValue": 576.0,
    "inputs": [
     {
      "id": "T7_MEAT",
@@ -6835,6 +6998,7 @@
    "amount": 10,
    "focus": 2329,
    "silver": 0,
+   "itemValue": 576.0,
    "inputs": [
     {
      "id": "T7_MEAT",
@@ -6863,6 +7027,7 @@
    "amount": 1,
    "focus": 225,
    "silver": 0,
+   "itemValue": 260.0,
    "inputs": [
     {
      "id": "T5_FISH_FRESHWATER_AVALON_RARE",
@@ -6891,6 +7056,7 @@
    "amount": 1,
    "focus": 425,
    "silver": 0,
+   "itemValue": 260.0,
    "inputs": [
     {
      "id": "T5_FISH_FRESHWATER_AVALON_RARE",
@@ -6923,6 +7089,7 @@
    "amount": 1,
    "focus": 825,
    "silver": 0,
+   "itemValue": 260.0,
    "inputs": [
     {
      "id": "T5_FISH_FRESHWATER_AVALON_RARE",
@@ -6955,6 +7122,7 @@
    "amount": 1,
    "focus": 2026,
    "silver": 0,
+   "itemValue": 260.0,
    "inputs": [
     {
      "id": "T5_FISH_FRESHWATER_AVALON_RARE",
@@ -6987,6 +7155,7 @@
    "amount": 1,
    "focus": 652,
    "silver": 0,
+   "itemValue": 750.0,
    "inputs": [
     {
      "id": "T7_FISH_FRESHWATER_AVALON_RARE",
@@ -7015,6 +7184,7 @@
    "amount": 1,
    "focus": 1253,
    "silver": 0,
+   "itemValue": 750.0,
    "inputs": [
     {
      "id": "T7_FISH_FRESHWATER_AVALON_RARE",
@@ -7047,6 +7217,7 @@
    "amount": 1,
    "focus": 2454,
    "silver": 0,
+   "itemValue": 750.0,
    "inputs": [
     {
      "id": "T7_FISH_FRESHWATER_AVALON_RARE",
@@ -7079,6 +7250,7 @@
    "amount": 1,
    "focus": 6056,
    "silver": 0,
+   "itemValue": 750.0,
    "inputs": [
     {
      "id": "T7_FISH_FRESHWATER_AVALON_RARE",
@@ -7111,6 +7283,7 @@
    "amount": 1,
    "focus": 77,
    "silver": 0,
+   "itemValue": 90.0,
    "inputs": [
     {
      "id": "T3_FISH_FRESHWATER_AVALON_RARE",
@@ -7135,6 +7308,7 @@
    "amount": 1,
    "focus": 144,
    "silver": 0,
+   "itemValue": 90.0,
    "inputs": [
     {
      "id": "T3_FISH_FRESHWATER_AVALON_RARE",
@@ -7163,6 +7337,7 @@
    "amount": 1,
    "focus": 278,
    "silver": 0,
+   "itemValue": 90.0,
    "inputs": [
     {
      "id": "T3_FISH_FRESHWATER_AVALON_RARE",
@@ -7191,6 +7366,7 @@
    "amount": 1,
    "focus": 678,
    "silver": 0,
+   "itemValue": 90.0,
    "inputs": [
     {
      "id": "T3_FISH_FRESHWATER_AVALON_RARE",
@@ -7219,6 +7395,7 @@
    "amount": 1,
    "focus": 231,
    "silver": 0,
+   "itemValue": 260.0,
    "inputs": [
     {
      "id": "T5_FISH_FRESHWATER_HIGHLANDS_RARE",
@@ -7247,6 +7424,7 @@
    "amount": 1,
    "focus": 432,
    "silver": 0,
+   "itemValue": 260.0,
    "inputs": [
     {
      "id": "T5_FISH_FRESHWATER_HIGHLANDS_RARE",
@@ -7279,6 +7457,7 @@
    "amount": 1,
    "focus": 832,
    "silver": 0,
+   "itemValue": 260.0,
    "inputs": [
     {
      "id": "T5_FISH_FRESHWATER_HIGHLANDS_RARE",
@@ -7311,6 +7490,7 @@
    "amount": 1,
    "focus": 2033,
    "silver": 0,
+   "itemValue": 260.0,
    "inputs": [
     {
      "id": "T5_FISH_FRESHWATER_HIGHLANDS_RARE",
@@ -7343,6 +7523,7 @@
    "amount": 1,
    "focus": 77,
    "silver": 0,
+   "itemValue": 90.0,
    "inputs": [
     {
      "id": "T3_FISH_SALTWATER_ALL_RARE",
@@ -7367,6 +7548,7 @@
    "amount": 1,
    "focus": 144,
    "silver": 0,
+   "itemValue": 90.0,
    "inputs": [
     {
      "id": "T3_FISH_SALTWATER_ALL_RARE",
@@ -7395,6 +7577,7 @@
    "amount": 1,
    "focus": 278,
    "silver": 0,
+   "itemValue": 90.0,
    "inputs": [
     {
      "id": "T3_FISH_SALTWATER_ALL_RARE",
@@ -7423,6 +7606,7 @@
    "amount": 1,
    "focus": 678,
    "silver": 0,
+   "itemValue": 90.0,
    "inputs": [
     {
      "id": "T3_FISH_SALTWATER_ALL_RARE",
@@ -7451,6 +7635,7 @@
    "amount": 1,
    "focus": 38,
    "silver": 0,
+   "itemValue": 40.0,
    "inputs": [
     {
      "id": "T6_MILK",
@@ -7467,6 +7652,7 @@
    "amount": 1,
    "focus": 81,
    "silver": 0,
+   "itemValue": 90.0,
    "inputs": [
     {
      "id": "T3_FISH_FRESHWATER_HIGHLANDS_RARE",
@@ -7491,6 +7677,7 @@
    "amount": 1,
    "focus": 147,
    "silver": 0,
+   "itemValue": 90.0,
    "inputs": [
     {
      "id": "T3_FISH_FRESHWATER_HIGHLANDS_RARE",
@@ -7519,6 +7706,7 @@
    "amount": 1,
    "focus": 281,
    "silver": 0,
+   "itemValue": 90.0,
    "inputs": [
     {
      "id": "T3_FISH_FRESHWATER_HIGHLANDS_RARE",
@@ -7547,6 +7735,7 @@
    "amount": 1,
    "focus": 681,
    "silver": 0,
+   "itemValue": 90.0,
    "inputs": [
     {
      "id": "T3_FISH_FRESHWATER_HIGHLANDS_RARE",
@@ -7575,6 +7764,7 @@
    "amount": 1,
    "focus": 672,
    "silver": 0,
+   "itemValue": 750.0,
    "inputs": [
     {
      "id": "T7_FISH_FRESHWATER_HIGHLANDS_RARE",
@@ -7603,6 +7793,7 @@
    "amount": 1,
    "focus": 1272,
    "silver": 0,
+   "itemValue": 750.0,
    "inputs": [
     {
      "id": "T7_FISH_FRESHWATER_HIGHLANDS_RARE",
@@ -7635,6 +7826,7 @@
    "amount": 1,
    "focus": 2473,
    "silver": 0,
+   "itemValue": 750.0,
    "inputs": [
     {
      "id": "T7_FISH_FRESHWATER_HIGHLANDS_RARE",
@@ -7667,6 +7859,7 @@
    "amount": 1,
    "focus": 6076,
    "silver": 0,
+   "itemValue": 750.0,
    "inputs": [
     {
      "id": "T7_FISH_FRESHWATER_HIGHLANDS_RARE",
@@ -7699,6 +7892,7 @@
    "amount": 10,
    "focus": 168,
    "silver": 0,
+   "itemValue": 192.0,
    "inputs": [
     {
      "id": "T4_TURNIP",
@@ -7719,6 +7913,7 @@
    "amount": 10,
    "focus": 235,
    "silver": 0,
+   "itemValue": 192.0,
    "inputs": [
     {
      "id": "T4_TURNIP",
@@ -7743,6 +7938,7 @@
    "amount": 10,
    "focus": 368,
    "silver": 0,
+   "itemValue": 192.0,
    "inputs": [
     {
      "id": "T4_TURNIP",
@@ -7767,6 +7963,7 @@
    "amount": 10,
    "focus": 769,
    "silver": 0,
+   "itemValue": 192.0,
    "inputs": [
     {
      "id": "T4_TURNIP",
@@ -7791,6 +7988,7 @@
    "amount": 1,
    "focus": 81,
    "silver": 0,
+   "itemValue": 90.0,
    "inputs": [
     {
      "id": "T3_FISH_FRESHWATER_MOUNTAIN_RARE",
@@ -7815,6 +8013,7 @@
    "amount": 1,
    "focus": 147,
    "silver": 0,
+   "itemValue": 90.0,
    "inputs": [
     {
      "id": "T3_FISH_FRESHWATER_MOUNTAIN_RARE",
@@ -7843,6 +8042,7 @@
    "amount": 1,
    "focus": 281,
    "silver": 0,
+   "itemValue": 90.0,
    "inputs": [
     {
      "id": "T3_FISH_FRESHWATER_MOUNTAIN_RARE",
@@ -7871,6 +8071,7 @@
    "amount": 1,
    "focus": 681,
    "silver": 0,
+   "itemValue": 90.0,
    "inputs": [
     {
      "id": "T3_FISH_FRESHWATER_MOUNTAIN_RARE",
@@ -7899,6 +8100,7 @@
    "amount": 10,
    "focus": 168,
    "silver": 0,
+   "itemValue": 192.0,
    "inputs": [
     {
      "id": "T3_WHEAT",
@@ -7915,6 +8117,7 @@
    "amount": 10,
    "focus": 235,
    "silver": 0,
+   "itemValue": 192.0,
    "inputs": [
     {
      "id": "T3_WHEAT",
@@ -7935,6 +8138,7 @@
    "amount": 10,
    "focus": 368,
    "silver": 0,
+   "itemValue": 192.0,
    "inputs": [
     {
      "id": "T3_WHEAT",
@@ -7955,6 +8159,7 @@
    "amount": 10,
    "focus": 769,
    "silver": 0,
+   "itemValue": 192.0,
    "inputs": [
     {
      "id": "T3_WHEAT",
@@ -7975,6 +8180,7 @@
    "amount": 10,
    "focus": 294,
    "silver": 0,
+   "itemValue": 336.0,
    "inputs": [
     {
      "id": "T5_ALCHEMY_RARE_DIREBEAR",
@@ -8004,6 +8210,7 @@
    "amount": 10,
    "focus": 361,
    "silver": 0,
+   "itemValue": 336.0,
    "inputs": [
     {
      "id": "T5_ALCHEMY_RARE_DIREBEAR",
@@ -8037,6 +8244,7 @@
    "amount": 10,
    "focus": 494,
    "silver": 0,
+   "itemValue": 336.0,
    "inputs": [
     {
      "id": "T5_ALCHEMY_RARE_DIREBEAR",
@@ -8070,6 +8278,7 @@
    "amount": 10,
    "focus": 895,
    "silver": 0,
+   "itemValue": 336.0,
    "inputs": [
     {
      "id": "T5_ALCHEMY_RARE_DIREBEAR",
@@ -8103,6 +8312,7 @@
    "amount": 10,
    "focus": 298,
    "silver": 0,
+   "itemValue": 336.0,
    "inputs": [
     {
      "id": "T5_ALCHEMY_RARE_WEREWOLF",
@@ -8132,6 +8342,7 @@
    "amount": 10,
    "focus": 365,
    "silver": 0,
+   "itemValue": 336.0,
    "inputs": [
     {
      "id": "T5_ALCHEMY_RARE_WEREWOLF",
@@ -8165,6 +8376,7 @@
    "amount": 10,
    "focus": 498,
    "silver": 0,
+   "itemValue": 336.0,
    "inputs": [
     {
      "id": "T5_ALCHEMY_RARE_WEREWOLF",
@@ -8198,6 +8410,7 @@
    "amount": 10,
    "focus": 898,
    "silver": 0,
+   "itemValue": 336.0,
    "inputs": [
     {
      "id": "T5_ALCHEMY_RARE_WEREWOLF",
@@ -8231,6 +8444,7 @@
    "amount": 10,
    "focus": 294,
    "silver": 0,
+   "itemValue": 336.0,
    "inputs": [
     {
      "id": "T5_ALCHEMY_RARE_PANTHER",
@@ -8260,6 +8474,7 @@
    "amount": 10,
    "focus": 361,
    "silver": 0,
+   "itemValue": 336.0,
    "inputs": [
     {
      "id": "T5_ALCHEMY_RARE_PANTHER",
@@ -8293,6 +8508,7 @@
    "amount": 10,
    "focus": 494,
    "silver": 0,
+   "itemValue": 336.0,
    "inputs": [
     {
      "id": "T5_ALCHEMY_RARE_PANTHER",
@@ -8326,6 +8542,7 @@
    "amount": 10,
    "focus": 895,
    "silver": 0,
+   "itemValue": 336.0,
    "inputs": [
     {
      "id": "T5_ALCHEMY_RARE_PANTHER",
@@ -8359,6 +8576,7 @@
    "amount": 10,
    "focus": 298,
    "silver": 0,
+   "itemValue": 336.0,
    "inputs": [
     {
      "id": "T5_ALCHEMY_RARE_ENT",
@@ -8388,6 +8606,7 @@
    "amount": 10,
    "focus": 365,
    "silver": 0,
+   "itemValue": 336.0,
    "inputs": [
     {
      "id": "T5_ALCHEMY_RARE_ENT",
@@ -8421,6 +8640,7 @@
    "amount": 10,
    "focus": 498,
    "silver": 0,
+   "itemValue": 336.0,
    "inputs": [
     {
      "id": "T5_ALCHEMY_RARE_ENT",
@@ -8454,6 +8674,7 @@
    "amount": 10,
    "focus": 898,
    "silver": 0,
+   "itemValue": 336.0,
    "inputs": [
     {
      "id": "T5_ALCHEMY_RARE_ENT",
@@ -8487,6 +8708,7 @@
    "amount": 5,
    "focus": 210,
    "silver": 0,
+   "itemValue": 240.0,
    "inputs": [
     {
      "id": "T4_BURDOCK",
@@ -8507,6 +8729,7 @@
    "amount": 5,
    "focus": 277,
    "silver": 0,
+   "itemValue": 240.0,
    "inputs": [
     {
      "id": "T4_BURDOCK",
@@ -8531,6 +8754,7 @@
    "amount": 5,
    "focus": 411,
    "silver": 0,
+   "itemValue": 240.0,
    "inputs": [
     {
      "id": "T4_BURDOCK",
@@ -8555,6 +8779,7 @@
    "amount": 5,
    "focus": 811,
    "silver": 0,
+   "itemValue": 240.0,
    "inputs": [
     {
      "id": "T4_BURDOCK",
@@ -8579,6 +8804,7 @@
    "amount": 10,
    "focus": 310,
    "silver": 0,
+   "itemValue": 336.0,
    "inputs": [
     {
      "id": "T5_ALCHEMY_RARE_ELEMENTAL",
@@ -8608,6 +8834,7 @@
    "amount": 10,
    "focus": 376,
    "silver": 0,
+   "itemValue": 336.0,
    "inputs": [
     {
      "id": "T5_ALCHEMY_RARE_ELEMENTAL",
@@ -8641,6 +8868,7 @@
    "amount": 10,
    "focus": 510,
    "silver": 0,
+   "itemValue": 336.0,
    "inputs": [
     {
      "id": "T5_ALCHEMY_RARE_ELEMENTAL",
@@ -8674,6 +8902,7 @@
    "amount": 10,
    "focus": 910,
    "silver": 0,
+   "itemValue": 336.0,
    "inputs": [
     {
      "id": "T5_ALCHEMY_RARE_ELEMENTAL",
@@ -8707,6 +8936,7 @@
    "amount": 5,
    "focus": 294,
    "silver": 0,
+   "itemValue": 336.0,
    "inputs": [
     {
      "id": "T5_TEASEL",
@@ -8731,6 +8961,7 @@
    "amount": 5,
    "focus": 361,
    "silver": 0,
+   "itemValue": 336.0,
    "inputs": [
     {
      "id": "T5_TEASEL",
@@ -8759,6 +8990,7 @@
    "amount": 5,
    "focus": 494,
    "silver": 0,
+   "itemValue": 336.0,
    "inputs": [
     {
      "id": "T5_TEASEL",
@@ -8787,6 +9019,7 @@
    "amount": 5,
    "focus": 895,
    "silver": 0,
+   "itemValue": 336.0,
    "inputs": [
     {
      "id": "T5_TEASEL",
@@ -8815,6 +9048,7 @@
    "amount": 5,
    "focus": 210,
    "silver": 0,
+   "itemValue": 240.0,
    "inputs": [
     {
      "id": "T4_BURDOCK",
@@ -8835,6 +9069,7 @@
    "amount": 5,
    "focus": 277,
    "silver": 0,
+   "itemValue": 240.0,
    "inputs": [
     {
      "id": "T4_BURDOCK",
@@ -8859,6 +9094,7 @@
    "amount": 5,
    "focus": 411,
    "silver": 0,
+   "itemValue": 240.0,
    "inputs": [
     {
      "id": "T4_BURDOCK",
@@ -8883,6 +9119,7 @@
    "amount": 5,
    "focus": 811,
    "silver": 0,
+   "itemValue": 240.0,
    "inputs": [
     {
      "id": "T4_BURDOCK",
@@ -8907,6 +9144,7 @@
    "amount": 10,
    "focus": 294,
    "silver": 0,
+   "itemValue": 336.0,
    "inputs": [
     {
      "id": "T5_ALCHEMY_RARE_IMP",
@@ -8936,6 +9174,7 @@
    "amount": 10,
    "focus": 361,
    "silver": 0,
+   "itemValue": 336.0,
    "inputs": [
     {
      "id": "T5_ALCHEMY_RARE_IMP",
@@ -8969,6 +9208,7 @@
    "amount": 10,
    "focus": 494,
    "silver": 0,
+   "itemValue": 336.0,
    "inputs": [
     {
      "id": "T5_ALCHEMY_RARE_IMP",
@@ -9002,6 +9242,7 @@
    "amount": 10,
    "focus": 895,
    "silver": 0,
+   "itemValue": 336.0,
    "inputs": [
     {
      "id": "T5_ALCHEMY_RARE_IMP",
@@ -9035,6 +9276,7 @@
    "amount": 5,
    "focus": 1272,
    "silver": 0,
+   "itemValue": 1440.0,
    "inputs": [
     {
      "id": "T8_YARROW",
@@ -9067,6 +9309,7 @@
    "amount": 5,
    "focus": 1472,
    "silver": 0,
+   "itemValue": 1440.0,
    "inputs": [
     {
      "id": "T8_YARROW",
@@ -9103,6 +9346,7 @@
    "amount": 5,
    "focus": 1873,
    "silver": 0,
+   "itemValue": 1440.0,
    "inputs": [
     {
      "id": "T8_YARROW",
@@ -9139,6 +9383,7 @@
    "amount": 5,
    "focus": 3073,
    "silver": 0,
+   "itemValue": 1440.0,
    "inputs": [
     {
      "id": "T8_YARROW",
@@ -9175,6 +9420,7 @@
    "amount": 10,
    "focus": 294,
    "silver": 0,
+   "itemValue": 336.0,
    "inputs": [
     {
      "id": "T6_ALCHEMY_RARE_DRAGONAREA",
@@ -9204,6 +9450,7 @@
    "amount": 10,
    "focus": 361,
    "silver": 0,
+   "itemValue": 336.0,
    "inputs": [
     {
      "id": "T6_ALCHEMY_RARE_DRAGONAREA",
@@ -9237,6 +9484,7 @@
    "amount": 10,
    "focus": 494,
    "silver": 0,
+   "itemValue": 336.0,
    "inputs": [
     {
      "id": "T6_ALCHEMY_RARE_DRAGONAREA",
@@ -9270,6 +9518,7 @@
    "amount": 10,
    "focus": 895,
    "silver": 0,
+   "itemValue": 336.0,
    "inputs": [
     {
      "id": "T6_ALCHEMY_RARE_DRAGONAREA",
@@ -9303,6 +9552,7 @@
    "amount": 10,
    "focus": 1296,
    "silver": 0,
+   "itemValue": 1440.0,
    "inputs": [
     {
      "id": "T7_ALCHEMY_RARE_DIREBEAR",
@@ -9340,6 +9590,7 @@
    "amount": 10,
    "focus": 1496,
    "silver": 0,
+   "itemValue": 1440.0,
    "inputs": [
     {
      "id": "T7_ALCHEMY_RARE_DIREBEAR",
@@ -9381,6 +9632,7 @@
    "amount": 10,
    "focus": 1896,
    "silver": 0,
+   "itemValue": 1440.0,
    "inputs": [
     {
      "id": "T7_ALCHEMY_RARE_DIREBEAR",
@@ -9422,6 +9674,7 @@
    "amount": 10,
    "focus": 3097,
    "silver": 0,
+   "itemValue": 1440.0,
    "inputs": [
     {
      "id": "T7_ALCHEMY_RARE_DIREBEAR",
@@ -9463,6 +9716,7 @@
    "amount": 10,
    "focus": 1307,
    "silver": 0,
+   "itemValue": 1440.0,
    "inputs": [
     {
      "id": "T7_ALCHEMY_RARE_WEREWOLF",
@@ -9500,6 +9754,7 @@
    "amount": 10,
    "focus": 1507,
    "silver": 0,
+   "itemValue": 1440.0,
    "inputs": [
     {
      "id": "T7_ALCHEMY_RARE_WEREWOLF",
@@ -9541,6 +9796,7 @@
    "amount": 10,
    "focus": 1908,
    "silver": 0,
+   "itemValue": 1440.0,
    "inputs": [
     {
      "id": "T7_ALCHEMY_RARE_WEREWOLF",
@@ -9582,6 +9838,7 @@
    "amount": 10,
    "focus": 3108,
    "silver": 0,
+   "itemValue": 1440.0,
    "inputs": [
     {
      "id": "T7_ALCHEMY_RARE_WEREWOLF",
@@ -9623,6 +9880,7 @@
    "amount": 10,
    "focus": 1272,
    "silver": 0,
+   "itemValue": 1440.0,
    "inputs": [
     {
      "id": "T7_ALCHEMY_RARE_PANTHER",
@@ -9660,6 +9918,7 @@
    "amount": 10,
    "focus": 1472,
    "silver": 0,
+   "itemValue": 1440.0,
    "inputs": [
     {
      "id": "T7_ALCHEMY_RARE_PANTHER",
@@ -9701,6 +9960,7 @@
    "amount": 10,
    "focus": 1873,
    "silver": 0,
+   "itemValue": 1440.0,
    "inputs": [
     {
      "id": "T7_ALCHEMY_RARE_PANTHER",
@@ -9742,6 +10002,7 @@
    "amount": 10,
    "focus": 3073,
    "silver": 0,
+   "itemValue": 1440.0,
    "inputs": [
     {
      "id": "T7_ALCHEMY_RARE_PANTHER",
@@ -9783,6 +10044,7 @@
    "amount": 10,
    "focus": 1283,
    "silver": 0,
+   "itemValue": 1440.0,
    "inputs": [
     {
      "id": "T7_ALCHEMY_RARE_ENT",
@@ -9820,6 +10082,7 @@
    "amount": 10,
    "focus": 1484,
    "silver": 0,
+   "itemValue": 1440.0,
    "inputs": [
     {
      "id": "T7_ALCHEMY_RARE_ENT",
@@ -9861,6 +10124,7 @@
    "amount": 10,
    "focus": 1884,
    "silver": 0,
+   "itemValue": 1440.0,
    "inputs": [
     {
      "id": "T7_ALCHEMY_RARE_ENT",
@@ -9902,6 +10166,7 @@
    "amount": 10,
    "focus": 3085,
    "silver": 0,
+   "itemValue": 1440.0,
    "inputs": [
     {
      "id": "T7_ALCHEMY_RARE_ENT",
@@ -9943,6 +10208,7 @@
    "amount": 5,
    "focus": 768,
    "silver": 0,
+   "itemValue": 864.0,
    "inputs": [
     {
      "id": "T6_FOXGLOVE",
@@ -9967,6 +10233,7 @@
    "amount": 5,
    "focus": 968,
    "silver": 0,
+   "itemValue": 864.0,
    "inputs": [
     {
      "id": "T6_FOXGLOVE",
@@ -9995,6 +10262,7 @@
    "amount": 5,
    "focus": 1369,
    "silver": 0,
+   "itemValue": 864.0,
    "inputs": [
     {
      "id": "T6_FOXGLOVE",
@@ -10023,6 +10291,7 @@
    "amount": 5,
    "focus": 2570,
    "silver": 0,
+   "itemValue": 864.0,
    "inputs": [
     {
      "id": "T6_FOXGLOVE",
@@ -10051,6 +10320,7 @@
    "amount": 10,
    "focus": 1319,
    "silver": 0,
+   "itemValue": 1440.0,
    "inputs": [
     {
      "id": "T7_ALCHEMY_RARE_ELEMENTAL",
@@ -10088,6 +10358,7 @@
    "amount": 10,
    "focus": 1520,
    "silver": 0,
+   "itemValue": 1440.0,
    "inputs": [
     {
      "id": "T7_ALCHEMY_RARE_ELEMENTAL",
@@ -10129,6 +10400,7 @@
    "amount": 10,
    "focus": 1920,
    "silver": 0,
+   "itemValue": 1440.0,
    "inputs": [
     {
      "id": "T7_ALCHEMY_RARE_ELEMENTAL",
@@ -10170,6 +10442,7 @@
    "amount": 10,
    "focus": 3121,
    "silver": 0,
+   "itemValue": 1440.0,
    "inputs": [
     {
      "id": "T7_ALCHEMY_RARE_ELEMENTAL",
@@ -10211,6 +10484,7 @@
    "amount": 5,
    "focus": 1020,
    "silver": 0,
+   "itemValue": 1152.0,
    "inputs": [
     {
      "id": "T7_MULLEIN",
@@ -10239,6 +10513,7 @@
    "amount": 5,
    "focus": 1220,
    "silver": 0,
+   "itemValue": 1152.0,
    "inputs": [
     {
      "id": "T7_MULLEIN",
@@ -10271,6 +10546,7 @@
    "amount": 5,
    "focus": 1620,
    "silver": 0,
+   "itemValue": 1152.0,
    "inputs": [
     {
      "id": "T7_MULLEIN",
@@ -10303,6 +10579,7 @@
    "amount": 5,
    "focus": 2821,
    "silver": 0,
+   "itemValue": 1152.0,
    "inputs": [
     {
      "id": "T7_MULLEIN",
@@ -10335,6 +10612,7 @@
    "amount": 5,
    "focus": 768,
    "silver": 0,
+   "itemValue": 864.0,
    "inputs": [
     {
      "id": "T6_FOXGLOVE",
@@ -10359,6 +10637,7 @@
    "amount": 5,
    "focus": 968,
    "silver": 0,
+   "itemValue": 864.0,
    "inputs": [
     {
      "id": "T6_FOXGLOVE",
@@ -10387,6 +10666,7 @@
    "amount": 5,
    "focus": 1369,
    "silver": 0,
+   "itemValue": 864.0,
    "inputs": [
     {
      "id": "T6_FOXGLOVE",
@@ -10415,6 +10695,7 @@
    "amount": 5,
    "focus": 2570,
    "silver": 0,
+   "itemValue": 864.0,
    "inputs": [
     {
      "id": "T6_FOXGLOVE",
@@ -10443,6 +10724,7 @@
    "amount": 10,
    "focus": 1272,
    "silver": 0,
+   "itemValue": 1440.0,
    "inputs": [
     {
      "id": "T7_ALCHEMY_RARE_IMP",
@@ -10480,6 +10762,7 @@
    "amount": 10,
    "focus": 1472,
    "silver": 0,
+   "itemValue": 1440.0,
    "inputs": [
     {
      "id": "T7_ALCHEMY_RARE_IMP",
@@ -10521,6 +10804,7 @@
    "amount": 10,
    "focus": 1873,
    "silver": 0,
+   "itemValue": 1440.0,
    "inputs": [
     {
      "id": "T7_ALCHEMY_RARE_IMP",
@@ -10562,6 +10846,7 @@
    "amount": 10,
    "focus": 3073,
    "silver": 0,
+   "itemValue": 1440.0,
    "inputs": [
     {
      "id": "T7_ALCHEMY_RARE_IMP",
@@ -10603,6 +10888,7 @@
    "amount": 10,
    "focus": 1296,
    "silver": 0,
+   "itemValue": 1440.0,
    "inputs": [
     {
      "id": "T8_ALCHEMY_RARE_DRAGONAREA",
@@ -10640,6 +10926,7 @@
    "amount": 10,
    "focus": 1496,
    "silver": 0,
+   "itemValue": 1440.0,
    "inputs": [
     {
      "id": "T8_ALCHEMY_RARE_DRAGONAREA",
@@ -10681,6 +10968,7 @@
    "amount": 10,
    "focus": 1896,
    "silver": 0,
+   "itemValue": 1440.0,
    "inputs": [
     {
      "id": "T8_ALCHEMY_RARE_DRAGONAREA",
@@ -10722,6 +11010,7 @@
    "amount": 10,
    "focus": 3097,
    "silver": 0,
+   "itemValue": 1440.0,
    "inputs": [
     {
      "id": "T8_ALCHEMY_RARE_DRAGONAREA",
@@ -10763,6 +11052,7 @@
    "amount": 5,
    "focus": 1272,
    "silver": 0,
+   "itemValue": 1440.0,
    "inputs": [
     {
      "id": "T8_YARROW",
@@ -10795,6 +11085,7 @@
    "amount": 5,
    "focus": 1472,
    "silver": 0,
+   "itemValue": 1440.0,
    "inputs": [
     {
      "id": "T8_YARROW",
@@ -10831,6 +11122,7 @@
    "amount": 5,
    "focus": 1873,
    "silver": 0,
+   "itemValue": 1440.0,
    "inputs": [
     {
      "id": "T8_YARROW",
@@ -10867,6 +11159,7 @@
    "amount": 5,
    "focus": 3073,
    "silver": 0,
+   "itemValue": 1440.0,
    "inputs": [
     {
      "id": "T8_YARROW",
@@ -10903,6 +11196,7 @@
    "amount": 5,
    "focus": 1272,
    "silver": 0,
+   "itemValue": 1440.0,
    "inputs": [
     {
      "id": "T7_MULLEIN",
@@ -10935,6 +11229,7 @@
    "amount": 5,
    "focus": 1472,
    "silver": 0,
+   "itemValue": 1440.0,
    "inputs": [
     {
      "id": "T7_MULLEIN",
@@ -10971,6 +11266,7 @@
    "amount": 5,
    "focus": 1873,
    "silver": 0,
+   "itemValue": 1440.0,
    "inputs": [
     {
      "id": "T7_MULLEIN",
@@ -11007,6 +11303,7 @@
    "amount": 5,
    "focus": 3073,
    "silver": 0,
+   "itemValue": 1440.0,
    "inputs": [
     {
      "id": "T7_MULLEIN",
@@ -11043,6 +11340,7 @@
    "amount": 5,
    "focus": 1272,
    "silver": 0,
+   "itemValue": 1440.0,
    "inputs": [
     {
      "id": "T7_MULLEIN",
@@ -11075,6 +11373,7 @@
    "amount": 5,
    "focus": 1472,
    "silver": 0,
+   "itemValue": 1440.0,
    "inputs": [
     {
      "id": "T7_MULLEIN",
@@ -11111,6 +11410,7 @@
    "amount": 5,
    "focus": 1873,
    "silver": 0,
+   "itemValue": 1440.0,
    "inputs": [
     {
      "id": "T7_MULLEIN",
@@ -11147,6 +11447,7 @@
    "amount": 5,
    "focus": 3073,
    "silver": 0,
+   "itemValue": 1440.0,
    "inputs": [
     {
      "id": "T7_MULLEIN",
@@ -11183,6 +11484,7 @@
    "amount": 10,
    "focus": 1296,
    "silver": 0,
+   "itemValue": 1440.0,
    "inputs": [
     {
      "id": "T7_ALCHEMY_RARE_EAGLE",
@@ -11220,6 +11522,7 @@
    "amount": 10,
    "focus": 1496,
    "silver": 0,
+   "itemValue": 1440.0,
    "inputs": [
     {
      "id": "T7_ALCHEMY_RARE_EAGLE",
@@ -11261,6 +11564,7 @@
    "amount": 10,
    "focus": 1896,
    "silver": 0,
+   "itemValue": 1440.0,
    "inputs": [
     {
      "id": "T7_ALCHEMY_RARE_EAGLE",
@@ -11302,6 +11606,7 @@
    "amount": 10,
    "focus": 3097,
    "silver": 0,
+   "itemValue": 1440.0,
    "inputs": [
     {
      "id": "T7_ALCHEMY_RARE_EAGLE",
@@ -11343,6 +11648,7 @@
    "amount": 10,
    "focus": 56,
    "silver": 0,
+   "itemValue": 64.0,
    "inputs": [
     {
      "id": "T3_ALCHEMY_RARE_DIREBEAR",
@@ -11364,6 +11670,7 @@
    "amount": 10,
    "focus": 78,
    "silver": 0,
+   "itemValue": 64.0,
    "inputs": [
     {
      "id": "T3_ALCHEMY_RARE_DIREBEAR",
@@ -11389,6 +11696,7 @@
    "amount": 10,
    "focus": 123,
    "silver": 0,
+   "itemValue": 64.0,
    "inputs": [
     {
      "id": "T3_ALCHEMY_RARE_DIREBEAR",
@@ -11414,6 +11722,7 @@
    "amount": 10,
    "focus": 256,
    "silver": 0,
+   "itemValue": 64.0,
    "inputs": [
     {
      "id": "T3_ALCHEMY_RARE_DIREBEAR",
@@ -11439,6 +11748,7 @@
    "amount": 10,
    "focus": 56,
    "silver": 0,
+   "itemValue": 64.0,
    "inputs": [
     {
      "id": "T3_ALCHEMY_RARE_WEREWOLF",
@@ -11460,6 +11770,7 @@
    "amount": 10,
    "focus": 78,
    "silver": 0,
+   "itemValue": 64.0,
    "inputs": [
     {
      "id": "T3_ALCHEMY_RARE_WEREWOLF",
@@ -11485,6 +11796,7 @@
    "amount": 10,
    "focus": 123,
    "silver": 0,
+   "itemValue": 64.0,
    "inputs": [
     {
      "id": "T3_ALCHEMY_RARE_WEREWOLF",
@@ -11510,6 +11822,7 @@
    "amount": 10,
    "focus": 256,
    "silver": 0,
+   "itemValue": 64.0,
    "inputs": [
     {
      "id": "T3_ALCHEMY_RARE_WEREWOLF",
@@ -11535,6 +11848,7 @@
    "amount": 10,
    "focus": 56,
    "silver": 0,
+   "itemValue": 64.0,
    "inputs": [
     {
      "id": "T3_ALCHEMY_RARE_PANTHER",
@@ -11556,6 +11870,7 @@
    "amount": 10,
    "focus": 78,
    "silver": 0,
+   "itemValue": 64.0,
    "inputs": [
     {
      "id": "T3_ALCHEMY_RARE_PANTHER",
@@ -11581,6 +11896,7 @@
    "amount": 10,
    "focus": 123,
    "silver": 0,
+   "itemValue": 64.0,
    "inputs": [
     {
      "id": "T3_ALCHEMY_RARE_PANTHER",
@@ -11606,6 +11922,7 @@
    "amount": 10,
    "focus": 256,
    "silver": 0,
+   "itemValue": 64.0,
    "inputs": [
     {
      "id": "T3_ALCHEMY_RARE_PANTHER",
@@ -11631,6 +11948,7 @@
    "amount": 10,
    "focus": 56,
    "silver": 0,
+   "itemValue": 64.0,
    "inputs": [
     {
      "id": "T3_ALCHEMY_RARE_ENT",
@@ -11652,6 +11970,7 @@
    "amount": 10,
    "focus": 78,
    "silver": 0,
+   "itemValue": 64.0,
    "inputs": [
     {
      "id": "T3_ALCHEMY_RARE_ENT",
@@ -11677,6 +11996,7 @@
    "amount": 10,
    "focus": 123,
    "silver": 0,
+   "itemValue": 64.0,
    "inputs": [
     {
      "id": "T3_ALCHEMY_RARE_ENT",
@@ -11702,6 +12022,7 @@
    "amount": 10,
    "focus": 256,
    "silver": 0,
+   "itemValue": 64.0,
    "inputs": [
     {
      "id": "T3_ALCHEMY_RARE_ENT",
@@ -11727,6 +12048,7 @@
    "amount": 5,
    "focus": 56,
    "silver": 0,
+   "itemValue": 64.0,
    "inputs": [
     {
      "id": "T2_AGARIC",
@@ -11743,6 +12065,7 @@
    "amount": 5,
    "focus": 78,
    "silver": 0,
+   "itemValue": 64.0,
    "inputs": [
     {
      "id": "T2_AGARIC",
@@ -11763,6 +12086,7 @@
    "amount": 5,
    "focus": 123,
    "silver": 0,
+   "itemValue": 64.0,
    "inputs": [
     {
      "id": "T2_AGARIC",
@@ -11783,6 +12107,7 @@
    "amount": 5,
    "focus": 256,
    "silver": 0,
+   "itemValue": 64.0,
    "inputs": [
     {
      "id": "T2_AGARIC",
@@ -11803,6 +12128,7 @@
    "amount": 5,
    "focus": 56,
    "silver": 0,
+   "itemValue": 64.0,
    "inputs": [
     {
      "id": "T3_COMFREY",
@@ -11819,6 +12145,7 @@
    "amount": 5,
    "focus": 78,
    "silver": 0,
+   "itemValue": 64.0,
    "inputs": [
     {
      "id": "T3_COMFREY",
@@ -11839,6 +12166,7 @@
    "amount": 5,
    "focus": 123,
    "silver": 0,
+   "itemValue": 64.0,
    "inputs": [
     {
      "id": "T3_COMFREY",
@@ -11859,6 +12187,7 @@
    "amount": 5,
    "focus": 256,
    "silver": 0,
+   "itemValue": 64.0,
    "inputs": [
     {
      "id": "T3_COMFREY",
@@ -11879,6 +12208,7 @@
    "amount": 5,
    "focus": 56,
    "silver": 0,
+   "itemValue": 64.0,
    "inputs": [
     {
      "id": "T2_AGARIC",
@@ -11895,6 +12225,7 @@
    "amount": 5,
    "focus": 78,
    "silver": 0,
+   "itemValue": 64.0,
    "inputs": [
     {
      "id": "T2_AGARIC",
@@ -11915,6 +12246,7 @@
    "amount": 5,
    "focus": 123,
    "silver": 0,
+   "itemValue": 64.0,
    "inputs": [
     {
      "id": "T2_AGARIC",
@@ -11935,6 +12267,7 @@
    "amount": 5,
    "focus": 256,
    "silver": 0,
+   "itemValue": 64.0,
    "inputs": [
     {
      "id": "T2_AGARIC",
@@ -11955,6 +12288,7 @@
    "amount": 10,
    "focus": 56,
    "silver": 0,
+   "itemValue": 64.0,
    "inputs": [
     {
      "id": "T3_ALCHEMY_RARE_IMP",
@@ -11976,6 +12310,7 @@
    "amount": 10,
    "focus": 78,
    "silver": 0,
+   "itemValue": 64.0,
    "inputs": [
     {
      "id": "T3_ALCHEMY_RARE_IMP",
@@ -12001,6 +12336,7 @@
    "amount": 10,
    "focus": 123,
    "silver": 0,
+   "itemValue": 64.0,
    "inputs": [
     {
      "id": "T3_ALCHEMY_RARE_IMP",
@@ -12026,6 +12362,7 @@
    "amount": 10,
    "focus": 256,
    "silver": 0,
+   "itemValue": 64.0,
    "inputs": [
     {
      "id": "T3_ALCHEMY_RARE_IMP",
@@ -12051,6 +12388,7 @@
    "amount": 10,
    "focus": 56,
    "silver": 0,
+   "itemValue": 64.0,
    "inputs": [
     {
      "id": "T4_ALCHEMY_RARE_DRAGONAREA",
@@ -12072,6 +12410,7 @@
    "amount": 10,
    "focus": 78,
    "silver": 0,
+   "itemValue": 64.0,
    "inputs": [
     {
      "id": "T4_ALCHEMY_RARE_DRAGONAREA",
@@ -12097,6 +12436,7 @@
    "amount": 10,
    "focus": 123,
    "silver": 0,
+   "itemValue": 64.0,
    "inputs": [
     {
      "id": "T4_ALCHEMY_RARE_DRAGONAREA",
@@ -12122,6 +12462,7 @@
    "amount": 10,
    "focus": 256,
    "silver": 0,
+   "itemValue": 64.0,
    "inputs": [
     {
      "id": "T4_ALCHEMY_RARE_DRAGONAREA",
@@ -12147,6 +12488,7 @@
    "amount": 5,
    "focus": 84,
    "silver": 0,
+   "itemValue": 96.0,
    "inputs": [
     {
      "id": "T4_BURDOCK",
@@ -12167,6 +12509,7 @@
    "amount": 5,
    "focus": 106,
    "silver": 0,
+   "itemValue": 96.0,
    "inputs": [
     {
      "id": "T4_BURDOCK",
@@ -12191,6 +12534,7 @@
    "amount": 5,
    "focus": 151,
    "silver": 0,
+   "itemValue": 96.0,
    "inputs": [
     {
      "id": "T4_BURDOCK",
@@ -12215,6 +12559,7 @@
    "amount": 5,
    "focus": 284,
    "silver": 0,
+   "itemValue": 96.0,
    "inputs": [
     {
      "id": "T4_BURDOCK",
@@ -12239,6 +12584,7 @@
    "amount": 5,
    "focus": 56,
    "silver": 0,
+   "itemValue": 64.0,
    "inputs": [
     {
      "id": "T3_COMFREY",
@@ -12255,6 +12601,7 @@
    "amount": 5,
    "focus": 78,
    "silver": 0,
+   "itemValue": 64.0,
    "inputs": [
     {
      "id": "T3_COMFREY",
@@ -12275,6 +12622,7 @@
    "amount": 5,
    "focus": 123,
    "silver": 0,
+   "itemValue": 64.0,
    "inputs": [
     {
      "id": "T3_COMFREY",
@@ -12295,6 +12643,7 @@
    "amount": 5,
    "focus": 256,
    "silver": 0,
+   "itemValue": 64.0,
    "inputs": [
     {
      "id": "T3_COMFREY",
@@ -12315,6 +12664,7 @@
    "amount": 5,
    "focus": 56,
    "silver": 0,
+   "itemValue": 64.0,
    "inputs": [
     {
      "id": "T3_COMFREY",
@@ -12331,6 +12681,7 @@
    "amount": 5,
    "focus": 78,
    "silver": 0,
+   "itemValue": 64.0,
    "inputs": [
     {
      "id": "T3_COMFREY",
@@ -12351,6 +12702,7 @@
    "amount": 5,
    "focus": 123,
    "silver": 0,
+   "itemValue": 64.0,
    "inputs": [
     {
      "id": "T3_COMFREY",
@@ -12371,6 +12723,7 @@
    "amount": 5,
    "focus": 256,
    "silver": 0,
+   "itemValue": 64.0,
    "inputs": [
     {
      "id": "T3_COMFREY",
@@ -12391,6 +12744,7 @@
    "amount": 10,
    "focus": 56,
    "silver": 0,
+   "itemValue": 64.0,
    "inputs": [
     {
      "id": "T3_ALCHEMY_RARE_EAGLE",
@@ -12412,6 +12766,7 @@
    "amount": 10,
    "focus": 78,
    "silver": 0,
+   "itemValue": 64.0,
    "inputs": [
     {
      "id": "T3_ALCHEMY_RARE_EAGLE",
@@ -12437,6 +12792,7 @@
    "amount": 10,
    "focus": 123,
    "silver": 0,
+   "itemValue": 64.0,
    "inputs": [
     {
      "id": "T3_ALCHEMY_RARE_EAGLE",
@@ -12462,6 +12818,7 @@
    "amount": 10,
    "focus": 256,
    "silver": 0,
+   "itemValue": 64.0,
    "inputs": [
     {
      "id": "T3_ALCHEMY_RARE_EAGLE",
@@ -12487,6 +12844,7 @@
    "amount": 5,
    "focus": 378,
    "silver": 0,
+   "itemValue": 432.0,
    "inputs": [
     {
      "id": "T6_FOXGLOVE",
@@ -12515,6 +12873,7 @@
    "amount": 5,
    "focus": 445,
    "silver": 0,
+   "itemValue": 432.0,
    "inputs": [
     {
      "id": "T6_FOXGLOVE",
@@ -12547,6 +12906,7 @@
    "amount": 5,
    "focus": 578,
    "silver": 0,
+   "itemValue": 432.0,
    "inputs": [
     {
      "id": "T6_FOXGLOVE",
@@ -12579,6 +12939,7 @@
    "amount": 5,
    "focus": 979,
    "silver": 0,
+   "itemValue": 432.0,
    "inputs": [
     {
      "id": "T6_FOXGLOVE",
@@ -12611,6 +12972,7 @@
    "amount": 5,
    "focus": 294,
    "silver": 0,
+   "itemValue": 336.0,
    "inputs": [
     {
      "id": "T5_TEASEL",
@@ -12635,6 +12997,7 @@
    "amount": 5,
    "focus": 361,
    "silver": 0,
+   "itemValue": 336.0,
    "inputs": [
     {
      "id": "T5_TEASEL",
@@ -12663,6 +13026,7 @@
    "amount": 5,
    "focus": 494,
    "silver": 0,
+   "itemValue": 336.0,
    "inputs": [
     {
      "id": "T5_TEASEL",
@@ -12691,6 +13055,7 @@
    "amount": 5,
    "focus": 895,
    "silver": 0,
+   "itemValue": 336.0,
    "inputs": [
     {
      "id": "T5_TEASEL",
@@ -12719,6 +13084,7 @@
    "amount": 5,
    "focus": 294,
    "silver": 0,
+   "itemValue": 336.0,
    "inputs": [
     {
      "id": "T5_TEASEL",
@@ -12743,6 +13109,7 @@
    "amount": 5,
    "focus": 361,
    "silver": 0,
+   "itemValue": 336.0,
    "inputs": [
     {
      "id": "T5_TEASEL",
@@ -12771,6 +13138,7 @@
    "amount": 5,
    "focus": 494,
    "silver": 0,
+   "itemValue": 336.0,
    "inputs": [
     {
      "id": "T5_TEASEL",
@@ -12799,6 +13167,7 @@
    "amount": 5,
    "focus": 895,
    "silver": 0,
+   "itemValue": 336.0,
    "inputs": [
     {
      "id": "T5_TEASEL",
@@ -12827,6 +13196,7 @@
    "amount": 10,
    "focus": 294,
    "silver": 0,
+   "itemValue": 336.0,
    "inputs": [
     {
      "id": "T5_ALCHEMY_RARE_EAGLE",
@@ -12856,6 +13226,7 @@
    "amount": 10,
    "focus": 361,
    "silver": 0,
+   "itemValue": 336.0,
    "inputs": [
     {
      "id": "T5_ALCHEMY_RARE_EAGLE",
@@ -12889,6 +13260,7 @@
    "amount": 10,
    "focus": 494,
    "silver": 0,
+   "itemValue": 336.0,
    "inputs": [
     {
      "id": "T5_ALCHEMY_RARE_EAGLE",
@@ -12922,6 +13294,7 @@
    "amount": 10,
    "focus": 895,
    "silver": 0,
+   "itemValue": 336.0,
    "inputs": [
     {
      "id": "T5_ALCHEMY_RARE_EAGLE",

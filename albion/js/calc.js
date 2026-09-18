@@ -107,6 +107,18 @@ export const taxRate = (s) => {
   return (setup + txn) / 100;
 };
 
+/**
+ * Focus regenerated per day.
+ *
+ * The only figure the dumps publish is attributed to Premium outright:
+ * "+10000 Focus per day", listed among its additional benefits. What a
+ * character without Premium regenerates is published nowhere, so it is the
+ * player's own number — the one their game screen shows them.
+ */
+export const focusPerDayOf = (s) => (s.premium
+  ? (s.focusPerDay ?? 0)
+  : (s.focusPerDayNoPremium ?? 0));
+
 const avg = (lo, hi) => (lo + hi) / 2;
 
 /* ------------------------------------------------------------ farming --- */
@@ -121,11 +133,14 @@ const avg = (lo, hi) => (lo + hi) / 2;
 export function plantCycle(plant, {
   priceOf, costOf = priceOf, settings, cityId, wateredFraction,
 }) {
-  // You only get the watering bonus on the plots you could actually pay to
-  // water. The cycle works out what share that is and passes it in.
-  const share = settings.watered
+  /* You only get the bonus on the plots you could actually pay for, and only
+   * if you have Premium at all: the client's own refusal is published, and
+   * only in island form — "You need to have at least {0} more Premium days to
+   * be able to water plants." Both the bonus and its focus charge come off the
+   * same flag, or a non-Premium plan pays 1000 focus a tile for nothing. */
+  const canWater = !!(settings.watered && settings.premium);
+  const share = canWater
     ? Math.max(0, Math.min(1, wateredFraction ?? 1)) : 0;
-  const watered = share > 0;
   const city = farmCityFor(settings, cityId);
   const bonusPct = farmBonus(city, plant.id);
   // Per planted tile. A 3x3 plot grows nine of these.
@@ -155,7 +170,7 @@ export function plantCycle(plant, {
   // nodes make brewing cheaper.
   const focusEff = focusEfficiency(plant.id, settings).total;
   // Focus for a whole growth, not for a day: one charge per nurture allowed.
-  const focus = settings.watered
+  const focus = canWater
     ? nurtures * focusCostAt(plant.focusCost, focusEff, settings.focusCostConstant) : 0;
 
   const hours = plant.growSeconds / HOUR;
@@ -180,16 +195,22 @@ export function plantCycle(plant, {
 export function animalCycle(animal, {
   priceOf, costOf = priceOf, settings, cityId, wateredFraction,
 }) {
-  const share = settings.watered
+  // Nurturing is gated on Premium the same way watering is, and published the
+  // same way: "...to be able to nurture animals."
+  const canWater = !!(settings.watered && settings.premium);
+  const share = canWater
     ? Math.max(0, Math.min(1, wateredFraction ?? 1)) : 0;
-  const watered = share > 0;
+  /* Premium doubles farm animal growth rate — its own listed benefit, separate
+   * from the double crop yield plants get. Feed drains in real time, so a
+   * growth that finishes twice as fast eats half as much. */
+  const growthMult = settings.premium ? (settings.premiumGrowthMultiplier ?? 2) : 1;
   const city = farmCityFor(settings, cityId);
   const useFav = settings.favouriteFood && animal.favouriteFood;
 
   /* What it eats over the whole growth, not one bar of it. The bar refills
    * once per nurture, so a T8 ox gets through nearly six of them; livestock
    * eat exactly one, which is why a single bar looked right for so long. */
-  const eaten = animal.nutritionTotal || animal.nutrition;
+  const eaten = (animal.nutritionTotal || animal.nutrition) / growthMult;
   const plantsNeeded = eaten / NUTRITION_PER_PLANT /
     (useFav ? 1 + animal.favouriteBonus : 1);
   const feedId = useFav ? animal.favouriteFood : settings.feedItemId;
@@ -207,9 +228,9 @@ export function animalCycle(animal, {
   const babyCost = babiesBought * costOf(animal.babyId) - babySurplus * priceOf(animal.babyId);
 
   const revenue = priceOf(animal.grownId) * (1 - taxRate(settings));
-  const hours = animal.growSeconds / HOUR;
+  const hours = animal.growSeconds / growthMult / HOUR;
   const focusEff = focusEfficiency(animal.babyId, settings).total;
-  const focus = settings.watered
+  const focus = canWater
     ? nurtures * focusCostAt(animal.focusCost, focusEff, settings.focusCostConstant) : 0;
   const profit = revenue - feedCost - babyCost;
 
@@ -320,6 +341,40 @@ export function specFor(settings, recipeId) {
 }
 
 /**
+ * The nutrition one craft action burns at a station.
+ *
+ * This is what the usage fee is charged on: the game turns the item's value
+ * into nutrition with a published factor, and the owner posts a rate per 100
+ * of it. Tier 1 and 2 crafts are free, which gamedata.xml states outright.
+ *
+ * A potion is 108 times the nutrition of the schnapps that goes into it, so a
+ * single flat fee per craft cannot be right for both — it was either nothing
+ * or, once typed in, fourteen times too much on the cheap high-volume step.
+ */
+export function craftNutrition(recipe, settings) {
+  if (!recipe) return 0;
+  const free = settings.freeCraftingMaxTier ?? 2;
+  if (recipe.tier <= free) return 0;
+  const factor = settings.itemValueToNutrition ?? 0.1125;
+  return (recipe.itemValue || 0) * (recipe.amount || 1) * factor;
+}
+
+/**
+ * What the station owner charges you per craft action, in silver.
+ *
+ * The rate is per city, because it is the owner's rate and you stand in their
+ * building. Your own island station charges you nothing, which is the whole
+ * reason to have one.
+ */
+export function usageFeeFor(recipe, settings, cityId) {
+  const city = cityFor(settings, cityId);
+  if (!city || city.craftOnly) return 0;          // your own island
+  const posted = Number(settings.stationFee?.[city.id]) || 0;
+  const rate = Math.min(posted, settings.maxUsageFee ?? 1000);
+  return craftNutrition(recipe, settings) * rate / 100;
+}
+
+/**
  * One craft action (which makes `recipe.amount` items).
  *
  * The return rate refunds part of the materials, so materials are charged at
@@ -356,13 +411,16 @@ export function craftBatch(recipe, {
     : 0;
 
   const revenue = recipe.amount * priceOf(recipe.id) * (1 - taxRate(settings));
-  const fees = (recipe.silver || 0) + (settings.stationFeePerCraft || 0);
+  const stationNutrition = craftNutrition(recipe, settings);
+  const usageFee = usageFeeFor(recipe, settings, cityId);
+  const fees = (recipe.silver || 0) + usageFee;
   const profit = revenue - materialsAfterReturn - fees;
 
   return {
     kind: 'craft', ref: recipe, rrr, bonusTotal, focus,
     city, bonus, spec,
-    inputs, materials, materialsAfterReturn, fees, revenue, profit,
+    inputs, materials, materialsAfterReturn, fees, stationNutrition, usageFee,
+    revenue, profit,
     margin: revenue > 0 ? profit / revenue : 0,
     silverPerFocus: focus > 0 ? profit / focus : null,
   };
@@ -489,8 +547,8 @@ export function planTotals(plan, data, ctx) {
     perMonth: sum((l) => l.rate.perMonth),
     focusPerDay,
     focusPerMonth: focusPerDay * 30,
-    focusBudget: ctx.settings.focusPerDay,
-    focusOver: focusPerDay > ctx.settings.focusPerDay,
+    focusBudget: focusPerDayOf(ctx.settings),
+    focusOver: focusPerDay > focusPerDayOf(ctx.settings),
   };
 }
 
@@ -521,8 +579,14 @@ export const restsWith = (cycle) => (cycle?.focus || 0) > 0;
  * A row that outgrows your login rhythm is capped by the rhythm; a row that
  * takes longer than the rhythm is capped by its own growth time.
  */
-export function harvestsFor(cycle, { farmDays, farmEvery = 1, cadenceHours = 24 }) {
+export function harvestsFor(cycle, {
+  cycleDays, farmDays, farmEvery = 1, cadenceHours = 24,
+}) {
   if (!cycle || farmDays <= 0) return 0;
+  // A growth takes wall-clock days, and the clock does not stop on the days
+  // you are not there. Counting only farm days let a slow row finish more
+  // growths than the calendar has room for.
+  const span = Math.max(farmDays, cycleDays || farmDays);
   const every = restsWith(cycle) ? Math.max(1, Math.round(farmEvery) || 1) : 1;
   /* You harvest no faster than the thing grows, no faster than you log in, and
    * no faster than the rhythm you chose to farm on. Whichever of those three is
@@ -534,10 +598,11 @@ export function harvestsFor(cycle, { farmDays, farmEvery = 1, cadenceHours = 24 
     Math.ceil((cadenceHours || 24) / 24),
     Math.ceil(cycle.hours / 24),
   );
-  // Within the phase, count the harvest days themselves: days 1, 1+gap, ...
-  // Something that takes longer to grow than the whole phase cannot be counted
-  // as one whole harvest, so it reports the fraction of one it really finishes.
-  return gap <= farmDays ? farmDayCount(farmDays, gap) : farmDays / gap;
+  /* Two ceilings, and the lower one wins: the harvest days the phase actually
+   * contains, spaced a growth apart, and the number of growths the cycle has
+   * wall-clock room for. Something slower than the whole cycle reports the
+   * fraction of a growth it really finishes rather than a whole one. */
+  return Math.min(farmDayCount(farmDays, gap), span / gap);
 }
 
 /** The cycle for one farm row, whatever it happens to be growing. */
@@ -729,7 +794,7 @@ export function simulateCycle(plan, data, ctx) {
   const tilesOf = (row) => (row.count || 0) * (s.tilesPerPlot || TILES_PER_PLOT);
 
   const harvestsOf = (cycle) =>
-    harvestsFor(cycle, { farmDays, farmEvery, cadenceHours: cadence });
+    harvestsFor(cycle, { cycleDays, farmDays, farmEvery, cadenceHours: cadence });
 
   /* Pass one: the care bill, if every tile got its focus.
    *
@@ -749,7 +814,7 @@ export function simulateCycle(plan, data, ctx) {
 
   const ledgerAt = (craftingPerDay) => focusLedger({
     cycleDays, farmDays, farmEvery,
-    perDay: s.focusPerDay, cap: s.focusCap,
+    perDay: focusPerDayOf(s), cap: s.focusCap,
     start: s.startFocus || 0,
     wateringPerDay, craftingPerDay,
   });
@@ -772,7 +837,7 @@ export function simulateCycle(plan, data, ctx) {
    * regenerates over its whole length, not the thirty thousand it can hold at
    * any one moment. Focus only goes to waste at the end, when the crafting has
    * run out of materials and the bar is already full. */
-  const grossRegen = (s.startFocus || 0) + cycleDays * s.focusPerDay;
+  const grossRegen = (s.startFocus || 0) + cycleDays * focusPerDayOf(s);
   const focusBudget = Math.max(0, grossRegen - wateringPaid);
 
   // Pass two: the farm as it really runs.
@@ -881,7 +946,9 @@ export function simulateCycle(plan, data, ctx) {
     const made = recipe.amount * crafts;
     add(pool, recipe.id, made);
     focusLeft -= batch.focus * crafts;
-    const fees = ((recipe.silver || 0) + (s.stationFeePerCraft || 0)) * crafts;
+    // batch already knows the city this job crafts in, so its fee is the
+    // right one for this station rather than one number for the whole plan.
+    const fees = ((recipe.silver || 0) + batch.usageFee) * crafts;
     feeCost += fees;
     basisIn += fees;
     cost0.put(recipe.id, basisIn);
@@ -907,14 +974,18 @@ export function simulateCycle(plan, data, ctx) {
    * money you never take, and would hide the thing that actually matters -
    * whether the farm is outrunning what your focus can process.
    */
-  /* An ingredient your plan means to brew is held, whether or not this
-   * particular cycle got round to it: a batch that stalled for want of one
-   * material leaves the rest sitting in the barn waiting, not sold off. What
-   * made that read as a disaster was expensing it, which heldBasis now fixes. */
+  /* Held means your crafting is actually working through it. Holding back
+   * every input of every job you happened to list meant that naming a recipe
+   * you cannot run \u2014 one missing ingredient is enough \u2014 turned a farm's whole
+   * output into stock and reported it as making nothing: on one plot of
+   * foxglove and one of geese, 2.9m of profit became 236k just for typing a
+   * recipe name. `consumed` carries an entry for every input whether or not
+   * the job ran, so the test is the quantity, not the key. */
   const eatenByPlan = new Set();
-  for (const job of plan.crafts) {
-    const r = recipeOf(job.recipeId);
-    for (const i of r?.inputs || []) eatenByPlan.add(i.id);
+  for (const line of craftLines) {
+    for (const [id, qty] of Object.entries(line.consumed)) {
+      if (qty > 0) eatenByPlan.add(id);
+    }
   }
   const keepStock = s.sellSurplus !== true;
 

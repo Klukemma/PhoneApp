@@ -1004,9 +1004,33 @@ export function openSettings() {
         stop farming it and let the pile drain. Used to warn you how many cycles
         that is away.</div></div>
 
-    <div class="field"><label>Station fee per craft (silver)</label>
-      <input type="number" id="stationFeePerCraft" inputmode="numeric" min="0" value="${s.stationFeePerCraft}">
-      <div class="hint">The usage fee the station owner charges. 0 on your own island.</div></div>
+    <div class="field">
+      <label>Station usage fee, per 100 nutrition</label>
+      <div class="two">
+        ${(s.cities || []).filter((c) => !c.craftOnly).slice(0, 8).map((c) => `
+          <div class="field" style="margin:0">
+            <label style="font-size:11px">${esc(c.name)}</label>
+            <input type="number" inputmode="numeric" min="0" max="${s.maxUsageFee || 1000}"
+              data-fee="${esc(c.id)}" placeholder="0"
+              value="${(s.stationFee || {})[c.id] || ''}"></div>`).join('')}
+      </div>
+      <div class="hint">The number posted on the station, which the owner sets.
+        The game charges it on the nutrition a craft burns, not per craft: a
+        Major Healing Potion burns 486 and a Potato Schnapps 4.5, so one flat
+        figure cannot be right for both. Tier 1 and 2 are free, and so is your
+        own island. Capped at ${s.maxUsageFee || 1000}.</div>
+    </div>
+
+    ${s.premium ? '' : `
+    <div class="field">
+      <label>Focus you regenerate a day, without Premium</label>
+      <input type="number" id="focusPerDayNoPremium" inputmode="numeric" min="0"
+        value="${s.focusPerDayNoPremium || 0}">
+      <div class="hint">The only figure the game publishes is
+        "+${short_(s.focusPerDay)} Focus per day", and it lists that as a Premium
+        benefit. What a free account gets is published nowhere, so put in what
+        your own screen shows you \u2014 until you do, the plan assumes none.</div>
+    </div>`}
 
     <div class="section-head"><h2>Game numbers</h2></div>
     <p class="muted small">Straight from the game files, except focus regeneration
@@ -1017,6 +1041,13 @@ export function openSettings() {
         <input type="number" id="focusCraftBonus" inputmode="decimal" value="${s.focusCraftBonus}"></div>
       <div class="field"><label>Premium yield ×</label>
         <input type="number" id="premiumYieldMultiplier" inputmode="decimal" step="0.1" value="${s.premiumYieldMultiplier}"></div>
+      <div class="field"><label>Premium animal growth multiplier</label>
+        <input type="number" id="premiumGrowthMultiplier" inputmode="decimal" step="0.1"
+          value="${s.premiumGrowthMultiplier}">
+        <div class="hint">Premium lists three farming benefits: double crop
+          yield, double animal growth rate, and the focus a day. The word is
+          "double" in the game's own text rather than a number in its tables,
+          so both multipliers stay editable here.</div></div>
       <div class="field"><label>Focus per day</label>
         <input type="number" id="focusPerDay" inputmode="numeric" value="${s.focusPerDay}"></div>
       <div class="field"><label>Market setup fee (%)</label>
@@ -1048,16 +1079,27 @@ export function openSettings() {
           btn.setAttribute('aria-pressed', String(flags[key]));
         };
       }
-      const NUM = ['specLevel', 'cadenceHours', 'stationFeePerCraft', 'focusCraftBonus',
-        'premiumYieldMultiplier', 'focusPerDay', 'marketSetupFee',
-        'marketTransactionTax', 'stockCap'];
+      const NUM = ['specLevel', 'cadenceHours', 'focusCraftBonus',
+        'premiumYieldMultiplier', 'premiumGrowthMultiplier', 'focusPerDay',
+        'focusPerDayNoPremium', 'marketSetupFee', 'marketTransactionTax',
+        'stockCap'];
 
       $('#save', root).onclick = () => {
         const patch = { ...flags };
         for (const k of NUM) {
-          const v = Number($(`#${k}`, root).value);
+          const box = $(`#${k}`, root);
+          if (!box) continue;              // not every field is always shown
+          const v = Number(box.value);
           if (Number.isFinite(v)) patch[k] = v;
         }
+        // One posted rate per city, because it is the owner's and you stand
+        // in their building. A blank means they charge nothing.
+        const stationFee = {};
+        for (const box of $$('[data-fee]', root)) {
+          const v = Math.max(0, Number(box.value) || 0);
+          if (v > 0) stationFee[box.dataset.fee] = v;
+        }
+        patch.stationFee = stationFee;
         setSettings(patch);
         closeSheet();
         toast('Saved');

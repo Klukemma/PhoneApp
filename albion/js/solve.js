@@ -9,8 +9,8 @@
 
 import {
   PLOTS, TILES_PER_PLOT, cityBonus, cityFor, farmDayCount, focusCostAt,
-  focusLedger, harvestsFor, plotKindOf, returnRate, rowCycle, rowOutput,
-  simulateCycle, specFor,
+  focusLedger, focusPerDayOf, harvestsFor, plotKindOf, returnRate, rowCycle,
+  rowOutput, simulateCycle, specFor,
 } from './calc.js';
 import { uid } from './util.js';
 
@@ -381,9 +381,9 @@ export function buildPlan(chain, assign, data, ctx, sched, budget, withFiller = 
   const ledgerAt = (wateringPerDay) => {
     const banked = focusLedger({
       cycleDays: sched.cycleDays, farmDays: sched.farmDays, farmEvery: sched.farmEvery,
-      perDay: s.focusPerDay, cap: s.focusCap, start: s.startFocus || 0, wateringPerDay,
+      perDay: focusPerDayOf(s), cap: s.focusCap, start: s.startFocus || 0, wateringPerDay,
     });
-    const gross = (s.startFocus || 0) + sched.cycleDays * s.focusPerDay;
+    const gross = (s.startFocus || 0) + sched.cycleDays * focusPerDayOf(s);
     return Math.max(0, gross - banked.spentWatering);
   };
 
@@ -515,6 +515,7 @@ function attempt(chain, assign, sched, data, ctx, budget, withFiller = false, ca
   const idle = !line || line.crafts <= 0 ? MISSES_TARGET : 0;
   return {
     assign, sched, built, plan: built.plan, sim,
+    target: chain.recipe.id,
     score: sim.perDay, rank: rankOf(sim.perDay, sched) - idle,
   };
 }
@@ -522,7 +523,16 @@ function attempt(chain, assign, sched, data, ctx, budget, withFiller = false, ca
 function rescore(cand, plan, data, ctx) {
   const c = withSched(ctx, cand.sched);
   const sim = simulateCycle(plan, data, c);
-  return { ...cand, plan, sim, score: sim.perDay, rank: rankOf(sim.perDay, cand.sched) };
+  /* The same penalty attempt() applies, or the hill climb is ordering plans by
+   * a different rule than the one that seeded it \u2014 and will happily shuffle
+   * plots off the chain until the plan makes none of what you asked for. */
+  const line = cand.target
+    ? sim.craftLines.find((l) => l.recipe.id === cand.target) : null;
+  const idle = cand.target && (!line || line.crafts <= 0) ? MISSES_TARGET : 0;
+  return {
+    ...cand, plan, sim,
+    score: sim.perDay, rank: rankOf(sim.perDay, cand.sched) - idle,
+  };
 }
 
 /** Shuffle a plot between rows, or off the plan entirely, while it helps. */
@@ -643,7 +653,8 @@ export function solve(recipeId, plotBudget, data, ctx, opts = {}) {
   const maxCycle = pinned || (opts.maxCycleDays || 21);
   // Idling past the focus cap earns nothing, so a cycle never wants more idle
   // days than it takes to fill the bar. One spare day for rounding.
-  const idleMax = Math.ceil((s.focusCap || 30000) / Math.max(1, s.focusPerDay || 10000)) + 1;
+  const idleMax = Math.ceil((s.focusCap || 30000)
+    / Math.max(1, focusPerDayOf(s) || 10000)) + 1;
   const everies = opts.farmEvery || [1, 2, 3];
 
   // With the length pinned, every day of the cycle is fair game as a farming
@@ -711,7 +722,8 @@ function sweepCalendar(chain, assign, data, ctx, budget, grid) {   // eslint-dis
     for (const farmDays of range(Math.max(1, cycleDays - grid.idleMax), cycleDays)) {
       for (const farmEvery of grid.everies) {
         if (farmEvery > 1 && farmEvery > farmDays) continue;
-        for (const watered of [false, true]) {
+        // No Premium, no watering: do not search a routine the game refuses.
+        for (const watered of (ctx.settings.premium ? [false, true] : [false])) {
           const r = attempt(chain, assign, { cycleDays, farmDays, farmEvery, watered },
             data, ctx, budget, false, grid.cap);
           if (Number.isFinite(r.score)) out.push(r);

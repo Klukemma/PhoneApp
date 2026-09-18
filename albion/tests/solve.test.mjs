@@ -35,7 +35,7 @@ const ctx = (prices = PRICES, over = {}) => ({
     craftCity: 'brecilien', farmCity: 'martlock',
     spec: {}, nodeLevels: {}, specLevel: 0,
     cadenceHours: 24, cycleDays: 14, farmDays: 10, farmEvery: 1, startFocus: 0,
-    stockCap: 5000, stationFeePerCraft: 0, feedItemId: 'T3_WHEAT', hideMounts: true,
+    stockCap: 5000, stationFee: {}, feedItemId: 'T3_WHEAT', hideMounts: true,
     ...over,
   },
 });

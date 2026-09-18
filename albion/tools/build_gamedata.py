@@ -140,6 +140,55 @@ def _eaten(food, seconds: int) -> int:
     return int(round(seconds / per))
 
 
+def build_item_values(items: ET.Element) -> callable:
+    """What the game thinks each item is worth, for the station usage fee.
+
+    The fee you pay a station owner is a rate per 100 nutrition, and the
+    nutrition a craft burns is item value x 0.1125 x amount crafted. Most
+    crafted goods - every potion and meal among them - publish no itemvalue, so
+    it resolves through the recipe: the value of what goes in, divided by how
+    many come out.
+
+    That recursion is not a guess. Of the crafted items that DO publish an
+    itemvalue, it reproduces 224 of them exactly, including all six tiers of
+    meat and every tier of plank, metal bar, cloth and leather.
+    """
+    published, recipes = {}, {}
+    for el in items.iter():
+        uid = el.get("uniquename")
+        if not uid:
+            continue
+        if el.get("itemvalue") is not None:
+            published[uid] = float(el.get("itemvalue"))
+        req = el.find("craftingrequirements")
+        res = req.findall("craftresource") if req is not None else []
+        if res:
+            recipes[uid] = (
+                float(req.get("amountcrafted", 1) or 1),
+                [(c.get("uniquename"), float(c.get("count", 0))) for c in res],
+            )
+
+    memo, unknown = {}, set()
+
+    def value(uid, seen=frozenset()):
+        if uid in memo:
+            return memo[uid]
+        if uid in published:
+            memo[uid] = published[uid]
+            return memo[uid]
+        if uid in recipes and uid not in seen:
+            amount, inputs = recipes[uid]
+            memo[uid] = sum(
+                count * value(i, seen | {uid}) for i, count in inputs
+            ) / (amount or 1)
+            return memo[uid]
+        unknown.add(uid)
+        return 0.0
+
+    value.unknown = unknown
+    return value
+
+
 def build_cities() -> list:
     """City crafting and farming bonuses, read from the game's own tables.
 
@@ -292,6 +341,7 @@ def main() -> None:
 
     cities = build_cities()
     focus_nodes = build_focus_nodes()
+    item_value = build_item_values(items)
 
     simple = {s.get("uniquename"): s for s in items.findall(".//simpleitem")}
     farm_out = {
@@ -379,8 +429,11 @@ def main() -> None:
                 product = {
                     "itemId": drop["item"], "min": drop["min"], "max": drop["max"],
                     "seconds": int(p.get("productiontime")),
-                    # A grown animal keeps eating while it produces.
-                    "nutrition": _eaten(f.find(".//food"), int(p.get("productiontime"))),
+                    # A grown animal keeps eating while it produces, and it
+                    # eats at ITS rate, not the baby's: the grown bar empties
+                    # exactly once per product. Reading the baby's
+                    # secondspernutrition charged every egg half its feed.
+                    "nutrition": _eaten(g.find(".//food"), int(p.get("productiontime"))),
                 }
                 register(drop["item"], "product")
 
@@ -429,7 +482,7 @@ def main() -> None:
         if not unique or "PROTOTYPE" in unique:
             continue
 
-        def add_recipe(rid, rreq, enchant):
+        def add_recipe(rid, rreq, enchant):   # noqa: C901 - reads top to bottom
             inputs = []
             for c in rreq.findall("craftresource"):
                 item = {"id": c.get("uniquename"), "count": int(c.get("count"))}
@@ -456,6 +509,12 @@ def main() -> None:
                 "amount": int(rreq.get("amountcrafted", 1)),
                 "focus": int(float(rreq.get("craftingfocus", 0))),
                 "silver": int(float(rreq.get("silver", 0))),
+                # What the station charges for is nutrition, and nutrition is
+                # item value. A potion publishes none, so it is the value of
+                # its ingredients spread over the batch.
+                "itemValue": round(
+                    sum(i["count"] * item_value(i["id"]) for i in inputs)
+                    / float(rreq.get("amountcrafted", 1) or 1), 4),
                 "inputs": inputs,
             })
 
@@ -488,9 +547,23 @@ def main() -> None:
             "focusPerDay": 10000,
             "focusCap": 30000,
             "premiumYieldMultiplier": 2,
-            "focusPerDay": 10000,
-            "focusCap": 30000,
-            "premiumYieldMultiplier": 2,
+            # localization.xml lists Premium's farming benefits as three
+            # separate things: double crop yield (plants), double animal growth
+            # rate (animals), and +10,000 focus a day. The multipliers
+            # themselves are the word "double" in those strings, not a number
+            # in the tables, so they stay editable.
+            "premiumGrowthMultiplier": 2,
+            # What a character regenerates WITHOUT Premium is published
+            # nowhere. Zero is a placeholder, not a game fact.
+            "focusPerDayNoPremium": 0,
+            # The station usage fee, from gamedata.xml. The owner sets a rate
+            # per 100 nutrition (capped at maxUsageFee); the game turns a craft
+            # into nutrition with itemValueToNutrition, and waives it below
+            # freeCraftingMaxTier.
+            "itemValueToNutrition": float(
+                gd.find(".//ItemValueToNutrition").get("factor")),
+            "freeCraftingMaxTier": int(gd.find(".//FreeCrafting").get("maxTier")),
+            "maxUsageFee": int(gd.find(".//BuildingManagement").get("maxuseagefee")),
         },
         "cities": cities,
         "focusNodes": focus_nodes,
@@ -503,6 +576,9 @@ def main() -> None:
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(data, indent=1))
     print(f"\nWrote {OUT.relative_to(HERE.parent.parent)}")
+    if item_value.unknown:
+        print(f"  {len(item_value.unknown)} items have no value and no recipe",
+              file=sys.stderr)
     print(f"  {len(plants)} plants, {len(animals)} animals, "
           f"{len(recipes)} recipes, {len(item_meta)} items")
     print(f"  focus crafting bonus +{data['constants']['focusCraftBonus']}% "

@@ -7,7 +7,8 @@ import {
   TILES_PER_PLOT, animalCycle, cityBonus, cityFor, craftBatch, farmBonus,
   farmCityFor, farmDayCount, focusCostAt, focusEfficiency, focusLedger,
   harvestsFor, isFarmDay, perPeriod, planTotals, plantCycle, productCycle,
-  rankRecipes, returnRate, ruleCovers, simulateCycle, specFor, taxRate,
+  craftNutrition, focusPerDayOf, rankRecipes, returnRate, ruleCovers,
+  simulateCycle, specFor, taxRate, usageFeeFor,
 } from '../js/calc.js';
 
 const data = JSON.parse(
@@ -29,7 +30,7 @@ const ctx = (prices = {}, over = {}) => ({
     craftCity: 'martlock', farmCity: 'caerleon', spec: {}, specLevel: 0,
     cadenceHours: 24, cycleDays: 14, farmDays: 10, farmEvery: 1, startFocus: 0,
     focusNodes: data.focusNodes, nodeLevels: {}, stockCap: 5000,
-    stationFeePerCraft: 0, feedItemId: 'T3_WHEAT',
+    stationFee: {}, feedItemId: 'T3_WHEAT',
     ...over,
   },
 });
@@ -123,13 +124,21 @@ test('a chicken eats 18 plants, or 9 if they are its favourite', () => {
   assert.equal(chick.nutrition, 864);
   assert.equal(chick.favouriteFood, 'T3_WHEAT');
 
+  /* Without Premium: 864 nutrition at 48 a plant is 18, halved to 9 by the
+   * favourite. With Premium the animal grows twice as fast, and feed drains in
+   * real time, so it eats half as much on the way. */
   const p = { 'T3_WHEAT': 100, 'T3_FARM_CHICKEN_BABY': 5000, 'T3_FARM_CHICKEN_GROWN': 9000 };
-  const fav = animalCycle(chick, ctx(p, { favouriteFood: true }));
-  const any = animalCycle(chick, ctx(p, { favouriteFood: false, feedItemId: 'T3_WHEAT' }));
+  const plain = { premium: false };
+  const fav = animalCycle(chick, ctx(p, { ...plain, favouriteFood: true }));
+  const any = animalCycle(chick, ctx(p, { ...plain, favouriteFood: false, feedItemId: 'T3_WHEAT' }));
   assert.equal(fav.plantsNeeded, 9);
   assert.equal(any.plantsNeeded, 18);
   assert.equal(fav.feedCost, 900);
   assert.equal(any.feedCost, 1800);
+
+  const quick = animalCycle(chick, ctx(p, { favouriteFood: false, feedItemId: 'T3_WHEAT' }));
+  assert.equal(quick.plantsNeeded, 9, 'Premium halves the growth, so half the feed');
+  assert.equal(quick.hours, any.hours / 2);
 });
 
 test('offspring offsets the cost of the next baby', () => {
@@ -1386,7 +1395,8 @@ test('the costs break down into the three things they are made of', () => {
     T5_EGG: 320, T6_ALCOHOL: 900,
   };
   const c = ctx(prices, {
-    useFocus: true, cycleDays: 7, farmDays: 7, stationFeePerCraft: 50,
+    useFocus: true, cycleDays: 7, farmDays: 7,
+    craftCity: 'brecilien', stationFee: { brecilien: 400 },
   });
   const sim = simulateCycle({
     plots: [{ id: 'p1', itemId: 'T6_FARM_FOXGLOVE_SEED', mode: 'grow', count: 8 }],
@@ -1590,25 +1600,48 @@ test('an animal eats for as long as it takes, not one food bar', () => {
   const goose = animal('T5_FARM_GOOSE_BABY');
   assert.equal(goose.nutritionTotal, goose.nutrition, 'livestock eat exactly one');
 
-  // And a laying goose eats for the laying cycle, not for a whole growth.
-  assert.ok(goose.product.nutrition < goose.nutrition);
+  /* A laying animal eats at the GROWN animal's rate, not the baby's. The
+   * grown bar empties exactly once per product — you feed it, 22 hours later
+   * you take the egg — so it is a full bar per egg, not the half a bar the
+   * baby's slower eating rate implied. */
+  assert.equal(goose.product.nutrition, goose.nutrition,
+    'one full bar per laying cycle');
   const laying = productCycle(goose, ctx({ T5_CABBAGE: 100 }));
   const raising = animalCycle(goose, ctx({ T5_CABBAGE: 100 }));
-  assert.ok(laying.plantsNeeded < raising.plantsNeeded,
-    'laying was being charged a full growth of feed');
+  assert.equal(laying.eaten, goose.product.nutrition);
+  // Raising is halved by Premium's double growth rate; laying is not, because
+  // the bird is already grown and the laying cycle is its own clock.
+  assert.equal(raising.eaten, goose.nutritionTotal / 2);
+  assert.equal(animalCycle(goose, ctx({ T5_CABBAGE: 100 }, { premium: false })).eaten,
+    goose.nutritionTotal);
 });
 
 test('you harvest no faster than you log in', () => {
   const fox = plant('T6_FARM_FOXGLOVE_SEED');
   const c = plantCycle(fox, ctx({ T6_FOXGLOVE: 300 }));
-  const over = (cadenceHours) => harvestsFor(c, { farmDays: 14, farmEvery: 1, cadenceHours });
+  const over = (cadenceHours) =>
+    harvestsFor(c, { cycleDays: 14, farmDays: 14, farmEvery: 1, cadenceHours });
   assert.equal(over(24), 14);
   assert.equal(over(48), 7, 'a two-day rhythm halves the harvests');
-  assert.equal(over(72), 5, 'days 1, 4, 7, 10, 13');
+  // Five visits fit (days 1, 4, 7, 10, 13) but only 14/3 growths do, and the
+  // growth clock is the real ceiling.
+  assert.equal(round2(over(72)), round2(14 / 3));
 
-  // A 44-hour animal gives five raisings in ten days however often you visit.
-  const cow = animalCycle(animal('T8_FARM_COW_BABY'), ctx());
-  assert.equal(harvestsFor(cow, { farmDays: 10, farmEvery: 1, cadenceHours: 24 }), 5);
+  // A 44-hour animal gives five raisings in ten days however often you visit
+  // — or ten, if Premium has halved the growth to 22 hours.
+  const slow = animalCycle(animal('T8_FARM_COW_BABY'), ctx({}, { premium: false }));
+  assert.equal(slow.hours, 44);
+  assert.equal(harvestsFor(slow,
+    { cycleDays: 10, farmDays: 10, farmEvery: 1, cadenceHours: 24 }), 5);
+  const quick = animalCycle(animal('T8_FARM_COW_BABY'), ctx());
+  assert.equal(quick.hours, 22);
+  assert.equal(harvestsFor(quick,
+    { cycleDays: 10, farmDays: 10, farmEvery: 1, cadenceHours: 24 }), 10);
+
+  // The clock runs on idle days too: farming 7 of 14 days still lets a 22h
+  // crop finish 7 growths, not more.
+  assert.equal(harvestsFor(c,
+    { cycleDays: 14, farmDays: 7, farmEvery: 1, cadenceHours: 24 }), 7);
 });
 
 test('stock you are holding is carried, not expensed', () => {
@@ -1620,11 +1653,14 @@ test('stock you are holding is carried, not expensed', () => {
     T5_EGG: 320, T6_ALCOHOL: 900,
   };
   const c = ctx(prices, { useFocus: true, cycleDays: 14, farmDays: 14 });
+  // A craft that really runs, but only a few batches, so most of the herbs
+  // are left over and genuinely waiting for the next one.
   const sim = simulateCycle({
     plots: [{ id: 'p', itemId: 'T6_FARM_FOXGLOVE_SEED', mode: 'grow', count: 6 }],
-    crafts: [{ id: 'c', recipeId: 'T6_POTION_HEAL', mode: 'auto' }],
+    crafts: [{ id: 'c', recipeId: 'T6_POTION_HEAL', mode: 'fixed', perCycle: 5 }],
   }, data, c);
 
+  assert.ok(sim.craftLines[0].crafts > 0, 'the craft actually ran');
   assert.ok(sim.stock.length > 0, 'there is something in the barn');
   assert.ok(sim.heldBasis > 0, 'and it cost something to put there');
   assert.equal(round2(sim.cost), round2(sim.spend - sim.heldBasis));
@@ -1647,4 +1683,96 @@ test("the NPC's asking price is a ceiling on cost, never a sale price", () => {
   });
   assert.ok(c.seedSurplus > 0, 'watering leaves seeds over');
   assert.equal(c.seedCost, 0, 'worth nothing until you price them');
+});
+
+test('a craft that runs no batches does not hold the farm hostage', () => {
+  // Naming a recipe you cannot run — one missing ingredient is enough — used
+  // to turn the whole harvest into stock and report the farm as making
+  // nothing. Held means your crafting is working through it.
+  const prices = { T6_FOXGLOVE: 900, T6_POTION_HEAL: 5400 };
+  const c = ctx(prices, { useFocus: true, cycleDays: 14, farmDays: 14 });
+  const plots = [{ id: 'p', itemId: 'T6_FARM_FOXGLOVE_SEED', mode: 'grow', count: 1 }];
+
+  const bare = simulateCycle({ plots, crafts: [] }, data, c);
+  // T6_POTION_HEAL also needs eggs and schnapps, so this makes nothing at all.
+  const named = simulateCycle({
+    plots, crafts: [{ id: 'x', recipeId: 'T6_POTION_HEAL', mode: 'auto' }],
+  }, data, c);
+
+  assert.equal(named.craftLines[0].crafts, 0, 'it really did make nothing');
+  assert.equal(round2(named.profit), round2(bare.profit),
+    'typing a recipe name changed the farm');
+  assert.deepEqual(named.stock, [], 'and nothing was held back for it');
+});
+
+test('the station fee is charged on nutrition burned, not per craft', () => {
+  // gamedata.xml: <ItemValueToNutrition factor="0.1125"/>, <FreeCrafting
+  // maxTier="2"/>, <BuildingManagement maxuseagefee="1000"/>. The owner posts
+  // a rate per 100 nutrition; a craft burns itemValue x amount x the factor.
+  const S = ctx().settings;
+  assert.equal(data.constants.itemValueToNutrition, 0.1125);
+  assert.equal(data.constants.freeCraftingMaxTier, 2);
+  assert.equal(data.constants.maxUsageFee, 1000);
+
+  assert.equal(craftNutrition(recipe('T6_POTION_HEAL'), S), 486);
+  assert.equal(craftNutrition(recipe('T6_ALCOHOL'), S), 4.5);
+  // Tier 2 and below are free, which the game states outright.
+  assert.equal(craftNutrition(recipe('T2_POTION_HEAL'), S), 0);
+
+  // A potion burns 108x the nutrition of the schnapps inside it, which is why
+  // one flat fee per craft was wrong in both directions at once.
+  const at = (id, city) => usageFeeFor(recipe(id), { ...S, stationFee: { brecilien: 400 } }, city);
+  assert.equal(at('T6_POTION_HEAL', 'brecilien'), 1944);
+  assert.equal(at('T6_ALCOHOL', 'brecilien'), 18);
+  assert.equal(at('T6_POTION_HEAL', 'island'), 0, 'your own station is free');
+  // And the posted rate cannot exceed the game's cap.
+  assert.equal(
+    usageFeeFor(recipe('T6_POTION_HEAL'), { ...S, stationFee: { brecilien: 99999 } }, 'brecilien'),
+    486 * 1000 / 100);
+});
+
+test('item value resolves through the recipe when the game publishes none', () => {
+  // No potion or meal carries an itemvalue, so it is the value of what goes
+  // in over how many come out. Farm produce is a flat 40 at every tier.
+  assert.equal(recipe('T6_POTION_HEAL').itemValue, 864);   // 72x40 + 18x40 + 18x40, /5
+  assert.equal(recipe('T6_ALCOHOL').itemValue, 40);        // 1x40 potato, /1
+  assert.equal(recipe('T8_MEAL_STEW_AVALON').itemValue, 1152);
+  for (const r of data.recipes) {
+    assert.ok(Number.isFinite(r.itemValue) && r.itemValue >= 0, `${r.id} has no value`);
+  }
+});
+
+test('the focus action on a farm needs Premium, and so does its bill', () => {
+  // localization.xml publishes the client's refusal, and only in island form:
+  // "You need at least {0} more Premium days to be able to water plants" and
+  // "...to be able to nurture animals". Gating the bonus but not the focus
+  // would have a non-Premium plan paying 1000 focus a tile for nothing.
+  const fox = plant('T6_FARM_FOXGLOVE_SEED');
+  const on = plantCycle(fox, ctx({ T6_FOXGLOVE: 900 }, { watered: true }));
+  const off = plantCycle(fox, ctx({ T6_FOXGLOVE: 900 }, { watered: true, premium: false }));
+  const never = plantCycle(fox, ctx({ T6_FOXGLOVE: 900 }, { watered: false, premium: false }));
+
+  assert.ok(on.focus > 0 && on.seedsBack > fox.seedReturn);
+  assert.equal(off.focus, 0, 'no Premium, no focus spent');
+  assert.equal(off.seedsBack, fox.seedReturn, 'and no bonus either');
+  assert.equal(off.profit, never.profit, 'the toggle does nothing without Premium');
+
+  const goose = animal('T5_FARM_GOOSE_BABY');
+  assert.equal(animalCycle(goose, ctx({}, { watered: true, premium: false })).focus, 0);
+});
+
+test('the 10,000 focus a day is Premium, and the rest is your own number', () => {
+  // The only regeneration figure in the dumps is "+10000 Focus per day", and
+  // it is listed as a Premium benefit. What a free account regenerates is
+  // published nowhere, so it is an editable field, not a constant.
+  const s = ctx().settings;
+  assert.equal(focusPerDayOf({ ...s, premium: true }), s.focusPerDay);
+  assert.equal(focusPerDayOf({ ...s, premium: false }), 0, 'unknown until you say');
+  assert.equal(focusPerDayOf({ ...s, premium: false, focusPerDayNoPremium: 3000 }), 3000);
+
+  const plan = { plots: [], crafts: [] };
+  const free = simulateCycle(plan, data, ctx({}, { premium: false, cycleDays: 14 }));
+  assert.equal(free.focusBudget, 0, 'no focus is conjured for a free account');
+  const paid = simulateCycle(plan, data, ctx({}, { cycleDays: 14 }));
+  assert.equal(paid.focusBudget, 14 * s.focusPerDay);
 });

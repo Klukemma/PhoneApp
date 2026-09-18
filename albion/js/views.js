@@ -41,7 +41,8 @@ export function solveStamp() {
     prices: JSON.stringify([state.prices, state.buyPrices]),
     setup: JSON.stringify([s.premium, s.useFocus, s.favouriteFood, s.craftCity,
       s.farmCity, s.feedItemId, s.cadenceHours, s.startFocus, s.stockCap,
-      s.focusPerDay, s.focusCap, s.sellSurplus, s.hideMounts, s.stationFeePerCraft]),
+      s.focusPerDay, s.focusCap, s.sellSurplus, s.hideMounts,
+      JSON.stringify(s.stationFee || {})]),
     goal: JSON.stringify([state.goal.recipeId, state.goal.plots, state.goal.cycleDays]),
   };
 }

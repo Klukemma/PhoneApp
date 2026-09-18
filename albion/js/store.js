@@ -38,7 +38,9 @@ function defaults() {
       hideMounts: false,
       sellSurplus: false,      // true = sell leftover ingredients instead of keeping them
       stockCap: 5000,          // spare units you are willing to sit on before pausing
-      stationFeePerCraft: 0,
+      // What each city's station owner charges, per 100 nutrition consumed.
+      // Your own island charges nothing. Posted on the station in game.
+      stationFee: {},
       feedItemId: 'T3_WHEAT',
       server: 'americas',      // Albion Americas, Asia or Europe
       priceCity: 'Caerleon',
