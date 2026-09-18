@@ -46,3 +46,14 @@ export const tierLabel = (t) => `T${t}`;
 export const toneOf = (n) => (n > 0 ? 'good' : n < 0 ? 'bad' : 'flat');
 
 export const byId = (list) => Object.fromEntries(list.map((x) => [x.id, x]));
+
+/** "3h ago" — how stale a market quote is, at a glance. */
+export function ago(ms) {
+  if (!Number.isFinite(ms)) return 'no date';
+  const mins = Math.round((Date.now() - ms) / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.round(mins / 60);
+  if (hrs < 48) return `${hrs}h ago`;
+  return `${Math.round(hrs / 24)}d ago`;
+}

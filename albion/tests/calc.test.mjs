@@ -1386,3 +1386,88 @@ test('an unpriced purchase is still listed, so it cannot hide', () => {
   assert.ok(schnapps.qty > 0);
   assert.equal(schnapps.cost, 0);
 });
+
+/* ------------------------------------------- buying and selling differ -- */
+
+const twoSided = (sell, buy, over = {}) => ({
+  priceOf: (id) => sell[id] ?? 0,
+  costOf: (id) => buy[id] ?? sell[id] ?? 0,
+  settings: { ...ctx().settings, ...over },
+});
+
+test('an input is charged at what you pay, not at what it sells for', () => {
+  const sell = { T6_FOXGLOVE: 400, T5_EGG: 400, T6_ALCOHOL: 400, T6_POTION_HEAL: 3000 };
+  const dear = craftBatch(recipe('T6_POTION_HEAL'), twoSided(sell, {}));
+  const cheap = craftBatch(recipe('T6_POTION_HEAL'), twoSided(sell, { T6_FOXGLOVE: 100 }));
+  assert.ok(cheap.materials < dear.materials, 'a cheaper buy price costs less');
+  assert.ok(cheap.profit > dear.profit);
+  // The thing you make is still valued at what it sells for.
+  assert.equal(cheap.revenue, dear.revenue);
+});
+
+test('seeds are bought at one price and surplus sold at the other', () => {
+  const p = plant('T6_FARM_FOXGLOVE_SEED');
+  const sell = { T6_FARM_FOXGLOVE_SEED: 3000, T6_FOXGLOVE: 300 };
+  const both = plantCycle(p, twoSided(sell, { T6_FARM_FOXGLOVE_SEED: 1000 }));
+  const one = plantCycle(p, twoSided(sell, {}));
+  // Seeds come back at 86.67%, so some are still bought: paying less is cheaper.
+  assert.ok(both.seedsBought > 0);
+  assert.ok(both.seedCost < one.seedCost);
+  assert.ok(both.profit > one.profit);
+});
+
+test('feed and goslings are costed at the buy price', () => {
+  const a = animal('T5_FARM_GOOSE_BABY');
+  const sell = { T5_FARM_GOOSE_BABY: 2000, T5_EGG: 300, T5_CABBAGE: 400 };
+  const dear = productCycle(a, twoSided(sell, {}));
+  const cheap = productCycle(a, twoSided(sell, { T5_CABBAGE: 100 }));
+  assert.ok(cheap.feedCost < dear.feedCost);
+  assert.equal(cheap.revenue, dear.revenue);
+
+  const raiseDear = animalCycle(a, twoSided(sell, {}));
+  const raiseCheap = animalCycle(a, twoSided(sell, { T5_FARM_GOOSE_BABY: 500 }));
+  assert.ok(raiseCheap.babyCost < raiseDear.babyCost);
+});
+
+test('the whole cycle buys at one price and sells at the other', () => {
+  const sell = {
+    T6_POTION_HEAL: 2400, T6_FOXGLOVE: 260, T6_FARM_FOXGLOVE_SEED: 2200,
+    T5_EGG: 320, T6_ALCOHOL: 900,
+  };
+  const plan = {
+    plots: [{ id: 'p1', itemId: 'T6_FARM_FOXGLOVE_SEED', mode: 'grow', count: 8 }],
+    crafts: [{ id: 'c1', recipeId: 'T6_POTION_HEAL', mode: 'fixed', perCycle: 20 }],
+  };
+  const over = { useFocus: true, cycleDays: 7, farmDays: 7 };
+  const plain = simulateCycle(plan, data, twoSided(sell, {}, over));
+  // Buying the eggs and the schnapps in at half price.
+  const keen = simulateCycle(plan, data,
+    twoSided(sell, { T5_EGG: 160, T6_ALCOHOL: 450 }, over));
+
+  assert.ok(keen.buyCost < plain.buyCost, 'the shopping bill falls');
+  assert.equal(Math.round(keen.revenue), Math.round(plain.revenue), 'the takings do not');
+  assert.ok(keen.profit > plain.profit);
+  // And the shopping list still reconciles against the cheaper prices.
+  const total = keen.buys.reduce((t, b) => t + b.cost, 0);
+  assert.equal(Math.round(total), Math.round(keen.buyCost));
+});
+
+test('with no separate buy price the two collapse back into one', () => {
+  const sell = {
+    T6_POTION_HEAL: 2400, T6_FOXGLOVE: 260, T6_FARM_FOXGLOVE_SEED: 2200,
+    T5_EGG: 320, T6_ALCOHOL: 900,
+  };
+  const plan = {
+    plots: [{ id: 'p1', itemId: 'T6_FARM_FOXGLOVE_SEED', mode: 'grow', count: 8 }],
+    crafts: [{ id: 'c1', recipeId: 'T6_POTION_HEAL', mode: 'fixed', perCycle: 20 }],
+  };
+  const over = { useFocus: true, cycleDays: 7, farmDays: 7 };
+  // costOf supplied but identical, against costOf not supplied at all.
+  const split = simulateCycle(plan, data, twoSided(sell, {}, over));
+  const single = simulateCycle(plan, data, {
+    priceOf: (id) => sell[id] ?? 0,
+    settings: { ...ctx().settings, ...over },
+  });
+  assert.equal(Math.round(split.profit), Math.round(single.profit));
+  assert.equal(Math.round(split.buyCost), Math.round(single.buyCost));
+});

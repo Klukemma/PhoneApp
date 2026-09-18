@@ -4,15 +4,18 @@ import {
   cityBonus, cityFor, craftBatch, farmBonus, farmCityFor, focusCostAt,
   focusEfficiency, perPeriod, simulateCycle, specFor,
 } from './calc.js';
-import { explain, fetchPrices, serverName, CITIES, SERVERS } from './prices.js';
+import {
+  explain, fetchItem, fetchPrices, serverName, CITIES, SERVERS,
+} from './prices.js';
 import {
   addCraft, addPlot, addSpare, applySolution, DATA, exportJSON, importJSON,
-  priceOf, pricedItemIds, commit, removeCraft, removePlot, setGoal, setNodeLevel,
-  setPrice, setPrices, setSettings, setSpec, state, updateCraft, updatePlot, wipe,
+  priceOf, pricedItemIds, commit, removeCraft, removePlot, setBuyPrice, setGoal,
+  setNodeLevel, setPrice, setPrices, setSettings, setSpec, state, updateCraft,
+  updatePlot, wipe,
 } from './store.js';
 import { solve } from './solve.js';
 import { $, $$, closeSheet, esc, openSheet, toast } from './ui.js';
-import { hours, short, silver } from './util.js';
+import { ago, hours, short, silver } from './util.js';
 import {
   cycleFor, ctx, detailHTML, setSolution, solution, solveStamp,
 } from './views.js';
@@ -530,29 +533,140 @@ export function openCraftCity() {
 
 /* ------------------------------------------------------------ prices -- */
 
-export function openPrice(id) {
+/**
+ * One item's market: the two prices the maths uses, and what every city is
+ * actually paying for it right now.
+ *
+ * Buying and selling are deliberately separate. The cheapest offer on the
+ * shelf is what a material costs you; what you take for a potion is whatever
+ * is left after the market's cut, in whichever city you are standing in. One
+ * number cannot be both, and a plan built on the wrong one of them looks
+ * better than it is.
+ */
+export function openPrice(id, market = null, busy = false, err = null) {
+  const name = DATA.items[id]?.name || id;
+  const sell = priceOf(id);
+  const buy = state.buyPrices[id];
+  const server = serverName(state.settings.server);
+
+  const quotes = (rows, key, best, target) => rows.map((r, n) => {
+    const v = r[key];
+    const when = key === 'sellMin' ? r.sellAt : r.buyAt;
+    const rank = n === 0 ? best : n === rows.length - 1 && rows.length > 2 ? 'worst' : '';
+    // A day-old quote sitting next to an hour-old one is not the same
+    // information, and ranking them together quietly pretends it is.
+    const stale = Number.isFinite(when) && Date.now() - when > 24 * 3600e3;
+    return `
+      <button class="row price ${stale ? 'warn' : ''}"
+        data-city="${esc(r.city)}" data-target="${target}"
+        data-value="${v}" ${n === 0 ? 'style="border-color:var(--gold)"' : ''}>
+        <span class="body">
+          <span class="title">${esc(r.city)}${rank ? ` <small>${rank}</small>` : ''}</span>
+          <span class="meta">${esc(ago(when))}${stale ? ' · too old to trust' : ''}</span>
+        </span>
+        <span class="amt num">${silver(v)}</span>
+      </button>`;
+  }).join('');
+
+  const buyable = (market || []).filter((r) => r.sellMin)
+    .sort((a, b) => a.sellMin - b.sellMin);
+  const sellable = (market || []).filter((r) => r.sellMin)
+    .sort((a, b) => b.sellMin - a.sellMin);
+  const instant = (market || []).filter((r) => r.buyMax)
+    .sort((a, b) => b.buyMax - a.buyMax);
+
   openSheet(`
-    <h2>${esc(DATA.items[id]?.name || id)}</h2>
-    <div class="field">
-      <label>Price per unit (silver)</label>
-      <input type="number" id="price" inputmode="numeric" min="0" step="1"
-        value="${priceOf(id) || ''}" placeholder="0" autofocus>
-      <div class="hint">${esc(id)}</div>
+    <h2>${esc(name)}</h2>
+    <p class="muted">${esc(id)}</p>
+
+    <div class="two">
+      <div class="field"><label>You sell it for</label>
+        <input type="number" id="sell" inputmode="numeric" min="0" step="1"
+          value="${sell || ''}" placeholder="0"></div>
+      <div class="field"><label>You pay</label>
+        <input type="number" id="buy" inputmode="numeric" min="0" step="1"
+          value="${buy || ''}" placeholder="${sell || 0}"></div>
     </div>
+    <div class="hint" style="margin:-4px 0 12px">Leave "you pay" blank and it
+      costs the same as it sells for. Set it when you buy this in cheaper than
+      you would list it \u2014 materials off another city's market, say.</div>
+
+    <button class="btn ${market ? '' : 'primary'}" id="look" ${busy ? 'disabled' : ''}>
+      ${busy ? 'Asking every city' + '…' : market ? 'Check again' : 'Where is it cheapest?'}</button>
+    <div class="hint centered">Live from the Albion Online Data Project ·
+      ${esc(server)} · <button class="linkish" data-act="price-source">change server</button></div>
+
+    ${err ? `<div class="warn-note" style="margin-top:12px">${esc(err)}</div>` : ''}
+
+    ${market && !market.length ? `<div class="warn-note" style="margin-top:12px">
+      No city has a quote for this. Nobody running the data project's client has
+      stood in a market with it open lately \u2014 type a price in instead.</div>` : ''}
+
+    ${buyable.length ? `
+      <div class="section-head" style="margin-top:18px"><h2>\u{1F53D} Cheapest to buy</h2>
+        <span class="right num" style="color:var(--dim)">tap to use</span></div>
+      ${quotes(buyable, 'sellMin', 'cheapest', 'buy')}` : ''}
+
+    ${sellable.length ? `
+      <div class="section-head" style="margin-top:18px"><h2>\u{1F53C} Best place to sell</h2>
+        <span class="right num" style="color:var(--dim)">tap to use</span></div>
+      <p class="muted small" style="margin:-4px 0 8px">What it is listed at there,
+        so what you could ask. Your own sale still pays the market's cut.</p>
+      ${quotes(sellable, 'sellMin', 'best', 'sell')}` : ''}
+
+    ${instant.length ? `
+      <div class="section-head" style="margin-top:18px"><h2>Sell this second</h2></div>
+      <p class="muted small" style="margin:-4px 0 8px">The best standing buy order:
+        what you get without waiting for a listing to sell. Normally a lot less.</p>
+      ${quotes(instant, 'buyMax', 'best', 'sell')}` : ''}
+
     <div class="sheet-actions">
       <button class="btn primary" id="save">Save</button>
     </div>
   `, {
     onMount(root) {
-      const input = $('#price', root);
-      input.focus();
-      input.select();
-      const save = () => { setPrice(id, input.value); closeSheet(); };
-      $('#save', root).onclick = save;
-      input.onkeydown = (e) => { if (e.key === 'Enter') save(); };
+      const sellIn = $('#sell', root);
+      const buyIn = $('#buy', root);
+      if (!market && !busy) { sellIn.focus(); sellIn.select(); }
+
+      const save = () => {
+        setPrice(id, sellIn.value);
+        setBuyPrice(id, buyIn.value);
+      };
+      $('#save', root).onclick = () => { save(); closeSheet(); };
+      for (const el of [sellIn, buyIn]) {
+        el.onkeydown = (e) => { if (e.key === 'Enter') { save(); closeSheet(); } };
+      }
+
+      $('#look', root).onclick = async () => {
+        save();
+        openPrice(id, market, true, null);
+        try {
+          const rows = await fetchItem(id, { server: state.settings.server });
+          openPrice(id, rows, false, null);
+        } catch (e) {
+          openPrice(id, market, false, explain(e));
+        }
+      };
+
+      // Taking a quote writes it to the side of the ledger that list is about,
+      // so there is never a question of which number just changed. The sheet
+      // stays open on the same figures, with the field now showing it.
+      for (const row of $$('[data-city]', root)) {
+        row.onclick = () => {
+          const v = Math.round(Number(row.dataset.value));
+          if (!(v > 0)) return;
+          const toBuy = row.dataset.target === 'buy';
+          (toBuy ? buyIn : sellIn).value = v;
+          save();
+          toast(`${toBuy ? 'Paying' : 'Selling at'} ${silver(v)} · ${row.dataset.city}`);
+          openPrice(id, market, false, null);
+        };
+      }
     },
   });
 }
+
 
 export function openPriceSource() {
   openSheet(`

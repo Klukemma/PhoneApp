@@ -43,7 +43,8 @@ function defaults() {
       // they stay editable when a patch changes them.
       ...{},
     },
-    prices: {},
+    prices: {},                // what a thing sells for
+    buyPrices: {},             // what it costs you, when that differs
     spec: {},                  // recipe id -> a flat efficiency override
     nodeLevels: {},            // destiny board node id -> level
     // What you are trying to make, and how much land you have to do it with.
@@ -83,6 +84,7 @@ function normalize(raw) {
     ...base, ...raw,
     settings: { ...base.settings, ...(raw.settings || {}) },
     prices: { ...(raw.prices || {}) },
+    buyPrices: { ...(raw.buyPrices || {}) },
     spec: { ...(raw.spec || {}) },
     nodeLevels: { ...(raw.nodeLevels || {}) },
     goal: { ...base.goal, ...(raw.goal || {}) },
@@ -98,9 +100,11 @@ function normalize(raw) {
       }),
     },
   };
-  for (const [k, v] of Object.entries(s.prices)) {
-    const n = Number(v);
-    if (!Number.isFinite(n) || n < 0) delete s.prices[k];
+  for (const map of [s.prices, s.buyPrices]) {
+    for (const [k, v] of Object.entries(map)) {
+      const n = Number(v);
+      if (!Number.isFinite(n) || n < 0) delete map[k];
+    }
   }
   for (const map of [s.spec, s.nodeLevels]) {
     for (const [k, v] of Object.entries(map)) {
@@ -155,6 +159,26 @@ export function commit() {
 /* ------------------------------------------------------------ prices --- */
 
 export const priceOf = (id) => Number(state.prices[id]) || 0;
+
+/**
+ * What one costs you.
+ *
+ * Buying and selling are not the same price: you take the cheapest offer on
+ * the shelf and you sell into whatever is left after fees, and in another city
+ * both numbers move. Where no separate buy price is kept the two collapse into
+ * one, which is what most items want and what every old save has.
+ */
+export const costOf = (id) => Number(state.buyPrices[id]) || priceOf(id);
+
+/** True when this item is being costed differently from how it is sold. */
+export const hasOwnCost = (id) => Number(state.buyPrices[id]) > 0;
+
+export function setBuyPrice(id, value) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) delete state.buyPrices[id];
+  else state.buyPrices[id] = Math.round(n);
+  commit();
+}
 
 export function setPrice(id, value) {
   const n = Number(value);

@@ -83,6 +83,60 @@ export async function fetchPrices(ids, { server = 'americas', city = 'Caerleon',
   };
 }
 
+/**
+ * Every city's quote for one item.
+ *
+ * Two numbers matter and they are not the same number. `sellMin` is the
+ * cheapest thing on the shelf: what you pay to buy one now, and roughly what
+ * you have to list at to sell one. `buyMax` is the best standing buy order:
+ * what you get this second if you cannot be bothered to wait. Instant selling
+ * is normally a lot worse, which is exactly why it is worth seeing.
+ *
+ * Asking for no locations returns them all, which is the whole point here.
+ */
+export async function fetchItem(id, { server = 'americas', signal } = {}) {
+  const host = hostFor(server);
+  if (!host) throw new Error(`Unknown server "${server}"`);
+
+  const url = `${host}/api/v2/stats/prices/${encodeURIComponent(id)}?qualities=1`;
+  const res = await fetch(url, { signal, headers: { accept: 'application/json' } });
+  if (!res.ok) {
+    throw new Error(`Price server replied ${res.status}. Try again later, ` +
+      `or enter prices by hand.`);
+  }
+  const rows = await res.json();
+  if (!Array.isArray(rows)) throw new Error('Price server sent an unexpected reply.');
+
+  const at = (v) => {
+    const n = Number(v);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  };
+  const when = (v) => {
+    // The API sends naive UTC timestamps, so say so before parsing them.
+    const t = Date.parse(/[Zz+]|GMT/.test(v || '') ? v : `${v}Z`);
+    return Number.isFinite(t) ? t : null;
+  };
+
+  const out = [];
+  for (const row of rows) {
+    const city = row?.city;
+    if (!city) continue;
+    const sellMin = at(row.sell_price_min);
+    const buyMax = at(row.buy_price_max);
+    // A city that has never been scanned comes back as a row of zeroes. It is
+    // not a free market, it is no information, so leave it out.
+    if (!sellMin && !buyMax) continue;
+    out.push({
+      city, sellMin, buyMax,
+      sellAt: when(row.sell_price_min_date),
+      buyAt: when(row.buy_price_max_date),
+    });
+  }
+  // Somewhere to buy first; the sell side is sorted where it is shown.
+  out.sort((a, b) => (a.sellMin ?? Infinity) - (b.sellMin ?? Infinity));
+  return out;
+}
+
 /** Turn a fetch failure into something worth showing a person. */
 export function explain(err) {
   if (err?.name === 'AbortError') return 'Price update cancelled.';

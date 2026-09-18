@@ -4,7 +4,7 @@ import {
   animalCycle, cityFor, craftBatch, farmCityFor, perPeriod, plantCycle,
   productCycle, rankFarmables, rankRecipes, returnRate, simulateCycle,
 } from './calc.js';
-import { DATA, priceOf, state } from './store.js';
+import { costOf, DATA, hasOwnCost, priceOf, state } from './store.js';
 import { serverName } from './prices.js';
 import { esc } from './ui.js';
 import { hours, pct, short, silver, toneOf } from './util.js';
@@ -36,7 +36,7 @@ export function solveStamp() {
   const s = state.settings;
   return {
     mastery: JSON.stringify([state.nodeLevels, state.spec, s.specLevel]),
-    prices: JSON.stringify(state.prices),
+    prices: JSON.stringify([state.prices, state.buyPrices]),
     setup: JSON.stringify([s.premium, s.useFocus, s.favouriteFood, s.craftCity,
       s.farmCity, s.feedItemId, s.cadenceHours, s.startFocus, s.stockCap,
       s.focusPerDay, s.focusCap, s.sellSurplus, s.hideMounts, s.stationFeePerCraft]),
@@ -62,6 +62,7 @@ export function changedSince(stamp) {
 export function ctx() {
   return {
     priceOf,
+    costOf,
     settings: state.settings,
     inputCostOf: state.settings.ownInputsAtCost ? ownCostOf : undefined,
   };
@@ -815,17 +816,21 @@ export function prices() {
     .sort((a, b) => ORDER.indexOf(a[0]) - ORDER.indexOf(b[0]));
 
   const setCount = all.filter((id) => priceOf(id)).length;
+  const splitCount = all.filter((id) => hasOwnCost(id)).length;
 
   return {
     title: 'Prices',
-    sub: `${setCount} of ${all.length} set · ${state.settings.priceCity}`,
+    sub: `${setCount} of ${all.length} set · ${state.settings.priceCity}${
+      splitCount ? `, ${splitCount} bought in cheaper` : ''}`,
     html: `
       <section>
         <button class="btn primary" data-act="fetch-prices">
           ↓ Fetch live market prices</button>
-        <div class="hint centered">From the Albion Online Data Project ·
-          ${esc(serverName(state.settings.server))} · ${esc(state.settings.priceCity)}
-          · <button class="linkish" data-act="price-source">change</button></div>
+        <div class="hint centered">The cheapest sell order in
+          ${esc(state.settings.priceCity)} on ${esc(serverName(state.settings.server))}
+          · <button class="linkish" data-act="price-source">change</button><br>
+          Tap any item to set what you pay for it, or to see which city is
+          cheapest and which pays best.</div>
       </section>
       <section>
         <div class="seg">
@@ -846,7 +851,9 @@ export function prices() {
                   <span class="meta">${esc(id)}</span>
                 </span>
                 <span class="amt num ${priceOf(id) ? '' : 'flat'}">
-                  ${priceOf(id) ? silver(priceOf(id)) : 'set'}</span>
+                  ${priceOf(id) ? silver(priceOf(id)) : 'set'}${hasOwnCost(id)
+                    ? `<small style="color:var(--dim);font-weight:500">
+                        pay ${silver(costOf(id))}</small>` : ''}</span>
               </button>`).join('')}
         </section>`).join('')
         || empty('\u{1F4B0}', priceFilter === 'missing'

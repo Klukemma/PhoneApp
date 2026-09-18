@@ -107,7 +107,9 @@ const avg = (lo, hi) => (lo + hi) / 2;
  * Above 1.0 the plot pays for its own seed and leaves a surplus, so netSeeds
  * goes negative and counts as income rather than cost.
  */
-export function plantCycle(plant, { priceOf, settings, cityId, wateredFraction }) {
+export function plantCycle(plant, {
+  priceOf, costOf = priceOf, settings, cityId, wateredFraction,
+}) {
   // You only get the watering bonus on the plots you could actually pay to
   // water. The cycle works out what share that is and passes it in.
   const share = settings.watered
@@ -123,14 +125,15 @@ export function plantCycle(plant, { priceOf, settings, cityId, wateredFraction }
   const seedsBack = plant.seedReturn + plant.wateredBonus * share;
   const netSeeds = 1 - seedsBack;
 
-  const seedPrice = priceOf(plant.seedId);
   const cropPrice = priceOf(plant.cropId);
 
   // Above 100% return the plot feeds itself and leaves seeds over. Those are
   // stock you can sell, so they count as produce rather than as a negative cost.
+  // Seeds you buy and seeds you sell are two different prices, so each side is
+  // valued on its own.
   const seedsBought = Math.max(0, netSeeds);
   const seedSurplus = Math.max(0, -netSeeds);
-  const seedCost = netSeeds * seedPrice;
+  const seedCost = seedsBought * costOf(plant.seedId) - seedSurplus * priceOf(plant.seedId);
   const revenue = yieldPerTile * cropPrice * (1 - taxRate(settings));
   // The full ask, not the discounted one: the ledger decides what gets paid.
   // Farming nodes on the destiny board make watering cheaper, same as crafting
@@ -158,7 +161,9 @@ export function plantCycle(plant, { priceOf, settings, cityId, wateredFraction }
  * Feed is nutrition / 48 plants. A favourite plant is worth (1 + favouriteBonus)
  * nutrition each, so it takes proportionally fewer of them.
  */
-export function animalCycle(animal, { priceOf, settings, cityId, wateredFraction }) {
+export function animalCycle(animal, {
+  priceOf, costOf = priceOf, settings, cityId, wateredFraction,
+}) {
   const share = settings.watered
     ? Math.max(0, Math.min(1, wateredFraction ?? 1)) : 0;
   const watered = share > 0;
@@ -168,11 +173,13 @@ export function animalCycle(animal, { priceOf, settings, cityId, wateredFraction
   const plantsNeeded = animal.nutrition / NUTRITION_PER_PLANT /
     (useFav ? 1 + animal.favouriteBonus : 1);
   const feedId = useFav ? animal.favouriteFood : settings.feedItemId;
-  const feedCost = plantsNeeded * priceOf(feedId);
+  const feedCost = plantsNeeded * costOf(feedId);
 
   const babiesBack = animal.offspring + animal.wateredBonus * share;
   const netBabies = 1 - babiesBack;
-  const babyCost = netBabies * priceOf(animal.babyId);
+  const babiesBought = Math.max(0, netBabies);
+  const babySurplus = Math.max(0, -netBabies);
+  const babyCost = babiesBought * costOf(animal.babyId) - babySurplus * priceOf(animal.babyId);
 
   const revenue = priceOf(animal.grownId) * (1 - taxRate(settings));
   const hours = animal.growSeconds / HOUR;
@@ -184,7 +191,8 @@ export function animalCycle(animal, { priceOf, settings, cityId, wateredFraction
   return {
     kind: 'animal', ref: animal, hours, focus, city, farmBonusPct: 0,
     wateredShare: share, focusEfficiency: focusEff,
-    plantsNeeded, feedId, feedCost, babiesBack, netBabies, babyCost,
+    plantsNeeded, feedId, feedCost, babiesBack, netBabies,
+    babiesBought, babySurplus, babyCost,
     revenue, profit,
   };
 }
@@ -193,7 +201,7 @@ export function animalCycle(animal, { priceOf, settings, cityId, wateredFraction
  * A grown animal kept for eggs or milk instead of sold. It keeps eating,
  * so feed is charged per production cycle.
  */
-export function productCycle(animal, { priceOf, settings, cityId }) {
+export function productCycle(animal, { priceOf, costOf = priceOf, settings, cityId }) {
   if (!animal.product) return null;
   const p = animal.product;
   const hours = p.seconds / HOUR;
@@ -210,7 +218,7 @@ export function productCycle(animal, { priceOf, settings, cityId }) {
   const plantsNeeded = animal.nutrition / NUTRITION_PER_PLANT /
     (useFav ? 1 + animal.favouriteBonus : 1);
   const feedId = useFav ? animal.favouriteFood : settings.feedItemId;
-  const feedCost = plantsNeeded * priceOf(feedId);
+  const feedCost = plantsNeeded * costOf(feedId);
 
   return {
     kind: 'product', ref: animal, hours, focus: 0, city, farmBonusPct: bonusPct,
@@ -279,7 +287,9 @@ export function specFor(settings, recipeId) {
  * `cityId` and `specLevel` override your defaults, so a single job can be
  * costed in the city you actually brew in, at the mastery you actually have.
  */
-export function craftBatch(recipe, { priceOf, settings, inputCostOf, cityId, specLevel }) {
+export function craftBatch(recipe, {
+  priceOf, costOf = priceOf, settings, inputCostOf, cityId, specLevel,
+}) {
   const useFocus = settings.useFocus;
   const city = cityFor(settings, cityId);
   const bonus = cityBonus(city, recipe.category, settings);
@@ -288,7 +298,7 @@ export function craftBatch(recipe, { priceOf, settings, inputCostOf, cityId, spe
   const rrr = returnRate(bonusTotal);
 
   const inputs = recipe.inputs.map((i) => {
-    const unit = inputCostOf ? inputCostOf(i.id) : priceOf(i.id);
+    const unit = inputCostOf ? inputCostOf(i.id) : costOf(i.id);
     return { ...i, unit, total: unit * i.count };
   });
   const materials = inputs.reduce((t, i) => t + i.total, 0);
@@ -584,6 +594,9 @@ function makeLedgerOfCost() {
  */
 export function simulateCycle(plan, data, ctx) {
   const s = ctx.settings;
+  // What you pay for a thing and what you get for it are two different numbers.
+  // Where no separate buy price is kept, they collapse back into one.
+  const costOf = ctx.costOf || ctx.priceOf;
   const cycleDays = Math.max(1, s.cycleDays || 14);
   const farmDays = Math.max(0, Math.min(cycleDays, s.farmDays ?? cycleDays));
   // Farm every day, every other day, and so on. Skipping banks focus.
@@ -649,7 +662,7 @@ export function simulateCycle(plan, data, ctx) {
     }
 
     const costPer = plant
-      ? cycle.seedsBought * ctx.priceOf(plant.seedId)   // surplus is produce, above
+      ? cycle.seedsBought * costOf(plant.seedId)        // surplus is produce, above
       : cycle.kind === 'product' ? cycle.feedCost
         : cycle.feedCost + cycle.babyCost;
     const cost = costPer * tiles * harvests;
@@ -714,7 +727,7 @@ export function simulateCycle(plan, data, ctx) {
       const have = pool[i.id] || 0;
       const short = Math.max(0, need - have);
       if (short > 0) {
-        const bill = short * ctx.priceOf(i.id);
+        const bill = short * costOf(i.id);
         buyCost += bill;                                     // fixed mode tops up
         basisIn += bill;
         const at = bought[i.id] || (bought[i.id] = { qty: 0, cost: 0 });
