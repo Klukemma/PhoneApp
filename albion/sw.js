@@ -1,7 +1,7 @@
 // Cache-first shell so the app opens instantly and works with no signal.
 // Bump CACHE when the shell or the game data changes.
 
-const CACHE = 'albionfarm-v25';  // v25: rank what is worth crafting, market against Black Market
+const CACHE = 'albionfarm-v26';  // v26: equipment names and Black Market prices in the price sheet
 const SHELL = [
   './', './index.html', './manifest.webmanifest',
   './css/app.css',

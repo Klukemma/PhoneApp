@@ -12,7 +12,7 @@ import {
   priceOf, pricedItemIds, clearLand, commit, landSummary, plotsOwned,
   removeCraft, removePlot, setBuyPrice, setGoal, setHolding, setNodeLevel,
   setPrice, setPrices, setSettings, setSpec, state, updateCraft, updatePlot, wipe,
-  bmPriceOf, setBmPrices,
+  bmPriceOf, itemMeta, setBmPrice, setBmPrices,
 } from './store.js';
 import { solve } from './solve.js';
 import { $, $$, closeSheet, esc, openSheet, toast } from './ui.js';
@@ -26,7 +26,10 @@ import {
   scanIds, setCraftTarget,
 } from './craft.js';
 
-const nameOf = (id) => DATA.items[id]?.name || id;
+/* Whichever file knows this item. Once the Craft tab has loaded the weapon
+ * and armour list, a steel bar has a name here too; before that it does not,
+ * and showing the raw id is better than pretending. */
+const nameOf = (id) => itemMeta(id)?.name || id;
 
 /**
  * Which list a recipe belongs in. Butchering is its own crafting category per
@@ -766,10 +769,15 @@ export function openCraftCity() {
  * better than it is.
  */
 export function openPrice(id, market = null, busy = false, err = null) {
-  const name = DATA.items[id]?.name || id;
+  const name = nameOf(id);
   const sell = priceOf(id);
   const buy = state.buyPrices[id];
   const server = serverName(state.settings.server);
+  // The Black Market is the third price an item can have, and only equipment
+  // has it: it buys weapons, armour, bags, capes and tools, and nothing else.
+  const takesBlack = ['weapon', 'armor', 'gear']
+    .includes(craftGroupOf(recipeOf(id) || {}));
+  const black = bmPriceOf(id);
 
   const quotes = (rows, key, best, target) => rows.map((r, n) => {
     const v = r[key];
@@ -809,6 +817,13 @@ export function openPrice(id, market = null, busy = false, err = null) {
         <input type="number" id="buy" inputmode="numeric" min="0" step="1"
           value="${buy || ''}" placeholder="${sell || 0}"></div>
     </div>
+    ${takesBlack ? `
+      <div class="field"><label>The Black Market pays</label>
+        <input type="number" id="blackPrice" inputmode="numeric" min="0" step="1"
+          value="${black || ''}" placeholder="0">
+        <div class="hint">What its standing order is offering. It only buys, so
+          this is a sell price and never a cost, and filling an order that is
+          already there skips the setup fee.</div></div>` : ''}
     <div class="hint" style="margin:-4px 0 12px">Leave "you pay" blank and it
       costs the same as it sells for. Set it when you buy this in cheaper than
       you would list it \u2014 materials off another city's market, say.</div>
@@ -851,12 +866,14 @@ export function openPrice(id, market = null, busy = false, err = null) {
       const buyIn = $('#buy', root);
       if (!market && !busy) { sellIn.focus(); sellIn.select(); }
 
+      const blackIn = $('#blackPrice', root);
       const save = () => {
         setPrice(id, sellIn.value);
         setBuyPrice(id, buyIn.value);
+        if (blackIn) setBmPrice(id, blackIn.value);
       };
       $('#save', root).onclick = () => { save(); closeSheet(); };
-      for (const el of [sellIn, buyIn]) {
+      for (const el of [sellIn, buyIn, blackIn].filter(Boolean)) {
         el.onkeydown = (e) => { if (e.key === 'Enter') { save(); closeSheet(); } };
       }
 

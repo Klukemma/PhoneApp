@@ -5,7 +5,7 @@ import {
   productCycle, rankFarmables, rankRecipes, returnRate, simulateCycle,
 } from './calc.js';
 import {
-  costOf, DATA, hasOwnCost, landSummary, plotsOwned, priceOf, state,
+  costOf, DATA, hasOwnCost, itemMeta, landSummary, plotsOwned, priceOf, state,
 } from './store.js';
 import { serverName } from './prices.js';
 import {
@@ -97,8 +97,8 @@ export const ownCostOf = (wateredFraction = 1) => (id) => {
   }).costPerUnit;
 };
 
-const nameOf = (id) => DATA.items[id]?.name || id;
-const tierOf = (id) => DATA.items[id]?.tier ?? 0;
+const nameOf = (id) => itemMeta(id)?.name || id;
+const tierOf = (id) => itemMeta(id)?.tier ?? 0;
 const label = (id) => `${tierText(tierOf(id), enchantOf(id))} ${nameOf(id)}`;
 
 const EMOJI = {
