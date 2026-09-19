@@ -67,11 +67,12 @@ function wire() {
       '[data-price-filter],[data-toggle],[data-add-plot],[data-add-craft],' +
       '[data-add-step],[data-add-spare],[data-craft-sell],[data-make],' +
       '[data-craft-city],[data-scan-group],[data-scan-tier],[data-scan-enchant],' +
-      '[data-craft-rank],[data-earn]');
+      '[data-craft-rank],[data-earn],[data-where]');
     if (!el) return;
     const d = el.dataset;
 
     if (d.earn) { setEarnMode(d.earn); render(); return; }
+    if (d.where) { setSettings({ craftWhere: d.where }); return; }
 
     if (d.craftSell) { setCraftSellTo(d.craftSell); return; }
     if (d.make) { toggleMake(d.make); return; }

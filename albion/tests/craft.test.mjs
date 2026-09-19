@@ -7,7 +7,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
-  craftPnL, mixFor, qualityMix, qualityPoints, returnRate, taxRate,
+  bestCityFor, craftPnL, haulOf, mixFor, qualityMix, qualityPoints, returnRate,
+  taxRate,
 } from '../js/calc.js';
 
 const data = JSON.parse(
@@ -328,4 +329,93 @@ test('quality is most of the money on a sword, and it is never invented', () => 
   assert.deepEqual(partial.qualityGuessed, [3, 4, 5]);
   assert.ok(partial.unitPrice < graded.unitPrice);
   assert.ok(partial.unitPrice > plain.unitPrice);
+});
+
+/* --------------------------------------------------------- many cities - */
+
+test('a city specialises in refining or in smithing, never in both', () => {
+  const s = ctx().settings;
+  // craftingmodifiers.xml: ore is Thetford at +40, swords are Lymhurst at +15.
+  assert.equal(bestCityFor('ore', s).id, 'thetford');
+  assert.equal(bestCityFor('hide', s).id, 'martlock');
+  assert.equal(bestCityFor('fiber', s).id, 'lymhurst');
+  assert.equal(bestCityFor('wood', s).id, 'fortsterling');
+  assert.equal(bestCityFor('rock', s).id, 'bridgewatch');
+  // So a sword made of your own bars is genuinely more than one city.
+  assert.notEqual(bestCityFor('sword', s).id, bestCityFor('ore', s).id);
+});
+
+test('spreading a run across cities buys less and carries more', () => {
+  const make = new Set(['T4_METALBAR', 'T4_LEATHER']);
+  const s = { ...ctx().settings, items: { ...data.items, ...raw.items }, carryWeight: 1500 };
+  const run = (cityOf) => craftPnL('T4_MAIN_SWORD', {
+    ...ctx(), settings: s, qty: 100, make, cityId: 'lymhurst', cityOf,
+  });
+
+  const one = run(null);
+  const best = run((r) => bestCityFor(r.category, s).id);
+
+  // Every step in one place: nothing moves, and the refining pays the flat base.
+  assert.ok(one.steps.every((x) => x.cityId === 'lymhurst'));
+  assert.deepEqual(one.legs, []);
+
+  // Each step where it is best: the bars are smelted in Thetford and the
+  // leather tanned in Martlock, and both have to be carried to the forge.
+  const at = (id) => best.steps.find((x) => x.recipe.id === id).cityId;
+  assert.equal(at('T4_METALBAR'), 'thetford');
+  assert.equal(at('T4_LEATHER'), 'martlock');
+  assert.equal(at('T4_MAIN_SWORD'), 'lymhurst');
+  assert.ok(best.buyCost < one.buyCost, 'a better return rate buys fewer materials');
+  assert.equal(best.legs.length, 2);
+  assert.ok(best.legs.every((l) => l.to === 'lymhurst'));
+  assert.ok(best.legs.every((l) => l.weight > 0 && l.trips >= 1));
+});
+
+test('the weight is the game’s and the price of a ride is yours', () => {
+  const items = { ...data.items, ...raw.items };
+  // items.xml gives a steel bar 0.51 and a broadsword 5.1.
+  assert.equal(items.T4_METALBAR.weight, 0.51);
+  assert.equal(items.T4_MAIN_SWORD.weight, 5.1);
+
+  const lines = [{ id: 'T4_METALBAR', qty: 1000 }, { id: 'T4_MAIN_SWORD', qty: 10 }];
+  const free = haulOf(lines, { items });
+  assert.equal(Math.round(free.weight), Math.round(1000 * 0.51 + 10 * 5.1));
+  assert.equal(free.cost, 0, 'nothing is charged until you say what a ride costs');
+  assert.equal(free.trips, null, 'and no trips until you say what you can carry');
+  // Heaviest first, so the list opens with what actually fills the bags.
+  assert.equal(free.items[0].id, 'T4_METALBAR');
+
+  const paid = haulOf(lines, { items, carryWeight: 200, haulSilverPerWeight: 5 });
+  assert.equal(paid.trips, Math.ceil(free.weight / 200));
+  assert.equal(Math.round(paid.cost), Math.round(free.weight * 5));
+
+  // An item with no published weight is not a free ride, it is an unknown,
+  // and it simply does not add to the load rather than counting as zero kilos
+  // of something real.
+  assert.equal(haulOf([{ id: 'NOT_A_REAL_ITEM', qty: 99 }], { items }).weight, 0);
+});
+
+/* ------------------------------------------------ what quality cannot do */
+
+test('a tool can never come out above plain, so it is never quoted an uplift', () => {
+  // items.xml pins 72 recipes at maxqualitylevel="1" - every tool and every
+  // piece of gathering gear.
+  const pick = recipeOf('T4_2H_TOOL_PICK');
+  assert.ok(pick);
+  assert.equal(pick.maxQuality, 1);
+  assert.equal(recipeOf('T4_MAIN_SWORD').maxQuality, undefined, 'a sword is not capped');
+
+  const s = {
+    ...ctx().settings,
+    nodeLevels: { CRAFT_TOOL: 100, CRAFT_TOOL_PICK: 100 },
+  };
+  const capped = mixFor('T4_2H_TOOL_PICK', s, 1);
+  assert.equal(capped.mix[1], 1, 'all of it is plain');
+  assert.equal(capped.mix[5], 0);
+  // Even a mix you typed in yourself cannot conjure a quality the item has no
+  // room for.
+  const forced = mixFor('T4_2H_TOOL_PICK',
+    { ...s, qualityMix: { 1: 10, 5: 90 } }, 1);
+  assert.equal(forced.mix[5], 0);
+  assert.equal(forced.mix[1], 1);
 });

@@ -534,10 +534,15 @@ export function qualityPoints(itemId, settings) {
  * crafting station will tell you the truth about your own character and this
  * cannot.
  */
-export function qualityMix(points, settings) {
+export function qualityMix(points, settings, maxQuality = 5) {
   const table = settings.quality?.weights
     || { 1: 689, 2: 250, 3: 50, 4: 10, 5: 1 };
-  const base = QUALITY_LEVELS.map((q) => Number(table[q]) || 0);
+  /* Some things can never come out above plain. items.xml pins 72 recipes
+   * at maxqualitylevel="1" - every tool and every piece of gathering gear -
+   * and quoting those an uplift is money that cannot be made. */
+  const cap = Math.max(1, Math.min(5, Number(maxQuality) || 5));
+  if (cap <= 1) return { 1: 1, 2: 0, 3: 0, 4: 0, 5: 0 };
+  const base = QUALITY_LEVELS.map((q) => (q <= cap ? Number(table[q]) || 0 : 0));
   const upper = base.slice(1).reduce((a, b) => a + b, 0);
   const add = Math.max(0, Number(points) || 0);
   const weights = base.map((w, i) => (i === 0 || upper <= 0 ? w : w + add * (w / upper)));
@@ -548,16 +553,18 @@ export function qualityMix(points, settings) {
 }
 
 /** The mix a plan is really using: yours if you set one, the model's if not. */
-export function mixFor(itemId, settings) {
-  const own = settings.qualityMix;
-  if (own && QUALITY_LEVELS.some((q) => Number(own[q]) > 0)) {
-    const total = QUALITY_LEVELS.reduce((t, q) => t + (Number(own[q]) || 0), 0) || 1;
-    const mix = {};
-    for (const q of QUALITY_LEVELS) mix[q] = (Number(own[q]) || 0) / total;
-    return { mix, source: 'yours', points: qualityPoints(itemId, settings).total };
-  }
+export function mixFor(itemId, settings, maxQuality = 5) {
+  const cap = Math.max(1, Math.min(5, Number(maxQuality) || 5));
   const points = qualityPoints(itemId, settings).total;
-  return { mix: qualityMix(points, settings), source: 'model', points };
+  const own = settings.qualityMix;
+  if (cap > 1 && own && QUALITY_LEVELS.some((q) => Number(own[q]) > 0)) {
+    const kept = QUALITY_LEVELS.filter((q) => q <= cap);
+    const total = kept.reduce((t, q) => t + (Number(own[q]) || 0), 0) || 1;
+    const mix = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    for (const q of kept) mix[q] = (Number(own[q]) || 0) / total;
+    return { mix, source: 'yours', points, cap };
+  }
+  return { mix: qualityMix(points, settings, cap), source: 'model', points, cap };
 }
 
 /**
@@ -580,6 +587,94 @@ export function blendedPrice(itemId, mix, priceAt) {
     value += share * (at || plain);
   }
   return { value, guessed, plain };
+}
+
+/* -------------------------------------------------------- the haul ----- */
+
+/**
+ * Where a given craft is best done.
+ *
+ * A city gives +18 to everything and +15 more to the few categories it
+ * specialises in, or +40 to a refining category. Those are different cities:
+ * bars are smelted in Thetford and swords are forged in Lymhurst, so a sword
+ * made of your own bars is two cities whether or not you admit it.
+ */
+export function bestCityFor(category, settings) {
+  const cities = settings.cities || [];
+  let best = null;
+  for (const c of cities) {
+    if (c.craftOnly === true && !c.craftSpecialties) continue;
+    const b = cityBonus(c, category, settings);
+    if (!best || b.total > best.total) best = { city: c, total: b.total };
+  }
+  return best?.city || cityFor(settings);
+}
+
+/** What one of these weighs, where the game says. */
+export const weightOf = (id, settings) =>
+  Number(settings.items?.[id]?.weight) || 0;
+
+/**
+ * What a pile of things weighs, and what moving it costs you.
+ *
+ * Weight is the game's; what you can carry is not \u2014 that is your mount and
+ * your bags, which the dumps do not publish \u2014 and neither is what a trip is
+ * worth to you. So the load is worked out and the rate is yours: leave it at
+ * zero and you are told the weight and the number of trips without a silver
+ * figure being invented for them.
+ */
+export function haulOf(lines, settings) {
+  const perTrip = Math.max(0, Number(settings.carryWeight) || 0);
+  const rate = Math.max(0, Number(settings.haulSilverPerWeight) || 0);
+  let weight = 0;
+  const items = [];
+  for (const { id, qty } of lines) {
+    const each = weightOf(id, settings);
+    const w = each * (Number(qty) || 0);
+    if (w <= 0) continue;
+    weight += w;
+    items.push({ id, qty, each, weight: w });
+  }
+  items.sort((a, b) => b.weight - a.weight);
+  const trips = perTrip > 0 ? Math.ceil(weight / perTrip) : null;
+  return { weight, trips, perTrip, rate, cost: weight * rate, items };
+}
+
+/**
+ * What has to move, and where to.
+ *
+ * Every step happens in some city. A step whose output feeds a step in a
+ * different city means carrying that output between the two, and so does
+ * anything you buy somewhere other than where you use it. This lists the legs
+ * so the weight is on screen rather than left as an exercise.
+ */
+function haulLegs(steps, bought, settings) {
+  const madeIn = new Map();
+  for (const s of steps) madeIn.set(s.recipe.id, s.cityId);
+
+  const legs = new Map();
+  const add = (from, to, id, qty) => {
+    if (!from || !to || from === to || !(qty > 0)) return;
+    const key = `${from}>${to}`;
+    const at = legs.get(key) || { from, to, items: new Map() };
+    at.items.set(id, (at.items.get(id) || 0) + qty);
+    legs.set(key, at);
+  };
+
+  for (const step of steps) {
+    for (const i of step.batch.inputs) {
+      const qty = i.net * step.crafts;
+      // Something you made elsewhere has to travel; something you bought is
+      // assumed bought where it is used, because that is what a market is.
+      const from = madeIn.get(i.id);
+      if (from) add(from, step.cityId, i.id, qty);
+    }
+  }
+
+  return [...legs.values()].map((leg) => {
+    const lines = [...leg.items.entries()].map(([id, qty]) => ({ id, qty }));
+    return { from: leg.from, to: leg.to, ...haulOf(lines, settings) };
+  }).sort((a, b) => b.weight - a.weight);
 }
 
 /* ------------------------------------------------- crafting to order ---- */
@@ -612,9 +707,14 @@ export function craftPnL(recipeId, {
   // right for a potion and wrong for a sword.
   sellPriceAt = null, sellMix = null,
   settings, cityId, specLevel, sellInstant = false, maxDepth = 6,
+  // Where each step happens. Give it a function and every step can sit in
+  // the city that is best for its own category, which is what anybody
+  // refining their own bars actually does.
+  cityOf = null,
 }) {
   const top = recipeOf(recipeId);
   if (!top) return null;
+  const placeOf = (recipe) => (cityOf ? cityOf(recipe) : cityId);
 
   const steps = [];
   const stepBy = new Map();      // the same bar can be wanted by two things
@@ -645,7 +745,10 @@ export function craftPnL(recipeId, {
       return null;
     }
 
-    const batch = craftBatch(recipe, { priceOf, costOf, settings, cityId, specLevel });
+    const where = placeOf(recipe);
+    const batch = craftBatch(recipe, {
+      priceOf, costOf, settings, cityId: where, specLevel,
+    });
     const crafts = units / (batch.made || 1);
     focus += batch.focus * crafts;
     const fee = ((recipe.silver || 0) + batch.usageFee) * crafts;
@@ -659,7 +762,7 @@ export function craftPnL(recipeId, {
       at.fee += fee;
     } else {
       const step = {
-        recipe, batch, crafts, made: units, depth,
+        recipe, batch, crafts, made: units, depth, cityId: where,
         focus: batch.focus * crafts, fee,
       };
       stepBy.set(recipe.id, step);
@@ -674,13 +777,16 @@ export function craftPnL(recipeId, {
     return batch;
   };
 
-  const topBatch = craftBatch(top, { priceOf, costOf, settings, cityId, specLevel });
+  const topCity = placeOf(top);
+  const topBatch = craftBatch(top, {
+    priceOf, costOf, settings, cityId: topCity, specLevel,
+  });
   const crafts = qty / (topBatch.made || 1);
   focus += topBatch.focus * crafts;
   const topFee = ((top.silver || 0) + topBatch.usageFee) * crafts;
   fees += topFee;
   const topStep = {
-    recipe: top, batch: topBatch, crafts, made: qty, depth: 0,
+    recipe: top, batch: topBatch, crafts, made: qty, depth: 0, cityId: topCity,
     focus: topBatch.focus * crafts, fee: topFee, target: true,
   };
   stepBy.set(top.id, topStep);
@@ -714,6 +820,9 @@ export function craftPnL(recipeId, {
     // Deepest first, so the list reads in the order you would actually do it.
     steps: steps.slice().sort((a, b) => b.depth - a.depth || a.recipe.id.localeCompare(b.recipe.id)),
     buys: Object.values(bought).sort((a, b) => b.cost - a.cost || b.qty - a.qty),
+    // Which cities this run touches, and what has to be carried into each.
+    // A step done somewhere else is a step whose output you have to move.
+    legs: haulLegs(steps, bought, settings),
     focus, fees, buyCost, cost,
     gross, tax, taxPaid: gross - revenue, revenue, profit,
     margin: revenue > 0 ? profit / revenue : 0,
@@ -1474,6 +1583,29 @@ export function simulateCycle(plan, data, ctx) {
     // Left over: what you carry into the next cycle, and what the cap ate.
     focusCarried, focusWasted,
     farmLines, craftLines, sales, stock, stockValue, balance, pool, stockCap,
+    /* What the cycle makes you carry. You farm where the bonus is and you
+     * craft where the specialty is, and those are rarely the same city, so
+     * the harvest has to travel. The weight is the game's; whether that is a
+     * ride or a bill is yours. */
+    legs: (() => {
+      const to = s.craftCity;
+      const by = new Map();
+      for (const line of farmLines) {
+        const from = line.row.cityId || s.farmCity;
+        if (!from || from === to) continue;
+        // Only what the crafting actually gets through has to travel; what
+        // you leave on the pile stays where it grew.
+        const used = Math.min(line.produced, consumed[line.itemId] || 0);
+        if (!(used > 0)) continue;
+        const at = by.get(from) || [];
+        at.push({ id: line.itemId, qty: used });
+        by.set(from, at);
+      }
+      return [...by.entries()]
+        .map(([from, lines]) => ({ from, to, ...haulOf(lines, s) }))
+        .filter((leg) => leg.weight > 0)
+        .sort((a, b) => b.weight - a.weight);
+    })(),
     // Your shopping list, biggest bill first.
     buys: Object.entries(bought)
       .map(([id, x]) => ({ id, ...x }))

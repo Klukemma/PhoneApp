@@ -121,6 +121,21 @@ export function me() {
         <div class="section-head"><h2>How you play</h2></div>
         ${row('cycle', '\u{1F504}', `${s.cycleDays}-day cycle`,
           `${s.farmDays} farming, ${s.cycleDays - s.farmDays} idle, then craft`)}
+        <div class="two" style="margin:8px 0">
+          <div class="field"><label>What you can carry</label>
+            <input type="number" data-num="carryWeight" inputmode="numeric" min="0"
+              step="50" value="${s.carryWeight || ''}" placeholder="0">
+            <div class="hint">Kilos a trip, mount and bags included.</div></div>
+          <div class="field"><label>What a kilo costs to move</label>
+            <input type="number" data-num="haulSilverPerWeight" inputmode="decimal"
+              min="0" step="1" value="${s.haulSilverPerWeight || ''}" placeholder="0">
+            <div class="hint">Silver. Zero if you ride it yourself.</div></div>
+        </div>
+        <div class="hint" style="margin:-4px 0 10px">Weight is the game's
+          number and it is already in here. What you can carry and what a ride
+          is worth to you are published nowhere, so they are yours — left at
+          zero the plans still tell you the load, they just do not put a price
+          on it.</div>
         ${row('price-source', '\u{1F4E1}', `Prices from ${esc(s.priceCity)}`,
           `On ${esc(serverName(s.server))} · tap to change server or city`)}
         <div class="card" style="margin-top:8px">

@@ -8,8 +8,8 @@
 // Black Market at the end of it.
 
 import {
-  QUALITY_LEVELS, craftPnL, cityBonus, cityFor, focusEfficiency, mixFor,
-  specFor,
+  QUALITY_LEVELS, bestCityFor, craftPnL, cityBonus, cityFor, focusEfficiency,
+  mixFor, specFor,
 } from './calc.js';
 import {
   DATA, GEAR, bmPriceOf, costOf, loadEquipment, priceOf, qBmPriceOf, qPriceOf,
@@ -150,7 +150,7 @@ export function currentRun() {
    * the bench at one grade, so asking for a mix there would spread a run
    * across four prices that do not exist. */
   const graded = ['weapon', 'armor', 'gear'].includes(groupOf(recipe));
-  const quality = graded ? mixFor(id, state.settings) : null;
+  const quality = graded ? mixFor(id, state.settings, recipe.maxQuality ?? 5) : null;
   const run = craftPnL(id, {
     recipeOf,
     qty: q().qty || 100,
@@ -163,6 +163,13 @@ export function currentRun() {
     sellInstant: sell.instant,
     settings: state.settings,
     cityId: state.settings.craftCity,
+    /* Refining is specialised in a different city from smithing, so a sword
+     * made of your own bars is genuinely two cities. Either you accept that
+     * and ride between them, or you do the lot in one place and pay for it in
+     * materials. The switch is the whole multi-city question in one tap. */
+    cityOf: state.settings.craftWhere === 'best'
+      ? (r) => bestCityFor(r.category, state.settings).id
+      : null,
   });
   return run ? { ...run, sell, quality } : null;
 }
@@ -291,12 +298,53 @@ function runHTML(run, recipe) {
       </div>
     </section>
 
+    ${whereRunHTML(run)}
     ${qualityHTML(run)}
     ${moneyHTML(run)}
     ${makeHTML(run, recipe)}
     ${buysHTML(run)}
     ${stepsHTML(run)}
     ${whereHTML(run, recipe)}`;
+}
+
+/**
+ * Where this run happens, and what that means you are carrying.
+ *
+ * Only worth a card once there is more than one city in it: a run that never
+ * leaves Lymhurst has nothing to say here.
+ */
+function whereRunHTML(run) {
+  const s = state.settings;
+  const cityName = (id) => (s.cities || []).find((c) => c.id === id)?.name || id;
+  const multi = s.craftWhere === 'best';
+  const legs = run.legs || [];
+  return `
+    <section>
+      <div class="section-head"><h2>Where you make it</h2></div>
+      <div class="seg">
+        <button data-where="one" aria-pressed="${!multi}">All in ${esc(cityName(s.craftCity))}</button>
+        <button data-where="best" aria-pressed="${multi}">Best city per step</button>
+      </div>
+      ${legs.length ? `
+        <div class="card" style="margin-top:10px">
+          ${legs.map((leg) => `
+            <div class="bar-row">
+              <span class="n">${esc(cityName(leg.from))} \u2192 ${esc(cityName(leg.to))}</span>
+              <span class="v num">${short(leg.weight)} kg${
+                leg.trips ? ` \u00b7 ${leg.trips} ${leg.trips === 1 ? 'trip' : 'trips'}` : ''}${
+                leg.cost > 0 ? ` \u00b7 ${short(leg.cost)}` : ''}</span></div>`).join('')}
+          <div class="bar-row total"><span class="n">Carried in all</span>
+            <span class="v num">${short(legs.reduce((t, l) => t + l.weight, 0))} kg</span></div>
+        </div>
+        <div class="hint">What each step is worth is the city's; what you can
+          carry and what a ride is worth to you are not published anywhere, so
+          they are yours to set on the Me screen. ${s.carryWeight
+            ? `At ${short(s.carryWeight)} kg a trip.`
+            : 'Set a carrying capacity and this will count the trips.'}</div>`
+        : `<div class="hint">${multi
+          ? 'Every step is already best made here, so there is nothing to carry.'
+          : 'One city, so nothing moves \u2014 but refining is specialised somewhere other than smithing, so the other option is usually cheaper in materials and dearer in riding.'}</div>`}
+    </section>`;
 }
 
 /**
@@ -410,12 +458,12 @@ function stepsHTML(run) {
         <span class="right">${short(run.focus)} focus</span></div>
       ${run.steps.map((s) => {
         const eff = specFor(state.settings, s.recipe.id);
-        const bonus = cityBonus(cityFor(state.settings, state.settings.craftCity),
+        const bonus = cityBonus(cityFor(state.settings, s.cityId),
           s.recipe.category, state.settings);
-        /* Every step is costed in the one city you picked, because that is
-         * where you are standing. Refining is specialised somewhere other
-         * than weaponsmithing, so when a step would do better elsewhere the
-         * row says where rather than quietly costing it at the flat base. */
+        /* Where this step actually happens, which with "best city per step"
+         * is not the same place for all of them. When it is somewhere that
+         * does not specialise in it, the row names the city that does. */
+        const here = (state.settings.cities || []).find((c) => c.id === s.cityId);
         const better = !bonus.specialises
           ? (state.settings.cities || [])
             .find((c) => cityBonus(c, s.recipe.category, state.settings).specialises)
@@ -430,6 +478,7 @@ function stepsHTML(run) {
               bonus.specialises ? ` · this city's specialty` : ''}${
               s.focus > 0 ? ` · ${short(s.focus)} focus at ${Math.round(eff)} mastery` : ''}${
               s.fee > 0.5 ? ` · ${short(s.fee)} in fees` : ''}${
+              state.settings.craftWhere === 'best' && here ? ` · in ${esc(here.name)}` : ''}${
               better ? ` · better in ${esc(better.name)}` : ''}</span>
           </span>
           <span class="amt">${s.target ? '✓' : ''}</span>
@@ -507,7 +556,8 @@ export function rankCraft() {
     // five different prices, so a ranked list that priced it all as plain
     // would put the wrong things at the top.
     const graded = sellsToBlackMarket(recipe);
-    const quality = graded ? mixFor(recipe.id, state.settings).mix : null;
+    const quality = graded
+      ? mixFor(recipe.id, state.settings, recipe.maxQuality ?? 5).mix : null;
     const market = craftPnL(recipe.id, {
       recipeOf, qty: 1, priceOf, costOf, settings: state.settings,
       sellPriceAt: graded ? qPriceOf : null, sellMix: quality,

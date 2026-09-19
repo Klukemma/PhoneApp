@@ -407,7 +407,7 @@ for _c in REFINE_CATEGORIES:
     GROUP_OF[_c] = "refined"
 
 
-def build_equipment(items, item_value):
+def build_equipment(items, item_value, weights):
     """Weapons, armour, gear and the refining that feeds them.
 
     Kept apart from the farming file on size alone: 6,600 rows against 400.
@@ -423,6 +423,7 @@ def build_equipment(items, item_value):
         if unique and unique not in meta:
             meta[unique] = {
                 "name": pretty(unique), "tier": tier_of(unique), "cat": group,
+                **({"weight": weights[unique]} if unique in weights else {}),
             }
 
     for el in items.iter():
@@ -457,6 +458,11 @@ def build_equipment(items, item_value):
             register(rid, group)
             amount = int(rreq.get("amountcrafted", 1))
             silver = int(float(rreq.get("silver", 0)))
+            # How good this can ever come out. 1,658 items can reach a
+            # masterpiece and 412 are pinned at plain - every tool and every
+            # piece of gathering gear among them - so quoting those a quality
+            # uplift is money that cannot be made.
+            max_q = int(el.get("maxqualitylevel", 5) or 5)
             # Six thousand rows, so anything the app can work out for itself
             # is left out: the name and tier are in `items`, the group is in
             # `groups` keyed by category, and a field equal to its default is
@@ -469,6 +475,7 @@ def build_equipment(items, item_value):
                 **({"refine": True} if refine else {}),
                 **({"amount": amount} if amount != 1 else {}),
                 **({"silver": silver} if silver else {}),
+                **({"maxQuality": max_q} if max_q != 5 else {}),
                 "focus": int(float(rreq.get("craftingfocus", 0))),
                 "itemValue": round(
                     sum(i["count"] * item_value(i["id"]) for i in inputs)
@@ -523,12 +530,23 @@ def main() -> None:
         or s.get("shopsubcategory1") in ("farm", "herbgarden", "pasture")
     }
 
+    # What a single one weighs. Hauling between cities is the thing that
+    # makes a farm bonus in another city worth having or not, and weight is
+    # the only part of that the game publishes - what you can carry depends
+    # on your mount and your bags, which it does not.
+    weights = {
+        el.get("uniquename"): float(el.get("weight"))
+        for el in items.iter()
+        if el.get("uniquename") and el.get("weight")
+    }
+
     item_meta = {}
 
     def register(unique, category):
         if unique and unique not in item_meta:
             item_meta[unique] = {
                 "name": pretty(unique), "tier": tier_of(unique), "cat": category,
+                **({"weight": weights[unique]} if unique in weights else {}),
             }
 
     # --- plants -----------------------------------------------------------
@@ -839,7 +857,7 @@ def main() -> None:
     print(f"\nWrote {OUT.relative_to(HERE.parent.parent)}")
 
     # --- weapons, armour and refining, in their own file ------------------
-    equip_recipes, equip_items = build_equipment(items, item_value)
+    equip_recipes, equip_items = build_equipment(items, item_value, weights)
     equip_nodes = build_focus_nodes(("CRAFT_",))
     equip = {
         "source": OUT.name + " companion (items.xml, achievements.xml)",

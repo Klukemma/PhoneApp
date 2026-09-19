@@ -201,6 +201,7 @@ export function plan() {
           || empty(EMOJI.crop, 'No plots yet. Add what you are growing.')}
       </section>
 
+      ${haulCard(sim)}
       ${buyCard(sim)}
 
       <section>
@@ -765,6 +766,44 @@ function missingPrices() {
  * row is tappable, because a bought ingredient with no price is the fastest
  * way to get a plan that looks better than it is.
  */
+/**
+ * What the cycle makes you carry.
+ *
+ * You farm where the bonus is and you craft where the specialty is, and those
+ * are rarely the same city \u2014 so the harvest has to travel, and until now the
+ * plan never said so. Only what the crafting actually gets through makes the
+ * trip; what stays on the pile stays where it grew.
+ */
+function haulCard(sim) {
+  const legs = sim.legs || [];
+  if (!legs.length) return '';
+  const s = state.settings;
+  const total = legs.reduce((t, l) => t + l.weight, 0);
+  const cost = legs.reduce((t, l) => t + l.cost, 0);
+  return `
+    <section>
+      <div class="section-head"><h2>Carry \u00b7 to ${esc(cityName(s.craftCity))}</h2>
+        <span class="right num">${short(total)} kg</span></div>
+      ${legs.map((leg) => `
+        <div class="row">
+          <span class="ico">\u{1F40E}</span>
+          <span class="body">
+            <span class="title">${esc(cityName(leg.from))} \u2192 ${esc(cityName(leg.to))}</span>
+            <span class="meta">${leg.items.slice(0, 3).map((i) =>
+              `${short(i.qty)} \u00d7 ${esc(nameOf(i.id))}`).join(', ')}${
+              leg.items.length > 3 ? ` and ${leg.items.length - 3} more` : ''}</span>
+          </span>
+          <span class="amt num">${short(leg.weight)} kg${
+            leg.trips ? `<small>${leg.trips} ${leg.trips === 1 ? 'trip' : 'trips'}</small>` : ''}</span>
+        </div>`).join('')}
+      <div class="hint">${s.carryWeight
+        ? `At ${short(s.carryWeight)} kg a trip.`
+        : 'Set what you can carry on the Me screen and this will count the trips.'}${
+        cost > 0 ? ` Costing ${short(cost)} to move, which is not in the profit above.`
+          : ' Weight is the game\u2019s; what a ride is worth to you is yours to say.'}</div>
+    </section>`;
+}
+
 function buyCard(sim) {
   if (!sim.buys.length) return '';
   const total = sim.buys.reduce((t, b) => t + b.cost, 0);

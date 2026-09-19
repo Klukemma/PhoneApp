@@ -1,7 +1,7 @@
 // Cache-first shell so the app opens instantly and works with no signal.
 // Bump CACHE when the shell or the game data changes.
 
-const CACHE = 'albionfarm-v27';  // v27: item quality, and three tabs instead of four
+const CACHE = 'albionfarm-v28';  // v28: many cities and the haul between them
 const SHELL = [
   './', './index.html', './manifest.webmanifest',
   './css/app.css',

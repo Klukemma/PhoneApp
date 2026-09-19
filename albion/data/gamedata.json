@@ -14443,467 +14443,560 @@
   "T1_FARM_CARROT_SEED": {
    "name": "Carrot Seeds",
    "tier": 1,
-   "cat": "seed"
+   "cat": "seed",
+   "weight": 0.1
   },
   "T1_CARROT": {
    "name": "Carrots",
    "tier": 1,
-   "cat": "crop"
+   "cat": "crop",
+   "weight": 0.6
   },
   "T2_FARM_BEAN_SEED": {
    "name": "Bean Seeds",
    "tier": 2,
-   "cat": "seed"
+   "cat": "seed",
+   "weight": 0.2
   },
   "T2_BEAN": {
    "name": "Beans",
    "tier": 2,
-   "cat": "crop"
+   "cat": "crop",
+   "weight": 0.6
   },
   "T3_FARM_WHEAT_SEED": {
    "name": "Wheat Seeds",
    "tier": 3,
-   "cat": "seed"
+   "cat": "seed",
+   "weight": 0.2
   },
   "T3_WHEAT": {
    "name": "Sheaf of Wheat",
    "tier": 3,
-   "cat": "crop"
+   "cat": "crop",
+   "weight": 0.6
   },
   "T4_FARM_TURNIP_SEED": {
    "name": "Turnip Seeds",
    "tier": 4,
-   "cat": "seed"
+   "cat": "seed",
+   "weight": 0.3
   },
   "T4_TURNIP": {
    "name": "Turnips",
    "tier": 4,
-   "cat": "crop"
+   "cat": "crop",
+   "weight": 0.6
   },
   "T5_FARM_CABBAGE_SEED": {
    "name": "Cabbage Seeds",
    "tier": 5,
-   "cat": "seed"
+   "cat": "seed",
+   "weight": 0.5
   },
   "T5_CABBAGE": {
    "name": "Cabbage",
    "tier": 5,
-   "cat": "crop"
+   "cat": "crop",
+   "weight": 0.6
   },
   "T6_FARM_POTATO_SEED": {
    "name": "Potato Seeds",
    "tier": 6,
-   "cat": "seed"
+   "cat": "seed",
+   "weight": 0.8
   },
   "T6_POTATO": {
    "name": "Potatoes",
    "tier": 6,
-   "cat": "crop"
+   "cat": "crop",
+   "weight": 0.6
   },
   "T7_FARM_CORN_SEED": {
    "name": "Corn Seeds",
    "tier": 7,
-   "cat": "seed"
+   "cat": "seed",
+   "weight": 1.1
   },
   "T7_CORN": {
    "name": "Bundle of Corn",
    "tier": 7,
-   "cat": "crop"
+   "cat": "crop",
+   "weight": 0.6
   },
   "T8_FARM_PUMPKIN_SEED": {
    "name": "Pumpkin Seeds",
    "tier": 8,
-   "cat": "seed"
+   "cat": "seed",
+   "weight": 1.7
   },
   "T8_PUMPKIN": {
    "name": "Pumpkin",
    "tier": 8,
-   "cat": "crop"
+   "cat": "crop",
+   "weight": 0.6
   },
   "T2_FARM_AGARIC_SEED": {
    "name": "Arcane Agaric Seeds",
    "tier": 2,
-   "cat": "seed"
+   "cat": "seed",
+   "weight": 0.2
   },
   "T2_AGARIC": {
    "name": "Arcane Agaric",
    "tier": 2,
-   "cat": "herb"
+   "cat": "herb",
+   "weight": 0.6
   },
   "T3_FARM_COMFREY_SEED": {
    "name": "Brightleaf Comfrey Seeds",
    "tier": 3,
-   "cat": "seed"
+   "cat": "seed",
+   "weight": 0.2
   },
   "T3_COMFREY": {
    "name": "Brightleaf Comfrey",
    "tier": 3,
-   "cat": "herb"
+   "cat": "herb",
+   "weight": 0.6
   },
   "T4_FARM_BURDOCK_SEED": {
    "name": "Crenellated Burdock Seeds",
    "tier": 4,
-   "cat": "seed"
+   "cat": "seed",
+   "weight": 0.3
   },
   "T4_BURDOCK": {
    "name": "Crenellated Burdock",
    "tier": 4,
-   "cat": "herb"
+   "cat": "herb",
+   "weight": 0.6
   },
   "T5_FARM_TEASEL_SEED": {
    "name": "Dragon Teasel Seeds",
    "tier": 5,
-   "cat": "seed"
+   "cat": "seed",
+   "weight": 0.5
   },
   "T5_TEASEL": {
    "name": "Dragon Teasel",
    "tier": 5,
-   "cat": "herb"
+   "cat": "herb",
+   "weight": 0.6
   },
   "T6_FARM_FOXGLOVE_SEED": {
    "name": "Elusive Foxglove Seeds",
    "tier": 6,
-   "cat": "seed"
+   "cat": "seed",
+   "weight": 0.8
   },
   "T6_FOXGLOVE": {
    "name": "Elusive Foxglove",
    "tier": 6,
-   "cat": "herb"
+   "cat": "herb",
+   "weight": 0.6
   },
   "T7_FARM_MULLEIN_SEED": {
    "name": "Firetouched Mullein Seeds",
    "tier": 7,
-   "cat": "seed"
+   "cat": "seed",
+   "weight": 1.1
   },
   "T7_MULLEIN": {
    "name": "Firetouched Mullein",
    "tier": 7,
-   "cat": "herb"
+   "cat": "herb",
+   "weight": 0.6
   },
   "T8_FARM_YARROW_SEED": {
    "name": "Ghoul Yarrow Seeds",
    "tier": 8,
-   "cat": "seed"
+   "cat": "seed",
+   "weight": 1.7
   },
   "T8_YARROW": {
    "name": "Ghoul Yarrow",
    "tier": 8,
-   "cat": "herb"
+   "cat": "herb",
+   "weight": 0.6
   },
   "T8_FARM_DRAKE_BABY": {
    "name": "Firewing Drake Egg",
    "tier": 8,
-   "cat": "baby"
+   "cat": "baby",
+   "weight": 3.0
   },
   "T8_FARM_DRAKE_GROWN": {
    "name": "Tame Firewing Drake",
    "tier": 8,
-   "cat": "animal"
+   "cat": "animal",
+   "weight": 15.0
   },
   "T3_FARM_OX_BABY": {
    "name": "Journeyman's Ox Calf",
    "tier": 3,
-   "cat": "baby"
+   "cat": "baby",
+   "weight": 1.5
   },
   "T3_FARM_OX_GROWN": {
    "name": "Journeyman's Ox",
    "tier": 3,
-   "cat": "animal"
+   "cat": "animal",
+   "weight": 15.0
   },
   "T4_FARM_OX_BABY": {
    "name": "Adept's Ox Calf",
    "tier": 4,
-   "cat": "baby"
+   "cat": "baby",
+   "weight": 1.5
   },
   "T4_FARM_OX_GROWN": {
    "name": "Adept's Ox",
    "tier": 4,
-   "cat": "animal"
+   "cat": "animal",
+   "weight": 15.0
   },
   "T5_FARM_OX_BABY": {
    "name": "Expert's Ox Calf",
    "tier": 5,
-   "cat": "baby"
+   "cat": "baby",
+   "weight": 1.5
   },
   "T5_FARM_OX_GROWN": {
    "name": "Expert's Ox",
    "tier": 5,
-   "cat": "animal"
+   "cat": "animal",
+   "weight": 15.0
   },
   "T6_FARM_OX_BABY": {
    "name": "Master's Ox Calf",
    "tier": 6,
-   "cat": "baby"
+   "cat": "baby",
+   "weight": 1.5
   },
   "T6_FARM_OX_GROWN": {
    "name": "Master's Ox",
    "tier": 6,
-   "cat": "animal"
+   "cat": "animal",
+   "weight": 15.0
   },
   "T7_FARM_OX_BABY": {
    "name": "Grandmaster's Ox Calf",
    "tier": 7,
-   "cat": "baby"
+   "cat": "baby",
+   "weight": 1.5
   },
   "T7_FARM_OX_GROWN": {
    "name": "Grandmaster's Ox",
    "tier": 7,
-   "cat": "animal"
+   "cat": "animal",
+   "weight": 15.0
   },
   "T8_FARM_OX_BABY": {
    "name": "Elder's Ox Calf",
    "tier": 8,
-   "cat": "baby"
+   "cat": "baby",
+   "weight": 1.5
   },
   "T8_FARM_OX_GROWN": {
    "name": "Elder's Ox",
    "tier": 8,
-   "cat": "animal"
+   "cat": "animal",
+   "weight": 15.0
   },
   "T3_FARM_HORSE_BABY": {
    "name": "Journeyman's Foal",
    "tier": 3,
-   "cat": "baby"
+   "cat": "baby",
+   "weight": 1.5
   },
   "T3_FARM_HORSE_GROWN": {
    "name": "Journeyman's Horse",
    "tier": 3,
-   "cat": "animal"
+   "cat": "animal",
+   "weight": 15.0
   },
   "T4_FARM_HORSE_BABY": {
    "name": "Adept's Foal",
    "tier": 4,
-   "cat": "baby"
+   "cat": "baby",
+   "weight": 1.5
   },
   "T4_FARM_HORSE_GROWN": {
    "name": "Adept's Horse",
    "tier": 4,
-   "cat": "animal"
+   "cat": "animal",
+   "weight": 15.0
   },
   "T5_FARM_HORSE_BABY": {
    "name": "Expert's Foal",
    "tier": 5,
-   "cat": "baby"
+   "cat": "baby",
+   "weight": 1.5
   },
   "T5_FARM_HORSE_GROWN": {
    "name": "Expert's Horse",
    "tier": 5,
-   "cat": "animal"
+   "cat": "animal",
+   "weight": 15.0
   },
   "T6_FARM_HORSE_BABY": {
    "name": "Master's Foal",
    "tier": 6,
-   "cat": "baby"
+   "cat": "baby",
+   "weight": 1.5
   },
   "T6_FARM_HORSE_GROWN": {
    "name": "Master's Horse",
    "tier": 6,
-   "cat": "animal"
+   "cat": "animal",
+   "weight": 15.0
   },
   "T7_FARM_HORSE_BABY": {
    "name": "Grandmaster's Foal",
    "tier": 7,
-   "cat": "baby"
+   "cat": "baby",
+   "weight": 1.5
   },
   "T7_FARM_HORSE_GROWN": {
    "name": "Grandmaster's Horse",
    "tier": 7,
-   "cat": "animal"
+   "cat": "animal",
+   "weight": 15.0
   },
   "T8_FARM_HORSE_BABY": {
    "name": "Elder's Foal",
    "tier": 8,
-   "cat": "baby"
+   "cat": "baby",
+   "weight": 1.5
   },
   "T8_FARM_HORSE_GROWN": {
    "name": "Elder's Horse",
    "tier": 8,
-   "cat": "animal"
+   "cat": "animal",
+   "weight": 15.0
   },
   "T6_FARM_DIREWOLF_BABY": {
    "name": "Direwolf Pup",
    "tier": 6,
-   "cat": "baby"
+   "cat": "baby",
+   "weight": 3.0
   },
   "T6_FARM_DIREWOLF_GROWN": {
    "name": "Tame Direwolf",
    "tier": 6,
-   "cat": "animal"
+   "cat": "animal",
+   "weight": 30.0
   },
   "T7_FARM_DIREBOAR_BABY": {
    "name": "Direboar Piglet",
    "tier": 7,
-   "cat": "baby"
+   "cat": "baby",
+   "weight": 4.5
   },
   "T7_FARM_DIREBOAR_GROWN": {
    "name": "Tame Direboar",
    "tier": 7,
-   "cat": "animal"
+   "cat": "animal",
+   "weight": 45.0
   },
   "T8_FARM_DIREBEAR_BABY": {
    "name": "Direbear Cub",
    "tier": 8,
-   "cat": "baby"
+   "cat": "baby",
+   "weight": 6.0
   },
   "T8_FARM_DIREBEAR_GROWN": {
    "name": "Tame Direbear",
    "tier": 8,
-   "cat": "animal"
+   "cat": "animal",
+   "weight": 60.0
   },
   "T7_FARM_SWAMPDRAGON_BABY": {
    "name": "Swamp Dragon Pup",
    "tier": 7,
-   "cat": "baby"
+   "cat": "baby",
+   "weight": 4.5
   },
   "T7_FARM_SWAMPDRAGON_GROWN": {
    "name": "Tame Swamp Dragon",
    "tier": 7,
-   "cat": "animal"
+   "cat": "animal",
+   "weight": 45.0
   },
   "T8_FARM_MAMMOTH_BABY": {
    "name": "Mammoth Calf",
    "tier": 8,
-   "cat": "baby"
+   "cat": "baby",
+   "weight": 6.0
   },
   "T8_FARM_MAMMOTH_GROWN": {
    "name": "Tame Mammoth",
    "tier": 8,
-   "cat": "animal"
+   "cat": "animal",
+   "weight": 60.0
   },
   "T5_FARM_COUGAR_BABY": {
    "name": "Swiftclaw Cub",
    "tier": 5,
-   "cat": "baby"
+   "cat": "baby",
+   "weight": 2.0
   },
   "T5_FARM_COUGAR_GROWN": {
    "name": "Tame Swiftclaw",
    "tier": 5,
-   "cat": "animal"
+   "cat": "animal",
+   "weight": 15.0
   },
   "T8_FARM_DIREWOLF_BABY": {
    "name": "Ghostwolf Pup",
    "tier": 8,
-   "cat": "baby"
+   "cat": "baby",
+   "weight": 6.0
   },
   "T8_FARM_DIREWOLF_GROWN": {
    "name": "Tame Ghostwolf",
    "tier": 8,
-   "cat": "animal"
+   "cat": "animal",
+   "weight": 60.0
   },
   "T4_FARM_GIANTSTAG_BABY": {
    "name": "Adept's Fawn",
    "tier": 4,
-   "cat": "baby"
+   "cat": "baby",
+   "weight": 1.5
   },
   "T4_FARM_GIANTSTAG_GROWN": {
    "name": "Adept's Tame Giant Stag",
    "tier": 4,
-   "cat": "animal"
+   "cat": "animal",
+   "weight": 15.0
   },
   "T6_FARM_GIANTSTAG_BABY": {
    "name": "Master's Fawn",
    "tier": 6,
-   "cat": "baby"
+   "cat": "baby",
+   "weight": 3.0
   },
   "T6_FARM_GIANTSTAG_GROWN": {
    "name": "Master's Tame Giant Stag",
    "tier": 6,
-   "cat": "animal"
+   "cat": "animal",
+   "weight": 30.0
   },
   "T3_EGG": {
    "name": "Hen Eggs",
    "tier": 3,
-   "cat": "product"
+   "cat": "product",
+   "weight": 0.6
   },
   "T3_FARM_CHICKEN_BABY": {
    "name": "Baby Chickens",
    "tier": 3,
-   "cat": "baby"
+   "cat": "baby",
+   "weight": 0.2
   },
   "T3_FARM_CHICKEN_GROWN": {
    "name": "Chicken",
    "tier": 3,
-   "cat": "animal"
+   "cat": "animal",
+   "weight": 10.83
   },
   "T4_MILK": {
    "name": "Goat's Milk",
    "tier": 4,
-   "cat": "product"
+   "cat": "product",
+   "weight": 0.6
   },
   "T4_FARM_GOAT_BABY": {
    "name": "Kid",
    "tier": 4,
-   "cat": "baby"
+   "cat": "baby",
+   "weight": 0.2
   },
   "T4_FARM_GOAT_GROWN": {
    "name": "Goat",
    "tier": 4,
-   "cat": "animal"
+   "cat": "animal",
+   "weight": 10.83
   },
   "T5_EGG": {
    "name": "Goose Eggs",
    "tier": 5,
-   "cat": "product"
+   "cat": "product",
+   "weight": 0.6
   },
   "T5_FARM_GOOSE_BABY": {
    "name": "Gosling",
    "tier": 5,
-   "cat": "baby"
+   "cat": "baby",
+   "weight": 0.2
   },
   "T5_FARM_GOOSE_GROWN": {
    "name": "Goose",
    "tier": 5,
-   "cat": "animal"
+   "cat": "animal",
+   "weight": 10.83
   },
   "T6_MILK": {
    "name": "Sheep's Milk",
    "tier": 6,
-   "cat": "product"
+   "cat": "product",
+   "weight": 0.6
   },
   "T6_FARM_SHEEP_BABY": {
    "name": "Lamb",
    "tier": 6,
-   "cat": "baby"
+   "cat": "baby",
+   "weight": 0.2
   },
   "T6_FARM_SHEEP_GROWN": {
    "name": "Sheep",
    "tier": 6,
-   "cat": "animal"
+   "cat": "animal",
+   "weight": 10.83
   },
   "T7_FARM_PIG_BABY": {
    "name": "Piglet",
    "tier": 7,
-   "cat": "baby"
+   "cat": "baby",
+   "weight": 0.2
   },
   "T7_FARM_PIG_GROWN": {
    "name": "Pig",
    "tier": 7,
-   "cat": "animal"
+   "cat": "animal",
+   "weight": 10.83
   },
   "T8_MILK": {
    "name": "Cow's Milk",
    "tier": 8,
-   "cat": "product"
+   "cat": "product",
+   "weight": 0.6
   },
   "T8_FARM_COW_BABY": {
    "name": "Calf",
    "tier": 8,
-   "cat": "baby"
+   "cat": "baby",
+   "weight": 0.2
   },
   "T8_FARM_COW_GROWN": {
    "name": "Cow",
    "tier": 8,
-   "cat": "animal"
+   "cat": "animal",
+   "weight": 10.83
   },
   "T2_POTION_HEAL": {
    "name": "Minor Healing Potion",
    "tier": 2,
-   "cat": "potion"
+   "cat": "potion",
+   "weight": 0.1
   },
   "T1_ALCHEMY_EXTRACT_LEVEL1": {
    "name": "Basic Arcane Extract",
    "tier": 1,
-   "cat": "material"
+   "cat": "material",
+   "weight": 1.0
   },
   "T2_POTION_HEAL@1": {
    "name": "Minor Healing Potion",
@@ -14913,7 +15006,8 @@
   "T1_ALCHEMY_EXTRACT_LEVEL2": {
    "name": "Refined Arcane Extract",
    "tier": 1,
-   "cat": "material"
+   "cat": "material",
+   "weight": 1.5
   },
   "T2_POTION_HEAL@2": {
    "name": "Minor Healing Potion",
@@ -14923,7 +15017,8 @@
   "T1_ALCHEMY_EXTRACT_LEVEL3": {
    "name": "Pure Arcane Extract",
    "tier": 1,
-   "cat": "material"
+   "cat": "material",
+   "weight": 2.0
   },
   "T2_POTION_HEAL@3": {
    "name": "Minor Healing Potion",
@@ -14933,7 +15028,8 @@
   "T4_POTION_HEAL": {
    "name": "Healing Potion",
    "tier": 4,
-   "cat": "potion"
+   "cat": "potion",
+   "weight": 0.3
   },
   "T4_POTION_HEAL@1": {
    "name": "Healing Potion",
@@ -14953,12 +15049,14 @@
   "T6_ALCOHOL": {
    "name": "Potato Schnapps",
    "tier": 6,
-   "cat": "material"
+   "cat": "material",
+   "weight": 0.65
   },
   "T6_POTION_HEAL": {
    "name": "Major Healing Potion",
    "tier": 6,
-   "cat": "potion"
+   "cat": "potion",
+   "weight": 0.87
   },
   "T6_POTION_HEAL@1": {
    "name": "Major Healing Potion",
@@ -14978,7 +15076,8 @@
   "T2_POTION_ENERGY": {
    "name": "Minor Energy Potion",
    "tier": 2,
-   "cat": "potion"
+   "cat": "potion",
+   "weight": 0.1
   },
   "T2_POTION_ENERGY@1": {
    "name": "Minor Energy Potion",
@@ -14998,7 +15097,8 @@
   "T4_POTION_ENERGY": {
    "name": "Energy Potion",
    "tier": 4,
-   "cat": "potion"
+   "cat": "potion",
+   "weight": 0.3
   },
   "T4_POTION_ENERGY@1": {
    "name": "Energy Potion",
@@ -15018,7 +15118,8 @@
   "T6_POTION_ENERGY": {
    "name": "Major Energy Potion",
    "tier": 6,
-   "cat": "potion"
+   "cat": "potion",
+   "weight": 0.87
   },
   "T6_POTION_ENERGY@1": {
    "name": "Major Energy Potion",
@@ -15038,7 +15139,8 @@
   "T3_POTION_REVIVE": {
    "name": "Minor Gigantify Potion",
    "tier": 3,
-   "cat": "potion"
+   "cat": "potion",
+   "weight": 0.1
   },
   "T3_POTION_REVIVE@1": {
    "name": "Minor Gigantify Potion",
@@ -15058,7 +15160,8 @@
   "T5_POTION_REVIVE": {
    "name": "Gigantify Potion",
    "tier": 5,
-   "cat": "potion"
+   "cat": "potion",
+   "weight": 0.42
   },
   "T5_POTION_REVIVE@1": {
    "name": "Gigantify Potion",
@@ -15078,12 +15181,14 @@
   "T7_ALCOHOL": {
    "name": "Corn Hooch",
    "tier": 7,
-   "cat": "material"
+   "cat": "material",
+   "weight": 0.65
   },
   "T7_POTION_REVIVE": {
    "name": "Major Gigantify Potion",
    "tier": 7,
-   "cat": "potion"
+   "cat": "potion",
+   "weight": 1.15
   },
   "T7_POTION_REVIVE@1": {
    "name": "Major Gigantify Potion",
@@ -15103,7 +15208,8 @@
   "T3_POTION_STONESKIN": {
    "name": "Minor Resistance Potion",
    "tier": 3,
-   "cat": "potion"
+   "cat": "potion",
+   "weight": 0.1
   },
   "T3_POTION_STONESKIN@1": {
    "name": "Minor Resistance Potion",
@@ -15123,7 +15229,8 @@
   "T5_POTION_STONESKIN": {
    "name": "Resistance Potion",
    "tier": 5,
-   "cat": "potion"
+   "cat": "potion",
+   "weight": 0.42
   },
   "T5_POTION_STONESKIN@1": {
    "name": "Resistance Potion",
@@ -15143,7 +15250,8 @@
   "T7_POTION_STONESKIN": {
    "name": "Major Resistance Potion",
    "tier": 7,
-   "cat": "potion"
+   "cat": "potion",
+   "weight": 1.44
   },
   "T7_POTION_STONESKIN@1": {
    "name": "Major Resistance Potion",
@@ -15163,7 +15271,8 @@
   "T3_POTION_SLOWFIELD": {
    "name": "Minor Sticky Potion",
    "tier": 3,
-   "cat": "potion"
+   "cat": "potion",
+   "weight": 0.1
   },
   "T3_POTION_SLOWFIELD@1": {
    "name": "Minor Sticky Potion",
@@ -15183,7 +15292,8 @@
   "T5_POTION_SLOWFIELD": {
    "name": "Sticky Potion",
    "tier": 5,
-   "cat": "potion"
+   "cat": "potion",
+   "weight": 0.42
   },
   "T5_POTION_SLOWFIELD@1": {
    "name": "Sticky Potion",
@@ -15203,7 +15313,8 @@
   "T7_POTION_SLOWFIELD": {
    "name": "Major Sticky Potion",
    "tier": 7,
-   "cat": "potion"
+   "cat": "potion",
+   "weight": 1.44
   },
   "T7_POTION_SLOWFIELD@1": {
    "name": "Major Sticky Potion",
@@ -15223,7 +15334,8 @@
   "T4_POTION_COOLDOWN": {
    "name": "Minor Poison Potion",
    "tier": 4,
-   "cat": "potion"
+   "cat": "potion",
+   "weight": 0.14
   },
   "T4_POTION_COOLDOWN@1": {
    "name": "Minor Poison Potion",
@@ -15243,7 +15355,8 @@
   "T6_POTION_COOLDOWN": {
    "name": "Poison Potion",
    "tier": 6,
-   "cat": "potion"
+   "cat": "potion",
+   "weight": 0.53
   },
   "T6_POTION_COOLDOWN@1": {
    "name": "Poison Potion",
@@ -15263,12 +15376,14 @@
   "T8_ALCOHOL": {
    "name": "Pumpkin Moonshine",
    "tier": 8,
-   "cat": "material"
+   "cat": "material",
+   "weight": 0.65
   },
   "T8_POTION_COOLDOWN": {
    "name": "Major Poison Potion",
    "tier": 8,
-   "cat": "potion"
+   "cat": "potion",
+   "weight": 1.44
   },
   "T8_POTION_COOLDOWN@1": {
    "name": "Major Poison Potion",
@@ -15288,7 +15403,8 @@
   "T8_POTION_CLEANSE": {
    "name": "Invisibility Potion",
    "tier": 8,
-   "cat": "potion"
+   "cat": "potion",
+   "weight": 1.44
   },
   "T8_POTION_CLEANSE@1": {
    "name": "Invisibility Potion",
@@ -15308,12 +15424,14 @@
   "T3_ALCHEMY_RARE_PANTHER": {
    "name": "Rugged Shadow Claws",
    "tier": 3,
-   "cat": "material"
+   "cat": "material",
+   "weight": 0.05
   },
   "T3_POTION_MOB_RESET": {
    "name": "Minor Calming Potion",
    "tier": 3,
-   "cat": "potion"
+   "cat": "potion",
+   "weight": 0.1
   },
   "T3_POTION_MOB_RESET@1": {
    "name": "Minor Calming Potion",
@@ -15333,12 +15451,14 @@
   "T5_ALCHEMY_RARE_PANTHER": {
    "name": "Fine Shadow Claws",
    "tier": 5,
-   "cat": "material"
+   "cat": "material",
+   "weight": 0.05
   },
   "T5_POTION_MOB_RESET": {
    "name": "Calming Potion",
    "tier": 5,
-   "cat": "potion"
+   "cat": "potion",
+   "weight": 0.42
   },
   "T5_POTION_MOB_RESET@1": {
    "name": "Calming Potion",
@@ -15358,12 +15478,14 @@
   "T7_ALCHEMY_RARE_PANTHER": {
    "name": "Excellent Shadow Claws",
    "tier": 7,
-   "cat": "material"
+   "cat": "material",
+   "weight": 0.05
   },
   "T7_POTION_MOB_RESET": {
    "name": "Major Calming Potion",
    "tier": 7,
-   "cat": "potion"
+   "cat": "potion",
+   "weight": 1.44
   },
   "T7_POTION_MOB_RESET@1": {
    "name": "Major Calming Potion",
@@ -15383,12 +15505,14 @@
   "T3_ALCHEMY_RARE_ENT": {
    "name": "Rugged Sylvian Root",
    "tier": 3,
-   "cat": "material"
+   "cat": "material",
+   "weight": 0.05
   },
   "T3_POTION_CLEANSE2": {
    "name": "Minor Cleansing Potion",
    "tier": 3,
-   "cat": "potion"
+   "cat": "potion",
+   "weight": 0.1
   },
   "T3_POTION_CLEANSE2@1": {
    "name": "Minor Cleansing Potion",
@@ -15408,17 +15532,20 @@
   "T5_ALCHEMY_RARE_ENT": {
    "name": "Fine Sylvian Root",
    "tier": 5,
-   "cat": "material"
+   "cat": "material",
+   "weight": 0.05
   },
   "T4_BUTTER": {
    "name": "Goat's Butter",
    "tier": 4,
-   "cat": "material"
+   "cat": "material",
+   "weight": 0.65
   },
   "T5_POTION_CLEANSE2": {
    "name": "Cleansing Potion",
    "tier": 5,
-   "cat": "potion"
+   "cat": "potion",
+   "weight": 0.42
   },
   "T5_POTION_CLEANSE2@1": {
    "name": "Cleansing Potion",
@@ -15438,17 +15565,20 @@
   "T7_ALCHEMY_RARE_ENT": {
    "name": "Excellent Sylvian Root",
    "tier": 7,
-   "cat": "material"
+   "cat": "material",
+   "weight": 0.05
   },
   "T6_BUTTER": {
    "name": "Sheep's Butter",
    "tier": 6,
-   "cat": "material"
+   "cat": "material",
+   "weight": 0.65
   },
   "T7_POTION_CLEANSE2": {
    "name": "Major Cleansing Potion",
    "tier": 7,
-   "cat": "potion"
+   "cat": "potion",
+   "weight": 1.45
   },
   "T7_POTION_CLEANSE2@1": {
    "name": "Major Cleansing Potion",
@@ -15468,12 +15598,14 @@
   "T3_ALCHEMY_RARE_DIREBEAR": {
    "name": "Rugged Spirit Paws",
    "tier": 3,
-   "cat": "material"
+   "cat": "material",
+   "weight": 0.05
   },
   "T3_POTION_ACID": {
    "name": "Minor Acid Potion",
    "tier": 3,
-   "cat": "potion"
+   "cat": "potion",
+   "weight": 0.1
   },
   "T3_POTION_ACID@1": {
    "name": "Minor Acid Potion",
@@ -15493,12 +15625,14 @@
   "T5_ALCHEMY_RARE_DIREBEAR": {
    "name": "Fine Spirit Paws",
    "tier": 5,
-   "cat": "material"
+   "cat": "material",
+   "weight": 0.05
   },
   "T5_POTION_ACID": {
    "name": "Acid Potion",
    "tier": 5,
-   "cat": "potion"
+   "cat": "potion",
+   "weight": 0.42
   },
   "T5_POTION_ACID@1": {
    "name": "Acid Potion",
@@ -15518,12 +15652,14 @@
   "T7_ALCHEMY_RARE_DIREBEAR": {
    "name": "Excellent Spirit Paws",
    "tier": 7,
-   "cat": "material"
+   "cat": "material",
+   "weight": 0.05
   },
   "T7_POTION_ACID": {
    "name": "Major Acid Potion",
    "tier": 7,
-   "cat": "potion"
+   "cat": "potion",
+   "weight": 1.46
   },
   "T7_POTION_ACID@1": {
    "name": "Major Acid Potion",
@@ -15543,12 +15679,14 @@
   "T3_ALCHEMY_RARE_WEREWOLF": {
    "name": "Rugged Werewolf Fangs",
    "tier": 3,
-   "cat": "material"
+   "cat": "material",
+   "weight": 0.05
   },
   "T4_POTION_BERSERK": {
    "name": "Minor Berserk Potion",
    "tier": 4,
-   "cat": "potion"
+   "cat": "potion",
+   "weight": 0.1
   },
   "T4_POTION_BERSERK@1": {
    "name": "Minor Berserk Potion",
@@ -15568,12 +15706,14 @@
   "T5_ALCHEMY_RARE_WEREWOLF": {
    "name": "Fine Werewolf Fangs",
    "tier": 5,
-   "cat": "material"
+   "cat": "material",
+   "weight": 0.05
   },
   "T6_POTION_BERSERK": {
    "name": "Berserk Potion",
    "tier": 6,
-   "cat": "potion"
+   "cat": "potion",
+   "weight": 0.42
   },
   "T6_POTION_BERSERK@1": {
    "name": "Berserk Potion",
@@ -15593,12 +15733,14 @@
   "T7_ALCHEMY_RARE_WEREWOLF": {
    "name": "Excellent Werewolf Fangs",
    "tier": 7,
-   "cat": "material"
+   "cat": "material",
+   "weight": 0.05
   },
   "T8_POTION_BERSERK": {
    "name": "Major Berserk Potion",
    "tier": 8,
-   "cat": "potion"
+   "cat": "potion",
+   "weight": 1.47
   },
   "T8_POTION_BERSERK@1": {
    "name": "Major Berserk Potion",
@@ -15618,12 +15760,14 @@
   "T3_ALCHEMY_RARE_IMP": {
    "name": "Rugged Imp's Horn",
    "tier": 3,
-   "cat": "material"
+   "cat": "material",
+   "weight": 0.05
   },
   "T4_POTION_LAVA": {
    "name": "Minor Hellfire Potion",
    "tier": 4,
-   "cat": "potion"
+   "cat": "potion",
+   "weight": 0.1
   },
   "T4_POTION_LAVA@1": {
    "name": "Minor Hellfire Potion",
@@ -15643,12 +15787,14 @@
   "T5_ALCHEMY_RARE_IMP": {
    "name": "Fine Imp's Horn",
    "tier": 5,
-   "cat": "material"
+   "cat": "material",
+   "weight": 0.05
   },
   "T6_POTION_LAVA": {
    "name": "Hellfire Potion",
    "tier": 6,
-   "cat": "potion"
+   "cat": "potion",
+   "weight": 0.42
   },
   "T6_POTION_LAVA@1": {
    "name": "Hellfire Potion",
@@ -15668,12 +15814,14 @@
   "T7_ALCHEMY_RARE_IMP": {
    "name": "Excellent Imp's Horn",
    "tier": 7,
-   "cat": "material"
+   "cat": "material",
+   "weight": 0.05
   },
   "T8_POTION_LAVA": {
    "name": "Major Hellfire Potion",
    "tier": 8,
-   "cat": "potion"
+   "cat": "potion",
+   "weight": 1.44
   },
   "T8_POTION_LAVA@1": {
    "name": "Major Hellfire Potion",
@@ -15693,12 +15841,14 @@
   "T3_ALCHEMY_RARE_ELEMENTAL": {
    "name": "Rugged Runestone Tooth",
    "tier": 3,
-   "cat": "material"
+   "cat": "material",
+   "weight": 0.05
   },
   "T4_POTION_GATHER": {
    "name": "Minor Gathering Potion",
    "tier": 4,
-   "cat": "potion"
+   "cat": "potion",
+   "weight": 0.1
   },
   "T4_POTION_GATHER@1": {
    "name": "Minor Gathering Potion",
@@ -15718,12 +15868,14 @@
   "T5_ALCHEMY_RARE_ELEMENTAL": {
    "name": "Fine Runestone Tooth",
    "tier": 5,
-   "cat": "material"
+   "cat": "material",
+   "weight": 0.05
   },
   "T6_POTION_GATHER": {
    "name": "Gathering Potion",
    "tier": 6,
-   "cat": "potion"
+   "cat": "potion",
+   "weight": 0.44
   },
   "T6_POTION_GATHER@1": {
    "name": "Gathering Potion",
@@ -15743,17 +15895,20 @@
   "T7_ALCHEMY_RARE_ELEMENTAL": {
    "name": "Excellent Runestone Tooth",
    "tier": 7,
-   "cat": "material"
+   "cat": "material",
+   "weight": 0.05
   },
   "T8_BUTTER": {
    "name": "Cow's Butter",
    "tier": 8,
-   "cat": "material"
+   "cat": "material",
+   "weight": 0.65
   },
   "T8_POTION_GATHER": {
    "name": "Major Gathering Potion",
    "tier": 8,
-   "cat": "potion"
+   "cat": "potion",
+   "weight": 1.48
   },
   "T8_POTION_GATHER@1": {
    "name": "Major Gathering Potion",
@@ -15773,12 +15928,14 @@
   "T3_ALCHEMY_RARE_EAGLE": {
    "name": "Rugged Dawnfeather",
    "tier": 3,
-   "cat": "material"
+   "cat": "material",
+   "weight": 0.05
   },
   "T4_POTION_TORNADO": {
    "name": "Minor Tornado in a Bottle",
    "tier": 4,
-   "cat": "potion"
+   "cat": "potion",
+   "weight": 0.1
   },
   "T4_POTION_TORNADO@1": {
    "name": "Minor Tornado in a Bottle",
@@ -15798,12 +15955,14 @@
   "T5_ALCHEMY_RARE_EAGLE": {
    "name": "Fine Dawnfeather",
    "tier": 5,
-   "cat": "material"
+   "cat": "material",
+   "weight": 0.05
   },
   "T6_POTION_TORNADO": {
    "name": "Tornado in a Bottle",
    "tier": 6,
-   "cat": "potion"
+   "cat": "potion",
+   "weight": 0.42
   },
   "T6_POTION_TORNADO@1": {
    "name": "Tornado in a Bottle",
@@ -15823,12 +15982,14 @@
   "T7_ALCHEMY_RARE_EAGLE": {
    "name": "Excellent Dawnfeather",
    "tier": 7,
-   "cat": "material"
+   "cat": "material",
+   "weight": 0.05
   },
   "T8_POTION_TORNADO": {
    "name": "Major Tornado in a Bottle",
    "tier": 8,
-   "cat": "potion"
+   "cat": "potion",
+   "weight": 1.46
   },
   "T8_POTION_TORNADO@1": {
    "name": "Major Tornado in a Bottle",
@@ -15848,12 +16009,14 @@
   "T4_ALCHEMY_RARE_DRAGONAREA": {
    "name": "Diluted Dragon Blood",
    "tier": 4,
-   "cat": "material"
+   "cat": "material",
+   "weight": 2.0
   },
   "T4_POTION_LIFEWARD": {
    "name": "Minor Lifeward Potion",
    "tier": 4,
-   "cat": "potion"
+   "cat": "potion",
+   "weight": 0.1
   },
   "T4_POTION_LIFEWARD@1": {
    "name": "Minor Lifeward Potion",
@@ -15873,12 +16036,14 @@
   "T6_ALCHEMY_RARE_DRAGONAREA": {
    "name": "Dragon Blood",
    "tier": 6,
-   "cat": "material"
+   "cat": "material",
+   "weight": 2.0
   },
   "T6_POTION_LIFEWARD": {
    "name": "Lifeward Potion",
    "tier": 6,
-   "cat": "potion"
+   "cat": "potion",
+   "weight": 0.42
   },
   "T6_POTION_LIFEWARD@1": {
    "name": "Lifeward Potion",
@@ -15898,12 +16063,14 @@
   "T8_ALCHEMY_RARE_DRAGONAREA": {
    "name": "Potent Dragon Blood",
    "tier": 8,
-   "cat": "material"
+   "cat": "material",
+   "weight": 2.0
   },
   "T8_POTION_LIFEWARD": {
    "name": "Major Lifeward Potion",
    "tier": 8,
-   "cat": "potion"
+   "cat": "potion",
+   "weight": 1.46
   },
   "T8_POTION_LIFEWARD@1": {
    "name": "Major Lifeward Potion",
@@ -15923,12 +16090,14 @@
   "T1_MEAL_SOUP": {
    "name": "Carrot Soup",
    "tier": 1,
-   "cat": "food"
+   "cat": "food",
+   "weight": 1.16
   },
   "T1_FISHSAUCE_LEVEL1": {
    "name": "Basic Fish Sauce",
    "tier": 1,
-   "cat": "material"
+   "cat": "material",
+   "weight": 1.0
   },
   "T1_MEAL_SOUP@1": {
    "name": "Carrot Soup",
@@ -15938,7 +16107,8 @@
   "T1_FISHSAUCE_LEVEL2": {
    "name": "Fancy Fish Sauce",
    "tier": 1,
-   "cat": "material"
+   "cat": "material",
+   "weight": 1.5
   },
   "T1_MEAL_SOUP@2": {
    "name": "Carrot Soup",
@@ -15948,7 +16118,8 @@
   "T1_FISHSAUCE_LEVEL3": {
    "name": "Special Fish Sauce",
    "tier": 1,
-   "cat": "material"
+   "cat": "material",
+   "weight": 2.0
   },
   "T1_MEAL_SOUP@3": {
    "name": "Carrot Soup",
@@ -15958,7 +16129,8 @@
   "T3_MEAL_SOUP": {
    "name": "Wheat Soup",
    "tier": 3,
-   "cat": "food"
+   "cat": "food",
+   "weight": 3.15
   },
   "T3_MEAL_SOUP@1": {
    "name": "Wheat Soup",
@@ -15978,7 +16150,8 @@
   "T5_MEAL_SOUP": {
    "name": "Cabbage Soup",
    "tier": 5,
-   "cat": "food"
+   "cat": "food",
+   "weight": 7.56
   },
   "T5_MEAL_SOUP@1": {
    "name": "Cabbage Soup",
@@ -15998,12 +16171,14 @@
   "T3_FISH_FRESHWATER_SWAMP_RARE": {
    "name": "Greenmoor Clam",
    "tier": 3,
-   "cat": "material"
+   "cat": "material",
+   "weight": 0.52
   },
   "T1_MEAL_SOUP_FISH": {
    "name": "Greenmoor Clam Soup",
    "tier": 1,
-   "cat": "food"
+   "cat": "food",
+   "weight": 1.59
   },
   "T1_MEAL_SOUP_FISH@1": {
    "name": "Greenmoor Clam Soup",
@@ -16023,17 +16198,20 @@
   "T5_FISH_FRESHWATER_SWAMP_RARE": {
    "name": "Murkwater Clam",
    "tier": 5,
-   "cat": "material"
+   "cat": "material",
+   "weight": 0.78
   },
   "T3_MEAT": {
    "name": "Raw Chicken",
    "tier": 3,
-   "cat": "material"
+   "cat": "material",
+   "weight": 0.65
   },
   "T3_MEAL_SOUP_FISH": {
    "name": "Murkwater Clam Soup",
    "tier": 3,
-   "cat": "food"
+   "cat": "food",
+   "weight": 4.31
   },
   "T3_MEAL_SOUP_FISH@1": {
    "name": "Murkwater Clam Soup",
@@ -16053,17 +16231,20 @@
   "T7_FISH_FRESHWATER_SWAMP_RARE": {
    "name": "Blackbog Clam",
    "tier": 7,
-   "cat": "material"
+   "cat": "material",
+   "weight": 1.04
   },
   "T5_MEAT": {
    "name": "Raw Goose",
    "tier": 5,
-   "cat": "material"
+   "cat": "material",
+   "weight": 0.65
   },
   "T5_MEAL_SOUP_FISH": {
    "name": "Blackbog Clam Soup",
    "tier": 5,
-   "cat": "food"
+   "cat": "food",
+   "weight": 10.02
   },
   "T5_MEAL_SOUP_FISH@1": {
    "name": "Blackbog Clam Soup",
@@ -16083,7 +16264,8 @@
   "T2_MEAL_SALAD": {
    "name": "Bean Salad",
    "tier": 2,
-   "cat": "food"
+   "cat": "food",
+   "weight": 1.16
   },
   "T2_MEAL_SALAD@1": {
    "name": "Bean Salad",
@@ -16103,7 +16285,8 @@
   "T4_MEAL_SALAD": {
    "name": "Turnip Salad",
    "tier": 4,
-   "cat": "food"
+   "cat": "food",
+   "weight": 3.15
   },
   "T4_MEAL_SALAD@1": {
    "name": "Turnip Salad",
@@ -16123,7 +16306,8 @@
   "T6_MEAL_SALAD": {
    "name": "Potato Salad",
    "tier": 6,
-   "cat": "food"
+   "cat": "food",
+   "weight": 7.56
   },
   "T6_MEAL_SALAD@1": {
    "name": "Potato Salad",
@@ -16143,12 +16327,14 @@
   "T3_FISH_SALTWATER_ALL_RARE": {
    "name": "Shallowshore Squid",
    "tier": 3,
-   "cat": "material"
+   "cat": "material",
+   "weight": 0.52
   },
   "T2_MEAL_SALAD_FISH": {
    "name": "Shallowshore Squid Salad",
    "tier": 2,
-   "cat": "food"
+   "cat": "food",
+   "weight": 1.59
   },
   "T2_MEAL_SALAD_FISH@1": {
    "name": "Shallowshore Squid Salad",
@@ -16168,17 +16354,20 @@
   "T5_FISH_SALTWATER_ALL_RARE": {
    "name": "Midwater Octopus",
    "tier": 5,
-   "cat": "material"
+   "cat": "material",
+   "weight": 0.78
   },
   "T4_MEAT": {
    "name": "Raw Goat",
    "tier": 4,
-   "cat": "material"
+   "cat": "material",
+   "weight": 0.65
   },
   "T4_MEAL_SALAD_FISH": {
    "name": "Midwater Octopus Salad",
    "tier": 4,
-   "cat": "food"
+   "cat": "food",
+   "weight": 4.31
   },
   "T4_MEAL_SALAD_FISH@1": {
    "name": "Midwater Octopus Salad",
@@ -16198,17 +16387,20 @@
   "T7_FISH_SALTWATER_ALL_RARE": {
    "name": "Deepwater Kraken",
    "tier": 7,
-   "cat": "material"
+   "cat": "material",
+   "weight": 1.04
   },
   "T6_MEAT": {
    "name": "Raw Mutton",
    "tier": 6,
-   "cat": "material"
+   "cat": "material",
+   "weight": 0.65
   },
   "T6_MEAL_SALAD_FISH": {
    "name": "Deepwater Kraken Salad",
    "tier": 6,
-   "cat": "food"
+   "cat": "food",
+   "weight": 10.02
   },
   "T6_MEAL_SALAD_FISH@1": {
    "name": "Deepwater Kraken Salad",
@@ -16228,12 +16420,14 @@
   "T3_FLOUR": {
    "name": "Flour",
    "tier": 3,
-   "cat": "material"
+   "cat": "material",
+   "weight": 0.65
   },
   "T3_MEAL_PIE": {
    "name": "Chicken Pie",
    "tier": 3,
-   "cat": "food"
+   "cat": "food",
+   "weight": 1.17
   },
   "T3_MEAL_PIE@1": {
    "name": "Chicken Pie",
@@ -16253,7 +16447,8 @@
   "T5_MEAL_PIE": {
    "name": "Goose Pie",
    "tier": 5,
-   "cat": "food"
+   "cat": "food",
+   "weight": 3.33
   },
   "T5_MEAL_PIE@1": {
    "name": "Goose Pie",
@@ -16273,12 +16468,14 @@
   "T7_MEAT": {
    "name": "Raw Pork",
    "tier": 7,
-   "cat": "material"
+   "cat": "material",
+   "weight": 0.65
   },
   "T7_MEAL_PIE": {
    "name": "Pork Pie",
    "tier": 7,
-   "cat": "food"
+   "cat": "food",
+   "weight": 7.99
   },
   "T7_MEAL_PIE@1": {
    "name": "Pork Pie",
@@ -16298,12 +16495,14 @@
   "T3_FISH_FRESHWATER_MOUNTAIN_RARE": {
    "name": "Upland Coldeye",
    "tier": 3,
-   "cat": "material"
+   "cat": "material",
+   "weight": 0.52
   },
   "T3_MEAL_PIE_FISH": {
    "name": "Upland Coldeye Pie",
    "tier": 3,
-   "cat": "food"
+   "cat": "food",
+   "weight": 1.8
   },
   "T3_MEAL_PIE_FISH@1": {
    "name": "Upland Coldeye Pie",
@@ -16323,12 +16522,14 @@
   "T5_FISH_FRESHWATER_MOUNTAIN_RARE": {
    "name": "Mountain Blindeye",
    "tier": 5,
-   "cat": "material"
+   "cat": "material",
+   "weight": 0.78
   },
   "T5_MEAL_PIE_FISH": {
    "name": "Mountain Blindeye Pie",
    "tier": 5,
-   "cat": "food"
+   "cat": "food",
+   "weight": 4.21
   },
   "T5_MEAL_PIE_FISH@1": {
    "name": "Mountain Blindeye Pie",
@@ -16348,12 +16549,14 @@
   "T7_FISH_FRESHWATER_MOUNTAIN_RARE": {
    "name": "Frostpeak Deadeye",
    "tier": 7,
-   "cat": "material"
+   "cat": "material",
+   "weight": 1.04
   },
   "T7_MEAL_PIE_FISH": {
    "name": "Frostpeak Deadeye Pie",
    "tier": 7,
-   "cat": "food"
+   "cat": "food",
+   "weight": 10.02
   },
   "T7_MEAL_PIE_FISH@1": {
    "name": "Frostpeak Deadeye Pie",
@@ -16373,7 +16576,8 @@
   "T3_MEAL_OMELETTE": {
    "name": "Chicken Omelette",
    "tier": 3,
-   "cat": "food"
+   "cat": "food",
+   "weight": 1.16
   },
   "T3_MEAL_OMELETTE@1": {
    "name": "Chicken Omelette",
@@ -16393,7 +16597,8 @@
   "T5_MEAL_OMELETTE": {
    "name": "Goose Omelette",
    "tier": 5,
-   "cat": "food"
+   "cat": "food",
+   "weight": 2.88
   },
   "T5_MEAL_OMELETTE@1": {
    "name": "Goose Omelette",
@@ -16413,7 +16618,8 @@
   "T7_MEAL_OMELETTE": {
    "name": "Pork Omelette",
    "tier": 7,
-   "cat": "food"
+   "cat": "food",
+   "weight": 6.9
   },
   "T7_MEAL_OMELETTE@1": {
    "name": "Pork Omelette",
@@ -16433,12 +16639,14 @@
   "T3_FISH_FRESHWATER_STEPPE_RARE": {
    "name": "Lowriver Crab",
    "tier": 3,
-   "cat": "material"
+   "cat": "material",
+   "weight": 0.52
   },
   "T3_MEAL_OMELETTE_FISH": {
    "name": "Lowriver Crab Omelette",
    "tier": 3,
-   "cat": "food"
+   "cat": "food",
+   "weight": 1.74
   },
   "T3_MEAL_OMELETTE_FISH@1": {
    "name": "Lowriver Crab Omelette",
@@ -16458,12 +16666,14 @@
   "T5_FISH_FRESHWATER_STEPPE_RARE": {
    "name": "Drybrook Crab",
    "tier": 5,
-   "cat": "material"
+   "cat": "material",
+   "weight": 0.78
   },
   "T5_MEAL_OMELETTE_FISH": {
    "name": "Drybrook Crab Omelette",
    "tier": 5,
-   "cat": "food"
+   "cat": "food",
+   "weight": 4.21
   },
   "T5_MEAL_OMELETTE_FISH@1": {
    "name": "Drybrook Crab Omelette",
@@ -16483,12 +16693,14 @@
   "T7_FISH_FRESHWATER_STEPPE_RARE": {
    "name": "Dusthole Crab",
    "tier": 7,
-   "cat": "material"
+   "cat": "material",
+   "weight": 1.04
   },
   "T7_MEAL_OMELETTE_FISH": {
    "name": "Dusthole Crab Omelette",
    "tier": 7,
-   "cat": "food"
+   "cat": "food",
+   "weight": 10.02
   },
   "T7_MEAL_OMELETTE_FISH@1": {
    "name": "Dusthole Crab Omelette",
@@ -16508,12 +16720,14 @@
   "QUESTITEM_TOKEN_AVALON": {
    "name": "Avalonian Energy",
    "tier": 0,
-   "cat": "material"
+   "cat": "material",
+   "weight": 0.01
   },
   "T3_MEAL_OMELETTE_AVALON": {
    "name": "Avalonian Chicken Omelette",
    "tier": 3,
-   "cat": "food"
+   "cat": "food",
+   "weight": 1.26
   },
   "T3_MEAL_OMELETTE_AVALON@1": {
    "name": "Avalonian Chicken Omelette",
@@ -16533,7 +16747,8 @@
   "T5_MEAL_OMELETTE_AVALON": {
    "name": "Avalonian Goose Omelette",
    "tier": 5,
-   "cat": "food"
+   "cat": "food",
+   "weight": 3.15
   },
   "T5_MEAL_OMELETTE_AVALON@1": {
    "name": "Avalonian Goose Omelette",
@@ -16553,7 +16768,8 @@
   "T7_MEAL_OMELETTE_AVALON": {
    "name": "Avalonian Pork Omelette",
    "tier": 7,
-   "cat": "food"
+   "cat": "food",
+   "weight": 7.55
   },
   "T7_MEAL_OMELETTE_AVALON@1": {
    "name": "Avalonian Pork Omelette",
@@ -16573,12 +16789,14 @@
   "T3_FISH_FRESHWATER_DRAGON_AREA_RARE": {
    "name": "Carefree Leyfin",
    "tier": 3,
-   "cat": "material"
+   "cat": "material",
+   "weight": 0.52
   },
   "T3_MEAL_OMELETTE_DRAGONAREA": {
    "name": "Carefree Leyfin Omelette",
    "tier": 3,
-   "cat": "food"
+   "cat": "food",
+   "weight": 1.26
   },
   "T3_MEAL_OMELETTE_DRAGONAREA@1": {
    "name": "Carefree Leyfin Omelette",
@@ -16598,12 +16816,14 @@
   "T5_FISH_FRESHWATER_DRAGON_AREA_RARE": {
    "name": "Brightsoul Leyfin",
    "tier": 5,
-   "cat": "material"
+   "cat": "material",
+   "weight": 0.78
   },
   "T5_MEAL_OMELETTE_DRAGONAREA": {
    "name": "Brightsoul Leyfin Omelette",
    "tier": 5,
-   "cat": "food"
+   "cat": "food",
+   "weight": 3.15
   },
   "T5_MEAL_OMELETTE_DRAGONAREA@1": {
    "name": "Brightsoul Leyfin Omelette",
@@ -16623,12 +16843,14 @@
   "T7_FISH_FRESHWATER_DRAGON_AREA_RARE": {
    "name": "Dragonbound Leyfin",
    "tier": 7,
-   "cat": "material"
+   "cat": "material",
+   "weight": 1.04
   },
   "T7_MEAL_OMELETTE_DRAGONAREA": {
    "name": "Dragonbound Leyfin Omelette",
    "tier": 7,
-   "cat": "food"
+   "cat": "food",
+   "weight": 7.55
   },
   "T7_MEAL_OMELETTE_DRAGONAREA@1": {
    "name": "Dragonbound Leyfin Omelette",
@@ -16648,12 +16870,14 @@
   "T4_BREAD": {
    "name": "Bread",
    "tier": 4,
-   "cat": "material"
+   "cat": "material",
+   "weight": 0.71
   },
   "T4_MEAL_STEW": {
    "name": "Goat Stew",
    "tier": 4,
-   "cat": "food"
+   "cat": "food",
+   "weight": 1.37
   },
   "T4_MEAL_STEW@1": {
    "name": "Goat Stew",
@@ -16673,7 +16897,8 @@
   "T6_MEAL_STEW": {
    "name": "Mutton Stew",
    "tier": 6,
-   "cat": "food"
+   "cat": "food",
+   "weight": 3.4
   },
   "T6_MEAL_STEW@1": {
    "name": "Mutton Stew",
@@ -16693,12 +16918,14 @@
   "T8_MEAT": {
    "name": "Raw Beef",
    "tier": 8,
-   "cat": "material"
+   "cat": "material",
+   "weight": 0.65
   },
   "T8_MEAL_STEW": {
    "name": "Beef Stew",
    "tier": 8,
-   "cat": "food"
+   "cat": "food",
+   "weight": 8.17
   },
   "T8_MEAL_STEW@1": {
    "name": "Beef Stew",
@@ -16718,12 +16945,14 @@
   "T3_FISH_FRESHWATER_FOREST_RARE": {
    "name": "Greenriver Eel",
    "tier": 3,
-   "cat": "material"
+   "cat": "material",
+   "weight": 0.52
   },
   "T4_MEAL_STEW_FISH": {
    "name": "Greenriver Eel Stew",
    "tier": 4,
-   "cat": "food"
+   "cat": "food",
+   "weight": 1.74
   },
   "T4_MEAL_STEW_FISH@1": {
    "name": "Greenriver Eel Stew",
@@ -16743,12 +16972,14 @@
   "T5_FISH_FRESHWATER_FOREST_RARE": {
    "name": "Redspring Eel",
    "tier": 5,
-   "cat": "material"
+   "cat": "material",
+   "weight": 0.78
   },
   "T6_MEAL_STEW_FISH": {
    "name": "Redspring Eel Stew",
    "tier": 6,
-   "cat": "food"
+   "cat": "food",
+   "weight": 4.21
   },
   "T6_MEAL_STEW_FISH@1": {
    "name": "Redspring Eel Stew",
@@ -16768,12 +16999,14 @@
   "T7_FISH_FRESHWATER_FOREST_RARE": {
    "name": "Deadwater Eel",
    "tier": 7,
-   "cat": "material"
+   "cat": "material",
+   "weight": 1.04
   },
   "T8_MEAL_STEW_FISH": {
    "name": "Deadwater Eel Stew",
    "tier": 8,
-   "cat": "food"
+   "cat": "food",
+   "weight": 9.78
   },
   "T8_MEAL_STEW_FISH@1": {
    "name": "Deadwater Eel Stew",
@@ -16793,7 +17026,8 @@
   "T4_MEAL_STEW_AVALON": {
    "name": "Avalonian Goat Stew",
    "tier": 4,
-   "cat": "food"
+   "cat": "food",
+   "weight": 1.41
   },
   "T4_MEAL_STEW_AVALON@1": {
    "name": "Avalonian Goat Stew",
@@ -16813,7 +17047,8 @@
   "T6_MEAL_STEW_AVALON": {
    "name": "Avalonian Mutton Stew",
    "tier": 6,
-   "cat": "food"
+   "cat": "food",
+   "weight": 3.54
   },
   "T6_MEAL_STEW_AVALON@1": {
    "name": "Avalonian Mutton Stew",
@@ -16833,7 +17068,8 @@
   "T8_MEAL_STEW_AVALON": {
    "name": "Avalonian Beef Stew",
    "tier": 8,
-   "cat": "food"
+   "cat": "food",
+   "weight": 8.5
   },
   "T8_MEAL_STEW_AVALON@1": {
    "name": "Avalonian Beef Stew",
@@ -16853,7 +17089,8 @@
   "T4_MEAL_SANDWICH": {
    "name": "Goat Sandwich",
    "tier": 4,
-   "cat": "food"
+   "cat": "food",
+   "weight": 1.22
   },
   "T4_MEAL_SANDWICH@1": {
    "name": "Goat Sandwich",
@@ -16873,7 +17110,8 @@
   "T6_MEAL_SANDWICH": {
    "name": "Mutton Sandwich",
    "tier": 6,
-   "cat": "food"
+   "cat": "food",
+   "weight": 3.04
   },
   "T6_MEAL_SANDWICH@1": {
    "name": "Mutton Sandwich",
@@ -16893,7 +17131,8 @@
   "T8_MEAL_SANDWICH": {
    "name": "Beef Sandwich",
    "tier": 8,
-   "cat": "food"
+   "cat": "food",
+   "weight": 7.3
   },
   "T8_MEAL_SANDWICH@1": {
    "name": "Beef Sandwich",
@@ -16913,12 +17152,14 @@
   "T3_FISH_FRESHWATER_HIGHLANDS_RARE": {
    "name": "Stonestream Lurcher",
    "tier": 3,
-   "cat": "material"
+   "cat": "material",
+   "weight": 0.52
   },
   "T4_MEAL_SANDWICH_FISH": {
    "name": "Stonestream Lurcher Sandwich",
    "tier": 4,
-   "cat": "food"
+   "cat": "food",
+   "weight": 1.8
   },
   "T4_MEAL_SANDWICH_FISH@1": {
    "name": "Stonestream Lurcher Sandwich",
@@ -16938,12 +17179,14 @@
   "T5_FISH_FRESHWATER_HIGHLANDS_RARE": {
    "name": "Rushwater Lurcher",
    "tier": 5,
-   "cat": "material"
+   "cat": "material",
+   "weight": 0.78
   },
   "T6_MEAL_SANDWICH_FISH": {
    "name": "Rushwater Lurcher Sandwich",
    "tier": 6,
-   "cat": "food"
+   "cat": "food",
+   "weight": 4.31
   },
   "T6_MEAL_SANDWICH_FISH@1": {
    "name": "Rushwater Lurcher Sandwich",
@@ -16963,12 +17206,14 @@
   "T7_FISH_FRESHWATER_HIGHLANDS_RARE": {
    "name": "Thunderfall Lurcher",
    "tier": 7,
-   "cat": "material"
+   "cat": "material",
+   "weight": 1.04
   },
   "T8_MEAL_SANDWICH_FISH": {
    "name": "Thunderfall Lurcher Sandwich",
    "tier": 8,
-   "cat": "food"
+   "cat": "food",
+   "weight": 10.02
   },
   "T8_MEAL_SANDWICH_FISH@1": {
    "name": "Thunderfall Lurcher Sandwich",
@@ -16988,7 +17233,8 @@
   "T4_MEAL_SANDWICH_AVALON": {
    "name": "Avalonian Goat Sandwich",
    "tier": 4,
-   "cat": "food"
+   "cat": "food",
+   "weight": 1.32
   },
   "T4_MEAL_SANDWICH_AVALON@1": {
    "name": "Avalonian Goat Sandwich",
@@ -17008,7 +17254,8 @@
   "T6_MEAL_SANDWICH_AVALON": {
    "name": "Avalonian Mutton Sandwich",
    "tier": 6,
-   "cat": "food"
+   "cat": "food",
+   "weight": 3.31
   },
   "T6_MEAL_SANDWICH_AVALON@1": {
    "name": "Avalonian Mutton Sandwich",
@@ -17028,7 +17275,8 @@
   "T8_MEAL_SANDWICH_AVALON": {
    "name": "Avalonian Beef Sandwich",
    "tier": 8,
-   "cat": "food"
+   "cat": "food",
+   "weight": 7.95
   },
   "T8_MEAL_SANDWICH_AVALON@1": {
    "name": "Avalonian Beef Sandwich",
@@ -17048,7 +17296,8 @@
   "T3_MEAL_ROAST": {
    "name": "Roast Chicken",
    "tier": 3,
-   "cat": "food"
+   "cat": "food",
+   "weight": 1.31
   },
   "T3_MEAL_ROAST@1": {
    "name": "Roast Chicken",
@@ -17068,7 +17317,8 @@
   "T5_MEAL_ROAST": {
    "name": "Roast Goose",
    "tier": 5,
-   "cat": "food"
+   "cat": "food",
+   "weight": 3.28
   },
   "T5_MEAL_ROAST@1": {
    "name": "Roast Goose",
@@ -17088,7 +17338,8 @@
   "T7_MEAL_ROAST": {
    "name": "Roast Pork",
    "tier": 7,
-   "cat": "food"
+   "cat": "food",
+   "weight": 7.85
   },
   "T7_MEAL_ROAST@1": {
    "name": "Roast Pork",
@@ -17108,12 +17359,14 @@
   "T3_FISH_FRESHWATER_AVALON_RARE": {
    "name": "Whitefog Snapper",
    "tier": 3,
-   "cat": "material"
+   "cat": "material",
+   "weight": 0.52
   },
   "T3_MEAL_ROAST_FISH": {
    "name": "Roasted Whitefog Snapper",
    "tier": 3,
-   "cat": "food"
+   "cat": "food",
+   "weight": 1.74
   },
   "T3_MEAL_ROAST_FISH@1": {
    "name": "Roasted Whitefog Snapper",
@@ -17133,12 +17386,14 @@
   "T5_FISH_FRESHWATER_AVALON_RARE": {
    "name": "Clearhaze Snapper",
    "tier": 5,
-   "cat": "material"
+   "cat": "material",
+   "weight": 0.78
   },
   "T5_MEAL_ROAST_FISH": {
    "name": "Roasted Clearhaze Snapper",
    "tier": 5,
-   "cat": "food"
+   "cat": "food",
+   "weight": 4.21
   },
   "T5_MEAL_ROAST_FISH@1": {
    "name": "Roasted Clearhaze Snapper",
@@ -17158,12 +17413,14 @@
   "T7_FISH_FRESHWATER_AVALON_RARE": {
    "name": "Puremist Snapper",
    "tier": 7,
-   "cat": "material"
+   "cat": "material",
+   "weight": 1.04
   },
   "T7_MEAL_ROAST_FISH": {
    "name": "Roasted Puremist Snapper",
    "tier": 7,
-   "cat": "food"
+   "cat": "food",
+   "weight": 9.78
   },
   "T7_MEAL_ROAST_FISH@1": {
    "name": "Roasted Puremist Snapper",
@@ -17183,7 +17440,8 @@
   "T8_MEAL_SPECIAL_FOOD_DRAKE_EGG": {
    "name": "Drake Egg Biscuits",
    "tier": 8,
-   "cat": "food"
+   "cat": "food",
+   "weight": 7.55
   }
  }
 }

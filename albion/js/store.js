@@ -56,12 +56,15 @@ export function loadEquipment() {
       ALL_NODES = [...(DATA?.focusNodes || []), ...GEAR.focusNodes];
       state.settings.focusNodes = ALL_NODES;
     }
+    ALL_ITEMS = { ...(DATA?.items || {}), ...GEAR.items };
+    state.settings.items = ALL_ITEMS;
     return GEAR;
   })();
   return gearLoading;
 }
 
 let ALL_NODES = null;
+let ALL_ITEMS = null;
 
 /** Look an item up in whichever file happens to know it. */
 export const itemMeta = (id) => DATA?.items[id] || GEAR?.items[id] || null;
@@ -90,6 +93,13 @@ function defaults() {
       // What each city's station owner charges, per 100 nutrition consumed.
       // Your own island charges nothing. Posted on the station in game.
       stationFee: {},
+      /* Hauling. Weight is the game's number; what you can carry and what a
+       * trip is worth to you are not published anywhere, so they start at
+       * zero and the app reports the load without inventing a price for it. */
+      carryWeight: 0,
+      haulSilverPerWeight: 0,
+      // Do every step in one city, or each in the city that is best for it.
+      craftWhere: 'one',
       // What goes in the trough, per food category. The game will not let a
       // direwolf eat wheat, so one field could never cover all three.
       feedItemIds: { plants: 'T3_WHEAT', meat: 'T3_MEAT', mount: 'T8_FARM_OX_GROWN' },
@@ -143,6 +153,9 @@ function withConstants(state, data) {
   state.settings.feeds = data.feeds;
   // The quality table is game data too, never a saved copy.
   if (data.quality) state.settings.quality = data.quality;
+  // And so is what things weigh, which is what decides whether a farm bonus
+  // in another city is worth the ride.
+  state.settings.items = ALL_ITEMS || data.items;
   /* The NPC sells seeds and babies at a fixed price. That is a ceiling on what
    * one can ever cost you — you can always walk to the merchant — and it is
    * not a saved price of yours, so it lives apart from both price maps.
