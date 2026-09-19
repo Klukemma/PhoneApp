@@ -12,24 +12,26 @@ import {
   addCraft, addPlot, addSpare, applySolution, bmPriceOf, carryStockIn,
   clearLand, clearStock, commit, DATA, exportJSON, importJSON, itemMeta,
   landSummary, plotsOwned, pricedItemIds, priceOf, qBmPriceOf, qPriceOf,
-  removeCraft, removePlot, scheduleDays, setBmPrice, setBuyPrice, setDayMode,
-  setGoal, setHolding, setNodeLevel, setPrice, setPrices, setQualityPrice,
-  setQualityPrices, setSchedule, setScheduleLength, setSettings, setSpec,
-  setStock, state, updateCraft, updatePlot, wipe,
+  removeCraft, removePlot, scheduleDays, setBmPrice, setBuyPrice,
+  setCraftCity, setDayMode, setGoal, setHolding, setNodeLevel, setPrice,
+  setPrices, setQualityPrice, setQualityPrices, setSchedule,
+  setScheduleLength, setSettings, setSpec, setStock, state, updateCraft,
+  updatePlot, wipe,
 } from './store.js';
 import { solve } from './solve.js';
 import { $, $$, closeSheet, esc, openSheet, toast } from './ui.js';
-import { ICON, rowHTML, tick } from './html.js';
+import { ICON, amt, go, moreHTML, note, rowHTML, tag, tick } from './html.js';
 import { row as meRow, toggle as meToggle } from './me.js';
 import { ago, hours, pct, short, silver, tierText } from './util.js';
 import {
-  cycleFor, ctx, detailHTML, setSolution, solution, solveStamp,
+  cityDeltas, ctx, cycleFor, detailHTML, lastSim, setSolution, solution,
+  solveStamp,
 } from './views.js';
 import {
   allRecipes, craftTarget, currentRun, ensureGear, gearReady, groupIcon,
   groupOf as craftGroupOf, GROUPS, hasQuality as craftHasQuality,
-  nameOf as craftNameOf, recipeOf, scan, scanBlackIds, scanIds,
-  setCraftTarget, setScan,
+  nameOf as craftNameOf, recipeOf, resetMakeIfFollowing, scan, scanBlackIds,
+  scanIds, setCraftTarget, setScan,
 } from './craft.js';
 
 /* Whichever file knows this item. Once the Craft tab has loaded the weapon
@@ -61,7 +63,7 @@ const FEED_LABELS = [
 
 /* ------------------------------------------------------------- goal --- */
 
-/** What you are making, and how much land you have to make it with. */
+/** What you are making. Land and days have their own sheets. */
 export function openGoal() {
   const goal = state.goal;
   const byCat = { potion: [], food: [], meat: [] };
@@ -79,116 +81,60 @@ export function openGoal() {
     }
   }
   for (const list of enchantsOf.values()) list.sort((a, b) => a.enchant - b.enchant);
+  let query = '';
 
   const chips = (r) => {
     const variants = enchantsOf.get(r.id) || [];
     if (!variants.length) return '';
     return `
-      <div class="seg" style="margin:6px 0 10px 44px">
+      <div class="seg small" style="margin:6px 0 10px 48px">
         ${[r, ...variants].map((v) => `
-          <button type="button" class="mini" data-recipe="${esc(v.id)}"
+          <button type="button" data-recipe="${esc(v.id)}"
             aria-pressed="${v.id === goal.recipeId}">
             ${tierText(v.tier, v.enchant)}${priceOf(v.id) ? '' : ' ?'}</button>`).join('')}
       </div>`;
   };
 
   const list = (rs) => rs
+    .filter((r) => !query || r.name.toLowerCase().includes(query))
     .sort((a, b) => a.tier - b.tier || a.name.localeCompare(b.name))
-    .map((r) => `
-      <button class="row" data-recipe="${esc(r.id)}"
-        ${r.id === goal.recipeId ? 'style="border-color:var(--gold)"' : ''}>
-        <span class="ico">${GROUP_ICON[groupOf(r)]}</span>
-        <span class="body"><span class="title">${tierText(r.tier, r.enchant)} ${esc(r.name)}</span>
-          <span class="meta">${r.inputs.map((i) => `${i.count}\u00d7 ${nameOf(i.id)}`).join(', ')}
-            \u2192 ${r.amount}${priceOf(r.id) ? '' : ' \u00b7 no price yet'}</span></span>
-        <span class="amt">${r.id === goal.recipeId ? '\u2713' : '+'}</span>
-      </button>
-      ${chips(r)}`).join('');
+    .map((r) => recipeRow(r, goal.recipeId, GROUP_ICON[groupOf(r)]) + chips(r)).join('');
+
+  const section = (title, rs) => {
+    const html = list(rs);
+    return html ? `<div class="section-head"><h2>${title}</h2></div>${html}` : '';
+  };
+
+  const render = (root) => {
+    $('#goalList', root).innerHTML = `
+      ${section('Potions', byCat.potion)}
+      ${section('Food', byCat.food)}
+      ${byCat.meat.length ? section('Butchering', byCat.meat) : ''}
+      ${!query || list(byCat.potion) || list(byCat.food) || list(byCat.meat) ? ''
+        : '<div class="empty">Nothing farmable by that name.</div>'}`;
+  };
 
   openSheet(`
     <h2>What are you making?</h2>
-    <p class="muted">Pick the thing you want to end up with and say how much land
-      you have. Everything else — what to plant, how often to go out, how much
-      to brew and when — gets worked out from there. The .1, .2 and .3 under a
-      potion are its enchanted versions: same ingredients plus alchemy extract,
-      much more focus, much more money.</p>
-
-    ${state.farm.length ? `
     <div class="field">
-      <label>Your land</label>
-      <button class="row" data-act="land" style="width:100%">
-        <span class="body"><span class="title">${landSummary().farm} Farms ·
-          ${landSummary().pasture} Pastures</span>
-          <span class="meta">Across ${landSummary().cities.size} ${
-            landSummary().cities.size === 1 ? 'city' : 'cities'} · tap to change</span></span>
-        <span class="amt">\u203A</span>
-      </button>
-      <input type="hidden" id="plots" value="${plotsOwned()}">
-    </div>` : `
-    <div class="field"><label>Plots you can farm on</label>
-      <input type="number" id="plots" inputmode="numeric" min="0" max="999"
-        value="${goal.plots}">
-      <div class="hint">Whole 3×3 plots and pastures, not tiles. An island counts
-        its plots; a guild island counts all of them.
-        <button class="linkish" data-act="land">Say which are Farms and which
-        are Pastures</button>, and the plan will stop assuming you own both.</div></div>`}
-
-    ${goal.keepDays ? `
-    <div class="field">
-      <label>Your calendar</label>
-      <button class="row" data-act="cycle" style="width:100%">
-        <span class="body"><span class="title">Your ${scheduleDays().length}-day cycle, day by day</span>
-          <span class="meta">The plan is worked out inside the days you set · tap to change</span></span>
-        <span class="amt">›</span>
-      </button>
-    </div>` : ''}
-    <div class="field" ${goal.keepDays ? 'hidden' : ''}>
-      <label>How long one cycle runs</label>
-      <div class="seg" id="cycleSeg" style="margin-bottom:8px">
-        ${[0, 3, 7, 14].map((n) => `
-          <button type="button" data-cycle="${n}" aria-pressed="${goal.cycleDays === n}">
-            ${n === 0 ? 'You decide' : `${n} days`}</button>`).join('')}
-      </div>
-      <input type="number" id="cycleDays" inputmode="numeric" min="0" max="60"
-        value="${goal.cycleDays || ''}" placeholder="0 \u2014 let it choose">
-      <div class="hint">Farm, then bank focus, then craft the lot. Pin this to the
-        rhythm you actually play to and everything else gets solved inside it:
-        which days you go out, how often, and where the land goes. Focus stops at
-        ${Math.round(state.settings.focusCap).toLocaleString()} and comes back at
-        ${Math.round(state.settings.focusPerDay).toLocaleString()} a day, so a long
-        cycle throws away the regeneration it cannot hold \u2014 the app will say so
-        rather than hide it.</div>
+      <input type="search" id="goalSearch" placeholder="Find a potion or meal…" autocomplete="off">
     </div>
-
-    <div class="section-head"><h2>Potions</h2></div>${list(byCat.potion)}
-    <div class="section-head"><h2>Food</h2></div>${list(byCat.food)}
-    ${byCat.meat.length ? `<div class="section-head"><h2>Butchering</h2></div>
-      <p class="muted" style="margin:0 0 8px">One grown animal, 38 focus, 18 cuts
-        of meat. The animal does not come back.</p>${list(byCat.meat)}` : ''}
+    <div id="goalList"></div>
+    ${note('The .1, .2 and .3 under a potion are its enchanted versions: same ingredients plus alchemy extract, much more focus, much more money.')}
   `, {
     onMount(root) {
-      const save = () => setGoal({
-        plots: Number($('#plots', root).value) || plotsOwned(),
-        cycleDays: Number($('#cycleDays', root).value),
-      });
-      $('#plots', root).onchange = save;
-      $('#cycleDays', root).onchange = () => { save(); openGoal(); };
-      for (const b of $$('[data-cycle]', root)) {
-        b.onclick = () => {
-          setGoal({ plots: Number($('#plots', root).value) });
-          setGoal({ cycleDays: Number(b.dataset.cycle) });
-          openGoal();
-        };
-      }
+      render(root);
+      const search = $('#goalSearch', root);
+      search.oninput = () => { query = search.value.trim().toLowerCase(); render(root); };
       root.onclick = (e) => {
-        if (e.target.closest('[data-act="land"]')) { save(); openFarm(); return; }
-        if (e.target.closest('[data-act="cycle"]')) { save(); openCycle(); return; }
         const btn = e.target.closest('[data-recipe]');
         if (!btn) return;
-        save();
         setGoal({ recipeId: btn.dataset.recipe });
+        // Craft follows the plan until you pick something there; its make/buy
+        // choices belonged to the old potion.
+        resetMakeIfFollowing();
         closeSheet();
-        runSolve();
+        solveWithPrices();
       };
     },
   });
@@ -279,6 +225,9 @@ const PLOT_ICON = {
  * The city matters too, and per crop: Martlock grows foxglove and potatoes ten
  * percent better, Lymhurst does the same for geese.
  */
+/* Cities you asked to add land in this time, before any of it is saved. */
+let extraCities = [];
+
 export function openFarm() {
   // Every island is bound to a city and farms with that city's bonus, so
   // there is nowhere to put land that is not a city. The island entry exists
@@ -287,8 +236,9 @@ export function openFarm() {
   const mine = new Map();
   for (const h of state.farm) mine.set(`${h.cityId}:${h.kind}`, h.count);
   const owned = [...new Set(state.farm.map((h) => h.cityId))];
-  const listed = [...new Set([...owned, ...cities.map((c) => c.id)])];
-  const sum = landSummary();
+  if (!owned.length && !extraCities.length) extraCities = [state.settings.farmCity];
+  const listed = [...new Set([...owned, ...extraCities])].filter((id) => cities.some((c) => c.id === id));
+  const rest = cities.filter((c) => !listed.includes(c.id));
 
   const nameOfCity = (id) => (state.settings.cities || [])
     .find((c) => c.id === id)?.name || id;
@@ -312,15 +262,15 @@ export function openFarm() {
   const cityBlock = (id) => {
     const loose = (mine.get(`${id}:plant`) || 0) + (mine.get(`${id}:animal`) || 0);
     return `
-    <div class="card" style="padding:10px 12px;margin-bottom:10px">
-      <div style="margin-bottom:8px">
-        <div style="font-size:14px;font-weight:600">${esc(nameOfCity(id))}</div>
-        <div class="muted small">${esc(bonusHere(id))}</div>
+    <div class="card" style="padding:12px;margin-bottom:8px">
+      <div class="row slim" style="border:0;background:none;padding:0;min-height:0;margin-bottom:8px">
+        <span class="body"><span class="title">${esc(nameOfCity(id))}</span>
+          <span class="meta">${esc(bonusHere(id))}</span></span>
       </div>
       <div class="two">${box(id, 'farm', 'Farms')}${box(id, 'herbgarden', 'Herb Gardens')}</div>
       <div class="two" style="margin-top:8px">${box(id, 'pasture', 'Pastures')}${
         box(id, 'kennel', 'Kennels')}</div>
-      ${loose ? `<div class="warn-note" style="margin-top:8px">
+      ${loose ? `<div class="warn-note">
         ${loose} ${loose === 1 ? 'plot' : 'plots'} here were saved before the app
         told the buildings apart. Put the real numbers in above and
         <button class="linkish" data-drop="${esc(id)}">clear the old ones</button>.
@@ -330,39 +280,23 @@ export function openFarm() {
 
   openSheet(`
     <h2>Your land</h2>
-    <p class="muted">Count whole 3\u00d73 plots, not tiles. The game keeps these four
-      apart and so does the plan: crops only grow in a Farm, herbs only in a
-      Herb Garden, livestock only in a Pasture and the exotic mounts only in a
-      Kennel. Five plots of carrots and seven of agaric are not twelve
-      interchangeable plots.</p>
-    <p class="muted small">Every island is bound to a city and farms with that
-      city's full bonus, so put your island's plots under the city it sits in.
-      There is no such thing as a farm with no city behind it \u2014 crafting is the
-      one that loses the bonus on your own island.</p>
-
-    ${state.farm.length ? `
-      <div class="card" style="margin-bottom:12px">
-        ${[['farm', 'Farms', 'crops'], ['herbgarden', 'Herb Gardens', 'herbs'],
-          ['pasture', 'Pastures', 'livestock'], ['kennel', 'Kennels', 'mounts']]
-          .filter(([k]) => sum[k] > 0)
-          .map(([k, label, what]) => `
-            <div class="bar-row"><span class="n">${label} <small>${what}</small></span>
-              <span class="v num">${sum[k]}</span></div>`).join('')}
-        ${sum.vague ? `<div class="bar-row"><span class="n">Not yet sorted</span>
-          <span class="v num bad">${sum.vague}</span></div>` : ''}
-        <div class="bar-row total"><span class="n">Across</span>
-          <span class="v num">${sum.cities.size} ${
-            sum.cities.size === 1 ? 'city' : 'cities'}</span></div>
-      </div>`
-    : `<div class="warn-note" style="margin-bottom:12px">Nothing described yet, so
-        the plan is working from ${state.goal.plots} plots that can grow anything,
-        anywhere. Fill this in and it will stop telling you to grow herbs
-        somewhere herbs cannot go.</div>`}
+    ${note('Whole 3×3 plots. Crops need a Farm, herbs a Herb Garden, livestock a Pasture, mounts a Kennel. Islands count under their city.')}
+    ${state.farm.length ? '' : `
+      <div class="field"><label>Plots that can grow anything</label>
+        <input type="number" id="plots" inputmode="numeric" min="0" max="999" value="${state.goal.plots}">
+        <div class="hint">Fine to start with. Say which buildings they are below and the plan stops guessing.</div></div>`}
 
     ${listed.map(cityBlock).join('')}
 
+    ${rest.length ? `
+      <button class="row add" id="addCity">+ Add a city</button>
+      <select id="cityPick" class="hide" style="margin-top:8px">
+        <option value="">Which city?</option>
+        ${rest.map((c) => `<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('')}
+      </select>` : ''}
+
     ${state.farm.length ? `
-      <button class="btn danger" id="clear">Forget all this</button>` : ''}
+      <button class="btn ghost danger" id="clear" style="margin-top:12px">Forget all this</button>` : ''}
 
     <div class="sheet-actions">
       <button class="btn primary" id="save">Save</button>
@@ -381,13 +315,25 @@ export function openFarm() {
           openFarm();
         };
       }
+      const add = $('#addCity', root);
+      const pick = $('#cityPick', root);
+      if (add) {
+        add.onclick = () => { add.classList.add('hide'); pick.classList.remove('hide'); pick.focus(); };
+        pick.onchange = () => {
+          if (pick.value) { extraCities.push(pick.value); openFarm(); }
+        };
+      }
       $('#clear', root)?.addEventListener('click', () => { clearLand(); openFarm(); });
       $('#save', root).onclick = () => {
+        const plots = $('#plots', root);
+        if (plots) setGoal({ plots: Number(plots.value) || state.goal.plots });
+        extraCities = [];
         closeSheet();
         // Describing your land is a change to the question, so answer it again.
         if (state.goal.recipeId) runSolve();
       };
     },
+    onDismiss: () => { extraCities = []; },
   });
 }
 
@@ -402,7 +348,7 @@ export function openAddPlot() {
         <span class="ico">${x.emoji}</span>
         <span class="body"><span class="title">T${x.tier} ${esc(x.name)}</span>
           <span class="meta">${esc(x.meta)}</span></span>
-        <span class="amt">+</span>
+        ${go()}
       </button>`).join('')}`;
 
   const plants = DATA.plants.map((p) => ({
@@ -536,8 +482,7 @@ export function openFarmCity() {
     ${(s.cities || []).filter((c) => !c.craftOnly).map((c) => {
       const items = Object.keys(c.farmBonus || {});
       return `
-        <button class="row" data-farm-city="${esc(c.id)}"
-          ${c.id === s.farmCity ? 'style="border-color:var(--gold)"' : ''}>
+        <button class="row ${c.id === s.farmCity ? 'selected' : ''}" data-farm-city="${esc(c.id)}">
           <span class="ico">\u{1F33E}</span>
           <span class="body"><span class="title">${esc(c.name)}</span>
             <span class="meta">${items.length
@@ -585,22 +530,14 @@ export function openAddCraft() {
 
   const list = (rs) => rs
     .sort((a, b) => a.tier - b.tier || a.name.localeCompare(b.name))
-    .map((r) => `
-      <button class="row" data-recipe="${esc(r.id)}">
-        <span class="ico">${GROUP_ICON[groupOf(r)]}</span>
-        <span class="body"><span class="title">${tierText(r.tier, r.enchant)} ${esc(r.name)}</span>
-          <span class="meta">${r.inputs.map((i) => `${i.count}× ${nameOf(i.id)}`).join(', ')}
-            → ${r.amount}</span></span>
-        <span class="amt">+</span>
-      </button>`).join('');
+    .map((r) => recipeRow(r, null, GROUP_ICON[groupOf(r)])).join('');
 
   openSheet(`
     <h2>What are you crafting?</h2>
     <div class="section-head"><h2>Potions</h2></div>${list(byCat.potion)}
     <div class="section-head"><h2>Food</h2></div>${list(byCat.food)}
     ${byCat.meat.length ? `<div class="section-head"><h2>Butchering</h2></div>
-      <p class="muted" style="margin:0 0 8px">One grown animal, 38 focus, 18 cuts
-        of meat. The animal does not come back.</p>${list(byCat.meat)}` : ''}
+      ${note('One grown animal, 38 focus, 18 cuts of meat. The animal does not come back.')}${list(byCat.meat)}` : ''}
   `, {
     onMount(root) {
       root.onclick = (e) => {
@@ -738,48 +675,77 @@ function cityHint(cityId, category) {
 }
 
 /** Choose the default city used by the Best screen and new craft jobs. */
+/**
+ * The one place where you craft is decided. Opened from the Plan, it shows
+ * what every city would earn on the plan on screen; from Craft or Me, what
+ * each city's bonus is worth to the recipe in hand.
+ */
 export function openCraftCity() {
   const s = state.settings;
+  const recipe = craftTarget() ? recipeOf(craftTarget()) : null;
+  const deltas = state.plan.crafts.length && lastSim ? cityDeltas(lastSim) : [];
+  const byCity = new Map(deltas.map((d) => [d.city.id, d]));
+  const hidden = new Set(deltas.flatMap((d) => (d.others ? [] : []))); // ties collapse below
+  const shown = deltas.length ? deltas.map((d) => d.city) : (s.cities || []);
+
+  const rowFor = (c) => {
+    const d = byCity.get(c.id);
+    const here = c.id === s.craftCity;
+    let meta;
+    let right;
+    if (d) {
+      meta = `${short(d.profit)} a cycle · ${short(d.weight)} kg to carry${
+        d.others ? ` · same in ${d.others} more` : ''}`;
+      right = here ? tick() : amt(d.delta, { unit: '/cycle', sign: true });
+    } else if (recipe && !c.craftOnly) {
+      const b = cityBonus(c, recipe.category, s);
+      meta = `+${b.base} base${b.specialises ? `, +${b.specialty} ${esc(recipe.category === 'food' ? 'food' : recipe.category)}` : ''} → ${pct(returnRateOf(b.total), 1)} back`;
+      right = here ? tick() : '';
+    } else {
+      const spec = c.craftSpecialties || {};
+      const tags = [spec.potion && `+${spec.potion} potions`, spec.food && `+${spec.food} food`].filter(Boolean).join(', ');
+      meta = c.craftOnly ? 'No city bonus: your own station, away from any city'
+        : `+${c.craftBase} base${tags ? `, ${tags}` : ', no specialty here'}`;
+      right = here ? tick() : '';
+    }
+    return rowHTML({
+      attrs: `data-city="${esc(c.id)}"`, icon: c.craftOnly ? ICON.island : ICON.city,
+      title: `${esc(c.name)}${d?.best && !here ? ` ${tag('best')}` : ''}`,
+      meta, cls: here ? 'selected' : '', right,
+    });
+  };
+
   openSheet(`
     <h2>Where do you craft?</h2>
-    <p class="muted">This sets the default. Each job on your plan can override it.</p>
-    ${(s.cities || []).map((c) => {
-      const spec = c.craftSpecialties || {};
-      const tags = [
-        spec.potion && `+${spec.potion} for potions`,
-        spec.food && `+${spec.food} for cooked food`,
-      ].filter(Boolean).join(', ');
-      // The island is the one place with no city behind it, which is the
-      // whole point of listing it: your own station gets nothing back.
-      const meta = c.craftOnly
-        ? 'No city bonus at all \u2014 your own station, away from any city'
-        : `+${c.craftBase} base${tags ? `, ${tags}` : ', no specialty here'}`;
-      return `
-        <button class="row" data-city="${esc(c.id)}"
-          ${c.id === s.craftCity ? 'style="border-color:var(--gold)"' : ''}>
-          <span class="ico">${c.craftOnly ? '\u{1F3E1}' : '\u{1F3EF}'}</span>
-          <span class="body"><span class="title">${esc(c.name)}</span>
-            <span class="meta">${esc(meta)}</span></span>
-          <span class="amt">${c.id === s.craftCity ? '\u2713' : ''}</span>
-        </button>`;
-    }).join('')}
-    <p class="muted small" style="margin-top:12px">
-      Only Brecilien boosts potions and only Caerleon boosts cooked food. The
-      royal cities specialise in weapons and armour, so for these they give the
-      base and nothing more. Your station shows its real bonus on the city map
-      \u2014 if it differs, change the numbers under Setup.</p>
+    ${recipe ? `
+      <div class="toggle" style="margin-bottom:8px">
+        <div class="body"><div class="t">Best city per step</div>
+          <div class="d">Refine where refining is specialised, ride between.</div></div>
+        <button class="switch" id="bestStep" aria-pressed="${s.craftWhere === 'best'}"></button>
+      </div>` : ''}
+    ${shown.map(rowFor).join('')}
+    ${note(deltas.length
+      ? 'Each is the whole cycle run again there: its return rate, its specialty, its fee, and the extra ride. Moves every job on your plan; a job can still be set on its own from its row.'
+      : 'Only Brecilien boosts potions and only Caerleon boosts cooked food. The royal cities specialise in weapons and armour.')}
   `, {
     onMount(root) {
+      $('#bestStep', root)?.addEventListener('click', () => {
+        setSettings({ craftWhere: s.craftWhere === 'best' ? 'one' : 'best' });
+        openCraftCity();
+      });
       root.onclick = (e) => {
         const id = e.target.closest('[data-city]')?.dataset.city;
         if (!id) return;
-        setSettings({ craftCity: id });
+        setCraftCity(id);
         closeSheet();
         toast(`Crafting in ${cityFor(state.settings, id)?.name}`);
       };
     },
   });
 }
+
+/** Return rate from a total bonus, the game's own curve. */
+const returnRateOf = (bonus) => 1 - 100 / (100 + bonus);
 
 /* ------------------------------------------------------------ prices -- */
 
@@ -815,9 +781,8 @@ export function openPrice(id, market = null, busy = false, err = null) {
     // information, and ranking them together quietly pretends it is.
     const stale = Number.isFinite(when) && Date.now() - when > 24 * 3600e3;
     return `
-      <button class="row price ${stale ? 'warn' : ''}"
-        data-city="${esc(r.city)}" data-target="${target}"
-        data-value="${v}" ${n === 0 ? 'style="border-color:var(--gold)"' : ''}>
+      <button class="row price ${stale ? 'warn' : ''} ${n === 0 ? 'selected' : ''}"
+        data-city="${esc(r.city)}" data-target="${target}" data-value="${v}">
         <span class="body">
           <span class="title">${esc(r.city)}${rank ? ` <small>${rank}</small>` : ''}</span>
           <span class="meta">${esc(ago(when))}${stale ? ' · too old to trust' : ''}</span>
@@ -835,7 +800,7 @@ export function openPrice(id, market = null, busy = false, err = null) {
 
   openSheet(`
     <h2>${esc(name)}</h2>
-    <p class="muted">${esc(id)}</p>
+    ${note(`${tierText(itemMeta(id)?.tier || 0, itemMeta(id)?.enchant || 0)} \u00b7 ${esc(itemMeta(id)?.cat || 'item')}`)}
 
     <div class="two">
       <div class="field"><label>You sell it for</label>
@@ -891,12 +856,12 @@ export function openPrice(id, market = null, busy = false, err = null) {
 
     ${buyable.length ? `
       <div class="section-head" style="margin-top:18px"><h2>\u{1F53D} Cheapest to buy</h2>
-        <span class="right num" style="color:var(--dim)">tap to use</span></div>
+        <span class="right num" class="flat">tap to use</span></div>
       ${quotes(buyable, 'sellMin', 'cheapest', 'buy')}` : ''}
 
     ${sellable.length ? `
       <div class="section-head" style="margin-top:18px"><h2>\u{1F53C} Best place to sell</h2>
-        <span class="right num" style="color:var(--dim)">tap to use</span></div>
+        <span class="right num" class="flat">tap to use</span></div>
       <p class="muted small" style="margin:-4px 0 8px">What it is listed at there,
         so what you could ask. Your own sale still pays the market's cut.</p>
       ${quotes(sellable, 'sellMin', 'best', 'sell')}` : ''}
@@ -1316,10 +1281,8 @@ export function openAdvanced() {
 export function openData() {
   openSheet(`
     <h2>Backup and restore</h2>
-    <p class="muted">Your prices, your plan and your settings are stored on this
-      phone only. Nothing is sent anywhere except the price lookups, which ask
-      the Albion Online Data Project about item ids and tell it nothing about
-      you.</p>
+    <div class="bar-row"><span class="n">Game data</span><span class="v num">${esc(DATA.generated || '')}</span></div>
+    ${note('Everything is stored on this phone only. Nothing is sent anywhere except the price lookups, which ask the Albion Online Data Project about item ids and tell it nothing about you.')}
     <div class="btn-row">
       <button class="btn" id="export">Export backup</button>
       <button class="btn" id="import">Restore</button>
@@ -1478,7 +1441,8 @@ export function openCycle() {
   const l = sim.ledger;
   const count = (m) => days.filter((d) => d === m).length;
   const LABEL = { farm: 'Farm', rest: 'Rest', craft: 'Craft' };
-  const ICON = { farm: '\u{1F33E}', rest: '\u{1F4A4}', craft: '\u{1F9EA}' };
+  const DAY_ICON = { farm: '\u{1F33E}', rest: '\u{1F4A4}', craft: '\u{1F9EA}' };
+  const was = solveStamp().goal;
 
   const presets = [
     ['daily', 'Farm every day', (n) => Array.from({ length: n }, () => 'farm')],
@@ -1489,11 +1453,14 @@ export function openCycle() {
       (_, i) => (i % 7 >= 5 ? 'craft' : 'farm'))],
   ];
 
+  const mode = goal.keepDays ? 'custom' : goal.cycleDays || 0;
   openSheet(`
-    <h2>Your cycle</h2>
-    <p class="muted">Tap a day to change what you do on it. Farm days water and
-      harvest; rest days let focus bank up untouched; craft days spend it at the
-      station. Crafting also runs on farm days with whatever focus is left.</p>
+    <h2>Your days</h2>
+    <div class="seg" style="margin-bottom:12px">
+      ${[[0, 'Let it choose'], [3, '3'], [7, '7'], [14, '14'], ['custom', 'Custom']].map(([v, label]) => `
+        <button type="button" data-cycle="${v}" aria-pressed="${String(mode) === String(v)}">${label}</button>`).join('')}
+    </div>
+    ${note('Tap a day to change it. Farm days water and harvest; rest days let focus bank untouched; craft days spend it at the station. Crafting runs on farm days too, with whatever is left.')}
 
     <div class="field">
       <div class="stepper">
@@ -1505,7 +1472,7 @@ export function openCycle() {
         ${days.map((m, i) => `
           <button type="button" class="day ${m}" data-day="${i}"
             aria-label="Day ${i + 1}, ${LABEL[m]}. Tap to change">
-            <span class="n">${i + 1}</span><span class="m">${ICON[m]}</span></button>`).join('')}
+            <span class="n">${i + 1}</span><span class="m">${DAY_ICON[m]}</span></button>`).join('')}
       </div>
       <div class="legend" style="margin-top:6px">
         <span><i class="sw farm"></i> farm ${count('farm')}</span>
@@ -1535,6 +1502,7 @@ export function openCycle() {
         value="${s.startFocus || 0}">
       <div class="hint">Zero if you emptied it on the last batch.</div></div>
 
+    ${moreHTML('cycle-stats', 'What this cycle gives you', '', `
     <div class="card" style="margin-bottom:12px">
       <div class="bar-row"><span class="n">Harvests this cycle</span>
         <span class="v num">${sim.farmingDays}</span></div>
@@ -1552,7 +1520,7 @@ export function openCycle() {
     ${l.cappedOn && sim.focusWasted > 0 ? `<div class="warn-note" style="margin-bottom:12px">
       The bar is full on day ${l.cappedOn}. Every rest day after that throws
       away ${Math.round(s.focusPerDay).toLocaleString()} focus: turn one into a
-      craft day, or shorten the cycle.</div>` : ''}
+      craft day, or shorten the cycle.</div>` : ''}`)}
 
     <div class="sheet-actions">
       <button class="btn primary" id="save">Done</button>
@@ -1580,11 +1548,27 @@ export function openCycle() {
         };
       }
       $('#keepDays', root).onclick = () => { setGoal({ keepDays: !goal.keepDays }); openCycle(); };
+      for (const b of $$('[data-cycle]', root)) {
+        b.onclick = () => {
+          const v = b.dataset.cycle;
+          if (v === 'custom') setGoal({ keepDays: true });
+          else {
+            setGoal({ cycleDays: Number(v), keepDays: false });
+            if (Number(v) > 0) setScheduleLength(Number(v));
+          }
+          openCycle();
+        };
+      }
       $('#startFocus', root).onchange = () => {
         setSettings({ startFocus: Math.max(0, Number($('#startFocus', root).value) || 0) });
         openCycle();
       };
-      $('#save', root).onclick = () => { closeSheet(); toast('Cycle saved'); };
+      $('#save', root).onclick = () => {
+        closeSheet();
+        toast('Cycle saved');
+        // A different question deserves a fresh answer; the same one does not.
+        if (state.goal.recipeId && solveStamp().goal !== was) runSolve();
+      };
     },
   });
 }
@@ -1738,7 +1722,23 @@ export function openBoard(branch = null) {
    * sorted and the whole strip wraps. */
   const labelOf = (n) => n.branchLabel || n.branch;
   const branches = [...new Set(nodes.map(labelOf))].sort();
-  const open = branches.includes(branch) ? branch : branches[0];
+  /* Farming branches first: they are the ones a potion plan cares about, and
+   * with the gear file loaded the rest is forty-odd names. */
+  const farmIds = new Set([
+    ...DATA.recipes.map((r) => r.id), ...DATA.plants.map((p) => p.id), ...DATA.animals.map((a) => a.id),
+  ]);
+  const isFarming = (b) => nodes.some((n) => labelOf(n) === b
+    && n.rules.some((r) => r.patterns.some((pat) => [...farmIds].some((id) => id.includes(String(pat).replace(/\*/g, ''))))));
+  const farming = branches.filter(isFarming);
+  const gear = branches.filter((b) => !farming.includes(b));
+  const BY_CAT = { potion: 'Alchemist', food: 'Chef' };
+  const first = DATA.recipes.find((r) => r.id === state.plan.crafts[0]?.recipeId);
+  const wanted = first ? (first.category.startsWith('meat_') ? 'Animal Breeder' : BY_CAT[first.category]) : null;
+  const most = branches.map((b) => [b, nodes.filter((n) => labelOf(n) === b && state.nodeLevels[n.id]).length])
+    .sort((a, b) => b[1] - a[1])[0];
+  const open = branches.includes(branch) ? branch
+    : branches.includes(wanted) ? wanted
+      : most && most[1] > 0 ? most[0] : farming[0] || branches[0];
   const mine = nodes.filter((n) => labelOf(n) === open);
 
   // What your current levels do to the things on your plan.
@@ -1773,14 +1773,13 @@ export function openBoard(branch = null) {
 
   openSheet(`
     <h2>Destiny board</h2>
-    <p class="muted">Focus cost comes from these. The branch node counts for
-      everything under it, and every specialisation also cheapens its siblings
-      a little \u2014 so levelling Potato Schnapps makes healing potions cheaper too.</p>
-
-    <div class="seg" style="margin-bottom:12px;flex-wrap:wrap">
-      ${branches.map((b) => `
-        <button type="button" data-branch="${esc(b)}" aria-pressed="${b === open}">
-          ${esc(b)}</button>`).join('')}
+    <div class="field">
+      <select id="branch">
+        <optgroup label="Farming">${farming.map((b) => `
+          <option value="${esc(b)}" ${b === open ? 'selected' : ''}>${esc(b)}</option>`).join('')}</optgroup>
+        ${gear.length ? `<optgroup label="Gear">${gear.map((b) => `
+          <option value="${esc(b)}" ${b === open ? 'selected' : ''}>${esc(b)}</option>`).join('')}</optgroup>` : ''}
+      </select>
     </div>
 
     ${mine.filter((n) => n.kind === 'mastery').map(nodeRow).join('')}
@@ -1803,15 +1802,14 @@ export function openBoard(branch = null) {
           <span class="n">Every 100 efficiency</span>
           <span class="v num">halves the cost</span></div>
       </div>` : ''}
+    ${note('The branch node counts for everything under it, and every specialisation also cheapens its siblings a little: levelling Potato Schnapps makes healing potions cheaper too.')}
 
     <div class="sheet-actions">
       <button class="btn primary" id="done">Done</button>
     </div>
   `, {
     onMount(root) {
-      for (const b of $$('[data-branch]', root)) {
-        b.onclick = () => openBoard(b.dataset.branch);
-      }
+      $('#branch', root).onchange = (e) => openBoard(e.target.value);
       for (const input of $$('[data-node]', root)) {
         input.onchange = () => { setNodeLevel(input.dataset.node, input.value); openBoard(open); };
       }
@@ -1852,17 +1850,7 @@ export function openCraftPick() {
       .slice(0, 200);
 
     $('#craftList', root).innerHTML = `
-      ${shown.map((r) => `
-        <button class="row" data-pick="${esc(r.id)}"
-          ${r.id === craftTarget() ? 'style="border-color:var(--gold)"' : ''}>
-          <span class="ico">${groupIcon(craftGroupOf(r))}</span>
-          <span class="body">
-            <span class="title">${tierText(r.tier, r.enchant)} ${esc(r.name)}</span>
-            <span class="meta">${r.inputs.map((i) => `${i.count}× ${esc(craftNameOf(i.id))}`).join(', ')}${
-              priceOf(r.id) || bmPriceOf(r.id) ? '' : ' · no price yet'}</span>
-          </span>
-          <span class="amt">${r.id === craftTarget() ? '✓' : '+'}</span>
-        </button>`).join('')}
+      ${shown.map((r) => recipeRow(r, craftTarget(), groupIcon(craftGroupOf(r)), 'data-pick')).join('')}
       ${hits.length > shown.length
         ? `<div class="hint centered">${hits.length - shown.length} more — type to narrow it down.</div>`
         : ''}
@@ -2092,17 +2080,7 @@ export function openQuality() {
 
   openSheet(`
     <h2>Quality of what you make</h2>
-    <p class="muted">Crafting rolls on a table, and your destiny board and your
-      focus tip it towards the better end. On ${esc(nameOf(sample))} you are
-      carrying <b>${Math.round(points)}</b> quality points right now.</p>
-
-    <div class="warn-note" style="margin-bottom:12px">The game publishes the
-      table — 689 plain, 250 good, 50 outstanding, 10 excellent, 1
-      masterpiece out of a thousand — and it publishes the points. It does not
-      publish how the points move the table. The percentages below are this
-      app's reading of that, not the game's own number, so if your crafting
-      station tells you something different, type it in and it will be used
-      instead.</p>
+    ${note(`Crafting rolls on a table, and your destiny board and your focus tip it towards the better end. On ${esc(nameOf(sample))} you are carrying <b>${Math.round(points)}</b> quality points right now. The game publishes the table and the points but not how the points move the table; the percentages below are this app's reading. If your station says otherwise, type it in.`)}
 
     ${QUALITY_LEVELS.map(row).join('')}
 

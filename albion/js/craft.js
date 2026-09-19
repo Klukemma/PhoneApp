@@ -15,8 +15,10 @@ import {
   DATA, GEAR, bmPriceOf, costOf, loadEquipment, priceOf, qBmPriceOf, qPriceOf,
   state, setSettings,
 } from './store.js';
-import { serverName } from './prices.js';
 import { esc } from './ui.js';
+import {
+  ICON, amt, askLine, askStrip, go, heroHTML, moreHTML, note, rowHTML, slimRow, tag, tick,
+} from './html.js';
 import {
   enchantOf, pct, short, silver, tierText, toneOf,
 } from './util.js';
@@ -230,69 +232,57 @@ export function craft() {
   const run = currentRun();
   const qty = q().qty || 100;
   const sell = sellSide(recipe);
+  const s = state.settings;
+  const city = cityFor(s);
+  const bonus = recipe && city ? cityBonus(city, recipe.category, s) : null;
+  const farmable = recipe && (DATA?.recipes || []).some((r) => r.id === recipe.id);
+
+  const make = askLine({
+    act: 'craft-pick', k: 'Make', state: recipe ? 'set' : 'unset',
+    v: recipe ? `${tierText(recipe.tier, recipe.enchant)} ${esc(recipe.name)}` : 'Pick anything craftable',
+  });
+  const howMany = recipe ? askLine({
+    k: 'How many', tagName: 'label', state: q().qty ? 'set' : 'default',
+    inner: `<input type="number" inputmode="numeric" min="1" max="999999" value="${qty}" data-craft-qty>`,
+  }) + (run && run.qty !== run.asked ? `<div class="hint">Comes ${run.perBatch} at a time, so ${
+    run.crafts} ${run.crafts === 1 ? 'batch' : 'batches'} → ${run.qty}.</div>` : '') : '';
+  const sellLine = recipe ? askLine({
+    k: 'Sell', tagName: 'div', state: q().sellTo ? 'set' : 'default',
+    inner: `<div class="seg small">
+      <button data-craft-sell="market" aria-pressed="${sell.where === 'market'}">Market</button>
+      <button data-craft-sell="black" aria-pressed="${sell.where === 'black'}"
+        ${sellsToBlackMarket(recipe) ? '' : 'disabled'}>Black Market</button>
+    </div>`,
+  }) + (sellsToBlackMarket(recipe) ? '' : '<div class="hint">Black Market: equipment only</div>') : '';
+  const where = recipe ? askLine({
+    act: 'craft-city', k: 'In', state: s.craftCityPicked || s.craftWhere === 'best' ? 'set' : 'default',
+    v: s.craftWhere === 'best' ? 'Best city per step'
+      : `${esc(city?.name || 'Pick a city')}${bonus?.specialises
+        ? ` · ${recipe.category === 'food' ? 'food' : recipe.category === 'potion' ? 'potions' : esc(recipe.category)} +${bonus.specialty}%`
+        : bonus ? ` · +${bonus.base} base` : ''}`,
+  }) : '';
+  const seg = farmable ? `
+    <div class="seg two-up">
+      <button data-act="grow-instead">Grow the materials</button>
+      <button aria-pressed="true">Buy the materials</button>
+    </div>` : '';
 
   return {
     title: 'Craft',
-    sub: recipe && run
-      ? `${run.crafts.toLocaleString()} × batch of ${run.perBatch} = ${
-        run.qty.toLocaleString()} ${recipe.name} · ${sell.label}`
-      : 'What is it worth making?',
+    action: recipe ? { label: '↓ Prices', act: 'craft-prices' } : null,
     html: `
-      <section>
-        <button class="goal-line" data-act="craft-pick">
-          <span class="k">Make</span>
-          <span class="v">${recipe
-            ? `${tierText(recipe.tier, recipe.enchant)} ${esc(recipe.name)}`
-            : 'pick anything craftable'}</span>
-          <span class="amt">›</span>
-        </button>
-        <div class="field" style="margin-bottom:8px"><label>How many</label>
-          <input type="number" id="craftQty" inputmode="numeric" min="1" max="999999"
-            value="${qty}" data-craft-qty>
-          ${run && run.qty !== run.asked ? `<div class="hint">${esc(recipe.name)}
-            comes ${run.perBatch} at a time, so that is ${run.crafts}
-            ${run.crafts === 1 ? 'batch' : 'batches'} and
-            <b>${run.qty}</b> of them.</div>` : ''}</div>
-        <div class="field"><label>Sell it</label>
-          <div class="seg">
-            <button data-craft-sell="market" aria-pressed="${sell.where === 'market'}"
-              >On the market</button>
-            <button data-craft-sell="black" aria-pressed="${sell.where === 'black'}"
-              ${recipe && !sellsToBlackMarket(recipe) ? 'disabled' : ''}
-              >Black Market</button>
-          </div></div>
-        <div class="hint centered" style="margin-top:2px">
-          <button class="linkish" data-act="craft-prices">↓ Fetch prices</button>
-          for ${esc(state.settings.priceCity)} on
-          ${esc(serverName(state.settings.server))}${recipe && sellsToBlackMarket(recipe)
-            ? ' and the Black Market' : ''} ·
-          <button class="linkish" data-act="price-source">change</button></div>
-        ${sell.refused ? `<div class="hint">The Black Market only takes
-          equipment \u2014 weapons, armour, bags, capes and tools \u2014 so this is
-          priced on the open market instead.</div>` : ''}
-        ${sell.where === 'black' ? `<div class="hint">The Black Market only buys
-          equipment, it never sells, and you are accepting an order that is
-          already standing rather than listing one — so there is no setup fee,
-          only the ${(state.settings.marketTransactionTax / (state.settings.premium ? 2 : 1)).toFixed(1)}%
-          tax. It pays more than the market often enough to be worth the walk
-          to Caerleon.</div>` : ''}
-      </section>
-      ${recipe ? runHTML(run, recipe) : pickPrompt()}
+      ${askStrip(make + howMany + sellLine + where, seg, '')}
+      ${recipe ? runHTML(run, recipe) : note('Pick anything the game can craft: potions, food, bars, weapons, armour, mounts. Then say how many.', 'centered')}
       ${gearBanner()}`,
   };
 }
-
-const pickPrompt = () => `
-  <div class="empty"><span class="e">⚖️</span>
-    Pick a thing and say how many. You get the shopping list, the focus it
-    takes at your real mastery, the station's cut, and what is left over.</div>`;
 
 function gearBanner() {
   if (gearState === 'loading') {
     return `<div class="hint centered">Fetching the weapon and armour list…</div>`;
   }
   if (gearState === 'error') {
-    return `<div class="warn-note">Could not load the weapon and armour list:
+    return `<div class="warn-note bad">Could not load the weapon and armour list:
       ${esc(gearError)}. Potions, food and butchering still work.</div>`;
   }
   return '';
@@ -300,119 +290,84 @@ function gearBanner() {
 
 function runHTML(run, recipe) {
   if (!run) return '';
-  const gaps = run.missing;
-  return `
-    ${gaps.length ? `
-      <section>
-        <div class="warn-note">${gaps.length === 1 ? 'One thing has' : `${gaps.length} things have`}
-          no price, so ${gaps.length === 1 ? 'it reads' : 'they read'} as free coming in and
-          worthless going out. The number below is not real until
-          ${gaps.length === 1 ? 'it is' : 'they are'} filled in.</div>
-        ${gaps.map((g) => `
-          <button class="row warn" data-price="${esc(g)}">
-            <span class="ico">❓</span>
-            <span class="body"><span class="title">${tierText(tierOf(g), enchantOf(g))} ${esc(nameOf(g))}</span>
-              <span class="meta">tap to put a price on it</span></span>
-            <span class="amt">?</span>
-          </button>`).join('')}
-      </section>` : ''}
-
-    <section class="hero">
-      <div class="label">Profit on ${short(run.qty)} ${esc(recipe.name)}</div>
-      <div class="amount ${toneOf(run.profit)}">${short(run.profit)}</div>
-      <div class="hero-foot">
-        ${silver(run.perItem)} each · ${pct(run.margin)} margin
-        ${run.silverPerFocus != null
-          ? `<br>${perFocus(run.silverPerFocus)} per focus · ${short(run.focus)} focus in all`
-          : '<br>no focus spent'}
-      </div>
-    </section>
-
-    ${whereRunHTML(run)}
-    ${qualityHTML(run)}
-    ${moneyHTML(run)}
-    ${makeHTML(run, recipe)}
-    ${buysHTML(run)}
-    ${stepsHTML(run)}
-    ${whereHTML(run, recipe)}`;
-}
-
-/**
- * Where this run happens, and what that means you are carrying.
- *
- * Only worth a card once there is more than one city in it: a run that never
- * leaves Lymhurst has nothing to say here.
- */
-function whereRunHTML(run) {
   const s = state.settings;
-  const cityName = (id) => (s.cities || []).find((c) => c.id === id)?.name || id;
-  const multi = s.craftWhere === 'best';
-  const legs = run.legs || [];
+  const gaps = run.missing;
+  const board = Object.keys(state.nodeLevels || {}).length;
+  const nudges = [
+    gaps.length ? slimRow({
+      act: 'craft-prices', icon: ICON.warn, cls: 'warn',
+      title: `${gaps.length} ${gaps.length === 1 ? 'thing has' : 'things have'} no price · Fetch`,
+    }) : '',
+    ...gaps.map((g) => rowHTML({
+      attrs: `data-price="${esc(g)}"`, icon: '❓', cls: 'warn',
+      title: `${tierText(tierOf(g), enchantOf(g))} ${esc(nameOf(g))}`,
+      meta: 'tap to put a price on it', right: tag('Set price'),
+    })),
+    !board && run.focus > 0 ? slimRow({
+      act: 'board', icon: ICON.board, title: 'Focus costs assume zero mastery · Set your board',
+    }) : '',
+  ].filter(Boolean).join('');
+
   return `
+    ${heroHTML({
+    label: `Profit on ${short(run.qty)} ${esc(recipe.name)}`,
+    amount: short(run.profit), tone: toneOf(run.profit),
+    sub: `${silver(run.perItem)} each · ${pct(run.margin)} margin`,
+    stats: [
+      { v: run.silverPerFocus != null ? perFocus(run.silverPerFocus) : 'none', k: 'per focus' },
+      { v: short(run.focus), k: 'focus in all' },
+      { v: String(run.crafts), k: run.crafts === 1 ? 'batch' : 'batches' },
+    ],
+  })}
+    ${run.sell.where === 'black' ? note(`Black Market: no setup fee, ${
+    (s.marketTransactionTax / (s.premium ? 2 : 1)).toFixed(2)}% tax, sells instantly in Caerleon.`, 'centered')
+    : run.sell.refused ? note('The Black Market only takes equipment, so this is priced on the open market.', 'centered') : ''}
+    ${nudges ? `<section>${nudges}</section>` : ''}
+    ${buysHTML(run, recipe)}
+    ${stepsSection(run)}
     <section>
-      <div class="section-head"><h2>Where you make it</h2></div>
-      <div class="seg">
-        <button data-where="one" aria-pressed="${!multi}">All in ${esc(cityName(s.craftCity))}</button>
-        <button data-where="best" aria-pressed="${multi}">Best city per step</button>
-      </div>
-      ${legs.length ? `
-        <div class="card" style="margin-top:10px">
-          ${legs.map((leg) => `
-            <div class="bar-row">
-              <span class="n">${esc(cityName(leg.from))} \u2192 ${esc(cityName(leg.to))}</span>
-              <span class="v num">${short(leg.weight)} kg${
-                leg.trips ? ` \u00b7 ${leg.trips} ${leg.trips === 1 ? 'trip' : 'trips'}` : ''}${
-                leg.cost > 0 ? ` \u00b7 ${short(leg.cost)}` : ''}</span></div>`).join('')}
-          <div class="bar-row total"><span class="n">Carried in all</span>
-            <span class="v num">${short(legs.reduce((t, l) => t + l.weight, 0))} kg</span></div>
-        </div>
-        <div class="hint">What each step is worth is the city's; what you can
-          carry and what a ride is worth to you are not published anywhere, so
-          they are yours to set on the Me screen. ${s.carryWeight
-            ? `At ${short(s.carryWeight)} kg a trip.`
-            : 'Set a carrying capacity and this will count the trips.'}</div>`
-        : `<div class="hint">${multi
-          ? 'Every step is already best made here, so there is nothing to carry.'
-          : 'One city, so nothing moves \u2014 but refining is specialised somewhere other than smithing, so the other option is usually cheaper in materials and dearer in riding.'}</div>`}
+      ${moreHTML('craft', 'Details', run.quality ? 'the money · quality' : 'the money', `
+        ${moneyHTML(run)}
+        ${qualityTable(run)}`)}
     </section>`;
 }
 
-/**
- * The quality side of the sale. Equipment only, and only when it moves the
- * number \u2014 a card saying "all plain" on a stack of bars is noise.
- */
-function qualityHTML(run) {
+/** What one sale of this quality mix is worth, as one row that opens the editor. */
+function qualityRow(run) {
   if (!run.quality) return '';
-  const { mix, source, points } = run.quality;
+  const { mix, source } = run.quality;
+  return rowHTML({
+    act: 'quality', icon: ICON.quality,
+    title: `Quality · ${pct(mix[1], 0)} plain, ${pct(1 - mix[1], 0)} better`,
+    meta: `${run.qualityUplift > 0 ? `+${pct(run.qualityUplift)} on the sale` : 'no uplift'} · ${
+      source === 'yours' ? 'your mix' : 'worked out from your board'}`,
+    right: run.qualityUplift > 0 ? amt(`+${pct(run.qualityUplift)}`, { tone: 'good' }) : go(),
+  });
+}
+
+/** The quality table, for the Details block. */
+function qualityTable(run) {
+  if (!run.quality) return '';
+  const { mix, points } = run.quality;
   const names = state.settings.quality?.names || {};
   const priceAt = run.sell.priceAt;
   const rows = QUALITY_LEVELS.filter((q) => (mix[q] || 0) > 0.001);
   return `
-    <section>
-      <div class="section-head"><h2>Quality</h2>
-        <span class="right num ${run.qualityUplift > 0 ? 'good' : ''}">${
-          run.qualityUplift > 0 ? `+${pct(run.qualityUplift)}` : 'no uplift'}</span></div>
-      <div class="card">
-        ${rows.map((q) => {
-          const at = priceAt(run.recipe.id, q);
-          return `
-          <div class="bar-row">
-            <span class="n">${esc(names[q] || `Quality ${q}`)} \u00b7 ${pct(mix[q], 1)}</span>
-            <span class="v num ${at ? '' : 'flat'}">${at ? silver(at)
-              : q === 1 ? 'no price' : 'priced as plain'}</span></div>`;
-        }).join('')}
-        <div class="bar-row total"><span class="n">Average, per item</span>
-          <span class="v num good">${silver(run.unitPrice)}</span></div>
-      </div>
-      <div class="hint">${Math.round(points)} quality points from your board and
-        your focus. ${source === 'yours' ? 'Using the mix you entered.'
-          : 'The split is this app\u2019s reading, not a number the game publishes.'}
-        ${run.qualityGuessed.length
-          ? ` No price yet for ${run.qualityGuessed.map((q) => esc(names[q] || q)).join(', ')},
-              so ${run.qualityGuessed.length === 1 ? 'it is' : 'they are'} counted at
-              the plain price \u2014 which understates this.` : ''}
-        <button class="linkish" data-act="quality">change</button></div>
-    </section>`;
+    <div class="section-head"><h2>Quality</h2></div>
+    <div class="card">
+      ${rows.map((q) => {
+    const at = priceAt(run.recipe.id, q);
+    return `
+        <div class="bar-row">
+          <span class="n">${esc(names[q] || `Quality ${q}`)} · ${pct(mix[q], 1)}</span>
+          <span class="v num ${at ? '' : 'flat'}">${at ? silver(at) : q === 1 ? 'no price' : 'priced as plain'}</span></div>`;
+  }).join('')}
+      <div class="bar-row total"><span class="n">Average, per item</span>
+        <span class="v num good">${silver(run.unitPrice)}</span></div>
+      ${note(`${Math.round(points)} quality points from your board and your focus.${
+    run.qualityGuessed.length ? ` No price yet for ${run.qualityGuessed.map((q) => esc(names[q] || q)).join(', ')}, so ${
+      run.qualityGuessed.length === 1 ? 'it is' : 'they are'} counted at the plain price, which understates this.` : ''}`)}
+    </div>`;
 }
 
 function moneyHTML(run) {
@@ -420,149 +375,105 @@ function moneyHTML(run) {
     <div class="bar-row"><span class="n">${esc(label)}</span>
       <span class="v num ${tone || ''}">${value}</span></div>`;
   return `
-    <section>
-      <div class="section-head"><h2>The money</h2></div>
-      <div class="card">
-        ${line(run.quality
-          ? `${short(run.qty)} sold at ${silver(run.unitPrice)} average`
-          : `${short(run.qty)} sold at ${silver(run.unitPrice)}`, short(run.gross), 'good')}
-        ${line(run.sellInstant
-          ? `Tax (${pct(run.tax)}, no setup fee)`
-          : `Market tax (${pct(run.tax)})`, short(-run.taxPaid), 'bad')}
-        ${line('Materials bought', short(-run.buyCost), 'bad')}
-        ${run.fees > 0.5 ? line('Station fees', short(-run.fees), 'bad') : ''}
-        <div class="bar-row total"><span class="n">Profit</span>
-          <span class="v num ${toneOf(run.profit)}">${short(run.profit)}</span></div>
-      </div>
-    </section>`;
-}
-
-function makeHTML(run, recipe) {
-  const make = new Set(q().make || []);
-  const opts = makeable(recipe, make);
-  if (!opts.length) return '';
-  return `
-    <section>
-      <div class="section-head"><h2>Buy it or make it</h2></div>
-      <p class="muted small">Every one of these you make yourself is one you do
-        not buy — cheaper in silver, dearer in focus. Tap to switch.</p>
-      ${opts.map((o) => `
-        <button class="row" data-make="${esc(o.id)}"
-          ${o.chosen ? 'style="border-color:var(--gold)"' : ''}>
-          <span class="ico">${o.chosen ? '\u{1F528}' : '\u{1F6D2}'}</span>
-          <span class="body">
-            <span class="title">${' '.repeat(o.depth * 2)}${tierText(tierOf(o.id), enchantOf(o.id))} ${esc(nameOf(o.id))}</span>
-            <span class="meta">${o.chosen
-              ? `made from ${o.recipe.inputs.map((i) => esc(nameOf(i.id))).join(' + ')}`
-              : `bought at ${costOf(o.id) ? silver(costOf(o.id)) : 'no price yet'}`}</span>
-          </span>
-          <span class="amt">${o.chosen ? 'make' : 'buy'}</span>
-        </button>`).join('')}
-    </section>`;
-}
-
-function buysHTML(run) {
-  if (!run.buys.length) return '';
-  return `
-    <section>
-      <div class="section-head"><h2>Buy · your shopping list</h2>
-        <span class="right num bad">${short(-run.buyCost)}</span></div>
-      ${run.buys.map((b) => {
-        /* What you carry to the station and what the run really costs are
-         * two numbers. They only pull apart on a short run, where nothing
-         * has come back yet to spend on the next batch. */
-        const spare = b.qty - b.net;
-        return `
-        <button class="row ${b.unit ? '' : 'warn'}" data-price="${esc(b.id)}">
-          <span class="ico">\u{1F6D2}</span>
-          <span class="body">
-            <span class="title">${short(b.qty)} × ${esc(nameOf(b.id))}</span>
-            <span class="meta">${b.unit ? `${silver(b.unit)} each` : 'no price set'}
-              · ${short(b.perCraft)} a batch${spare > 0.05
-                ? ` · ${short(spare)} comes back, so it really costs ${short(b.net)}`
-                : ''}</span>
-          </span>
-          <span class="amt num ${b.unit ? 'bad' : 'flat'}">${b.unit ? short(-b.cost) : '?'}</span>
-        </button>`;
-      }).join('')}
-      <div class="hint">The station takes the whole recipe every time you press
-        the button and hands the return back afterwards, so the first batch is
-        never discounted — these are the amounts to actually have on you.</div>
-    </section>`;
-}
-
-function stepsHTML(run) {
-  return `
-    <section>
-      <div class="section-head"><h2>Craft · in this order</h2>
-        <span class="right">${short(run.focus)} focus</span></div>
-      ${run.steps.map((s) => {
-        const eff = specFor(state.settings, s.recipe.id);
-        const bonus = cityBonus(cityFor(state.settings, s.cityId),
-          s.recipe.category, state.settings);
-        /* Where this step actually happens, which with "best city per step"
-         * is not the same place for all of them. When it is somewhere that
-         * does not specialise in it, the row names the city that does. */
-        const here = (state.settings.cities || []).find((c) => c.id === s.cityId);
-        const better = !bonus.specialises
-          ? (state.settings.cities || [])
-            .find((c) => cityBonus(c, s.recipe.category, state.settings).specialises)
-          : null;
-        return `
-        <div class="row">
-          <span class="ico">${groupIcon(groupOf(s.recipe))}</span>
-          <span class="body">
-            <span class="title">${short(s.crafts)} ${s.crafts === 1 ? 'craft' : 'crafts'}
-              → ${short(s.made)} ${tierText(s.recipe.tier, s.recipe.enchant)} ${esc(s.recipe.name)}</span>
-            <span class="meta">${pct(s.batch.rrr)} of materials come back${
-              bonus.specialises ? ` · this city's specialty` : ''}${
-              s.focus > 0 ? ` · ${short(s.focus)} focus at ${Math.round(eff)} mastery` : ''}${
-              s.fee > 0.5 ? ` · ${short(s.fee)} in fees` : ''}${
-              state.settings.craftWhere === 'best' && here ? ` · in ${esc(here.name)}` : ''}${
-              better ? ` · better in ${esc(better.name)}` : ''}</span>
-          </span>
-          <span class="amt">${s.target ? '✓' : ''}</span>
-        </div>`;
-      }).join('')}
-    </section>`;
+    <div class="section-head"><h2>The money</h2></div>
+    <div class="card">
+      ${line(run.quality
+    ? `${short(run.qty)} sold at ${silver(run.unitPrice)} average`
+    : `${short(run.qty)} sold at ${silver(run.unitPrice)}`, short(run.gross), 'good')}
+      ${line(run.sellInstant
+    ? `Tax (${pct(run.tax)}, no setup fee)`
+    : `Market tax (${pct(run.tax)})`, short(-run.taxPaid), 'bad')}
+      ${line('Materials bought', short(-run.buyCost), 'bad')}
+      ${run.fees > 0.5 ? line('Station fees', short(-run.fees), 'bad') : ''}
+      <div class="bar-row total"><span class="n">Profit</span>
+        <span class="v num ${toneOf(run.profit)}">${short(run.profit)}</span></div>
+    </div>`;
 }
 
 /**
- * Where to stand. The return rate is the single biggest lever on a craft and
- * it is decided by which building you walk into, so the screen says which one
- * rather than leaving you to remember the table.
+ * The shopping list, with the make-or-buy choice folded into it: an input
+ * that could be made instead shows a tag, and tapping the tag flips it. The
+ * row itself still opens the price.
  */
-function whereHTML(run, recipe) {
-  const s = state.settings;
-  const rows = (s.cities || [])
-    .map((c) => ({ c, b: cityBonus(c, recipe.category, s) }))
-    .filter((x) => x.b.specialises)
-    .sort((a, b) => b.b.total - a.b.total);
-  if (!rows.length) return '';
-  const here = s.craftCity;
+function buysHTML(run, recipe) {
+  const make = new Set(q().make || []);
+  const opts = makeable(recipe, make);
+  const makeTag = (id, chosen, depth) => `<button class="tag ${chosen ? 'on' : ''}" data-make="${esc(id)}">${
+    chosen ? 'make' : 'buy'}</button>`;
+  const rows = run.buys.map((b) => {
+    /* What you carry to the station and what the run really costs are two
+     * numbers. They only pull apart on a short run, where nothing has come
+     * back yet to spend on the next batch. */
+    const spare = b.qty - b.net;
+    const opt = opts.find((o) => o.id === b.id);
+    return rowHTML({
+      attrs: `data-price="${esc(b.id)}"`, icon: ICON.cart, cls: b.unit ? '' : 'warn',
+      title: `${short(b.qty)} × ${esc(nameOf(b.id))}`,
+      meta: esc(`${b.unit ? `${silver(b.unit)} each` : 'no price set'} · ${short(b.perCraft)} a batch${
+        spare > 0.05 ? ` · ${short(spare)} come back, really ${short(b.net)}` : ''}`),
+      right: (opt ? makeTag(b.id, false, opt.depth) : '') + (b.unit ? amt(-b.cost) : tag('Set price')),
+    });
+  });
+  // Things you chose to make: no longer bought, so they get a row of their own.
+  const made = opts.filter((o) => o.chosen && !run.buys.some((b) => b.id === o.id)).map((o) => rowHTML({
+    attrs: `data-price="${esc(o.id)}"`, icon: ICON.make, cls: o.depth > 0 ? 'nested' : '',
+    title: `${tierText(tierOf(o.id), enchantOf(o.id))} ${esc(nameOf(o.id))}`,
+    meta: `made from ${o.recipe.inputs.map((i) => esc(nameOf(i.id))).join(' + ')} → see Craft`,
+    right: makeTag(o.id, true, o.depth),
+  }));
+  if (!rows.length && !made.length) return '';
   return `
     <section>
-      <div class="section-head"><h2>Where to make it</h2></div>
-      ${rows.map(({ c, b }) => `
-        <button class="row" data-craft-city="${esc(c.id)}"
-          ${c.id === here ? 'style="border-color:var(--gold)"' : ''}>
-          <span class="ico">\u{1F3EF}</span>
-          <span class="body"><span class="title">${esc(c.name)}</span>
-            <span class="meta">+${b.base} base and +${b.specialty} specialty${
-              s.useFocus ? `, +${s.focusCraftBonus} focus` : ''} — ${
-              pct(1 - 100 / (100 + b.total + (s.useFocus ? s.focusCraftBonus : 0)))
-            } comes back</span></span>
-          <span class="amt">${c.id === here ? '✓' : '›'}</span>
-        </button>`).join('')}
-      <div class="hint">${rows.length === 1 ? 'Only this city specialises in it'
-        : 'These cities specialise in it'}; anywhere else is the flat
-        +${(s.cities || [])[0]?.craftBase ?? 18} base, and your own island is
-        worse again. The difference on ${short(run.buyCost)} of materials is
-        real money.</div>
+      <div class="section-head"><h2>Buy · what to have on you</h2>
+        <span class="right num ${run.buyCost > 0.5 ? 'bad' : 'flat'}">${run.buyCost > 0.5 ? short(-run.buyCost) : ''}</span></div>
+      ${rows.join('')}${made.join('')}
     </section>`;
 }
 
-/* ------------------------------------------------------------- rank ---- */
+function stepsSection(run) {
+  const s = state.settings;
+  const cityName = (id) => (s.cities || []).find((c) => c.id === id)?.name || id;
+  const steps = run.steps.map((st) => {
+    const eff = specFor(s, st.recipe.id);
+    const bonus = cityBonus(cityFor(s, st.cityId), st.recipe.category, s);
+    /* Where this step actually happens, which with "best city per step" is
+     * not the same place for all of them. When it is somewhere that does
+     * not specialise in it, the row names the city that does. */
+    const here = (s.cities || []).find((c) => c.id === st.cityId);
+    const better = !bonus.specialises
+      ? (s.cities || []).find((c) => cityBonus(c, st.recipe.category, s).specialises) : null;
+    return rowHTML({
+      tagName: 'div', icon: groupIcon(groupOf(st.recipe)),
+      title: `${short(st.crafts)} ${st.crafts === 1 ? 'craft' : 'crafts'} → ${short(st.made)} ${
+        tierText(st.recipe.tier, st.recipe.enchant)} ${esc(st.recipe.name)}`,
+      meta: esc([
+        `${pct(st.batch.rrr)} of materials come back`,
+        bonus.specialises ? "this city's specialty" : '',
+        st.focus > 0 ? `${short(st.focus)} focus at ${Math.round(eff)} mastery` : '',
+        st.fee > 0.5 ? `${short(st.fee)} in fees` : '',
+        s.craftWhere === 'best' && here ? `in ${here.name}` : '',
+        better ? `better in ${better.name}` : '',
+      ].filter(Boolean).join(' · ')),
+      right: st.target ? tick() : '',
+    });
+  });
+  const legs = s.craftWhere === 'best' ? (run.legs || []) : [];
+  const carry = legs.map((leg) => rowHTML({
+    act: 'craft-city', icon: ICON.carry,
+    title: `Carry ${short(leg.weight)} kg · ${esc(cityName(leg.from))} → ${esc(cityName(leg.to))}`,
+    meta: leg.trips ? `${leg.trips} ${leg.trips === 1 ? 'trip' : 'trips'}${leg.cost > 0 ? ` · costs ${short(leg.cost)}` : ''}`
+      : 'set what you carry on Me to count trips',
+    right: go(),
+  }));
+  return `
+    <section>
+      <div class="section-head"><h2>Craft · in this order</h2>
+        <span class="right num">${short(run.focus)} focus</span></div>
+      ${steps.join('')}
+      ${qualityRow(run)}
+      ${carry.join('')}
+    </section>`;
+}
 
 /* Which slice of the six thousand to price and rank. You cannot fetch them
  * all — that is 67 batches of market prices and another 67 of Black Market
@@ -634,7 +545,6 @@ export function rankCraft() {
 }
 
 export function craftRankHTML() {
-  const { group, tier, enchant } = scan();
   const rows = rankCraft();
   const ready = rows.filter((r) => r.ready);
   const top = Math.max(...ready.map((r) => Math.abs(r.best.profit)), 1);
@@ -643,52 +553,39 @@ export function craftRankHTML() {
     const w = (Math.abs(r.best.profit) / top) * 100;
     const perFocusTxt = r.best.silverPerFocus != null
       ? `${perFocus(r.best.silverPerFocus)}/focus` : 'no focus';
+    const meta = r.ready
+      ? `${perFocusTxt} · ${short(r.best.buyCost)} of materials${
+        r.best.qualityUplift > 0.005 ? ` · +${pct(r.best.qualityUplift, 0)} on quality` : ''}${
+        r.black && r.where !== 'black' ? ` · Black Market ${short(r.black.profit)}` : ''}`
+      : `needs a price for ${r.missing.map(nameOf).slice(0, 2).join(', ')}${
+        r.missing.length > 2 ? ` and ${r.missing.length - 2} more` : ''}`;
     return `
       <button class="row rank" data-craft-rank="${esc(r.recipe.id)}">
         <span class="ico">${groupIcon(groupOf(r.recipe))}</span>
         <span class="body">
           <span class="title">${tierText(r.recipe.tier, r.recipe.enchant)} ${esc(r.recipe.name)}</span>
-          <span class="meta">${r.ready
-            ? `${perFocusTxt} · ${short(r.best.buyCost)} of materials${
-              r.best.qualityUplift > 0.005 ? ` · +${pct(r.best.qualityUplift, 0)} on quality` : ''}${
-              r.where === 'black' ? ' · best at the Black Market' : ''}${
-              r.black && r.where !== 'black'
-                ? ` · Black Market ${short(r.black.profit)}` : ''}`
-            : `needs a price for ${esc(r.missing.map(nameOf).slice(0, 2).join(', '))}${
-              r.missing.length > 2 ? ` and ${r.missing.length - 2} more` : ''}`}</span>
-          ${r.ready ? `<span class="bar"><i class="${toneOf(r.best.profit)}"
-            style="width:${w.toFixed(1)}%"></i></span>` : ''}
+          <span class="meta">${esc(meta)}</span>
+          ${r.ready ? `<span class="bar"><i class="${toneOf(r.best.profit)}" style="width:${w.toFixed(1)}%"></i></span>` : ''}
         </span>
-        <span class="amt num ${r.ready ? toneOf(r.best.profit) : 'flat'}">${
-          r.ready ? short(r.best.profit) : '—'}</span>
+        ${r.ready && r.where === 'black' ? tag('BM', true) : ''}
+        ${r.ready ? amt(r.best.profit, { unit: '/craft' }) : amt('—', { tone: 'flat' })}
       </button>`;
   };
 
+  const notReady = rows.filter((r) => !r.ready);
   return `
-    <div class="card toggle-card">
-      ${GROUPS.map(([k, label]) => `
-        <button class="mini" data-scan-group="${esc(k)}"
-          aria-pressed="${k === group}">${esc(label)}</button>`).join('')}
-    </div>
-    <div class="card toggle-card" style="margin-top:8px">
-      ${[1, 2, 3, 4, 5, 6, 7, 8].map((t) => `
-        <button class="mini" data-scan-tier="${t}" aria-pressed="${t === tier}">T${t}</button>`).join('')}
-      ${[0, 1, 2, 3, 4].map((e) => `
-        <button class="mini" data-scan-enchant="${e}"
-          aria-pressed="${e === enchant}">${e ? `.${e}` : 'plain'}</button>`).join('')}
-    </div>
-    <button class="btn primary" data-act="scan-prices" style="margin-top:10px">
-      ↓ Fetch prices for these ${rows.length}</button>
-    <div class="hint centered">Profit on one craft, materials all bought, in
-      ${esc(cityFor(state.settings)?.name || 'your crafting city')}. Whichever of
-      the market and the Black Market pays more is the one shown. Tap a row to
-      open it properly.</div>
-    ${rows.length ? rows.map(row).join('') : `
+    ${slimRow({
+    act: 'scan-filter', icon: groupIcon(scan().group),
+    title: `${esc(scanLabel())} · ${rows.length} ${rows.length === 1 ? 'recipe' : 'recipes'}`,
+  })}
+    ${notReady.length ? `<button class="btn primary" data-act="scan-prices" style="margin:8px 0">
+      ↓ Fetch prices for these ${rows.length}</button>` : ''}
+    ${ready.length ? ready.map(row).join('') : rows.length ? '' : `
       <div class="empty"><span class="e">\u{1F50D}</span>${
         gearReady() ? 'Nothing at that tier.' : 'Still loading the list…'}</div>`}
-    ${ready.length === 0 && rows.length ? `
-      <div class="warn-note">None of these have prices yet. Fetch them above —
-        it is one request per hundred items, so this slice is quick.</div>` : ''}`;
+    ${notReady.length ? moreHTML('rank-needs', `${notReady.length} need prices`, '',
+    notReady.map(row).join('')) : ''}
+    ${note(`Profit on one craft, materials all bought, in ${esc(cityFor(state.settings)?.name || 'your crafting city')}. Whichever of market and Black Market pays more.`, 'centered')}`;
 }
 
 /** The ids this slice needs priced, for the fetch button. */

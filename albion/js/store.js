@@ -653,6 +653,7 @@ export function carryStockIn(rows, focus) {
 
 export function setCraftCity(cityId) {
   state.settings.craftCity = cityId;
+  state.settings.craftCityPicked = true;
   for (const job of state.plan.crafts) delete job.cityId;
   commit();
 }

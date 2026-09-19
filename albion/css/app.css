@@ -365,16 +365,6 @@ nav button[aria-current="page"]::before { content: ''; position: absolute; top: 
 .stock-line .meta { font-size: var(--fs-sm); color: var(--text-2); }
 .stock-line input { width: 84px; text-align: right; }
 
-/* ---- legacy, deleted at the end of the redesign pass ---- */
-.muted { color: var(--text-2); font-size: var(--fs-sm); }
+/* An inline link inside a sentence, for the rare sheet that needs one. */
 .linkish { color: var(--accent); text-decoration: underline; font-size: inherit; }
-.goal { padding: 6px 6px 10px; }
-.goal-line { display: flex; align-items: baseline; gap: 10px; width: 100%; padding: 11px 10px; border-radius: 11px; text-align: left; }
-.goal-line .k { font-size: var(--fs-xs); color: var(--text-2); width: 42px; flex: 0 0 42px; }
-.goal-line .v { flex: 1; min-width: 0; font-size: var(--fs-md); font-weight: var(--w-semi); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.goal-line .go { color: var(--text-3); }
-.toggle-card { display: flex; gap: 6px; flex-wrap: wrap; padding: 10px; }
-.mini { padding: 7px 11px; border-radius: 10px; background: var(--surface-2); border: 1px solid var(--line); font-size: var(--fs-xs); color: var(--text-3); }
-.mini[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); }
-.hero-foot { display: flex; justify-content: space-between; font-size: var(--fs-xs); color: var(--text-3); }
-.hero .note { font-size: var(--fs-sm); color: var(--text-2); }
+.muted { color: var(--text-2); font-size: var(--fs-sm); }
