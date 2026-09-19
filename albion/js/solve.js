@@ -485,7 +485,13 @@ export function buildPlan(chain, assign, data, ctx, sched, budget, withFiller = 
     id: uid(), recipeId: j.recipeId,
     mode: buying ? 'fixed' : 'auto',
     perCycle: buying ? Math.max(0, Math.ceil(targetCrafts * j.multiplier)) : 0,
-    cityId: s.craftCity, useFocus: j.useFocus,
+    /* No city on the job. It used to be stamped with whatever you were
+     * crafting in when the plan was solved, and simulateCycle prefers a
+     * job's own city to the setting - so a solved plan was welded to that
+     * city and changing where you craft did nothing at all. Left off, the
+     * job follows the setting, and the job editor can still pin one
+     * deliberately. */
+    useFocus: j.useFocus,
   }));
 
   return {

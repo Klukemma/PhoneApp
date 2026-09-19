@@ -507,3 +507,35 @@ test('a pile smaller than one batch is worth no crafts at all', () => {
   const short = line.inputs.find((i) => i.have < i.count);
   if (short) assert.equal(short.allows, 0, `${short.id}: under one batch is zero crafts`);
 });
+
+/* --------------------------------------------- moving where you craft -- */
+
+test('a craft job with no city of its own follows the setting', () => {
+  /* simulateCycle prefers a job's own cityId to the craftCity setting, so a
+   * job carrying one is welded to that city - which made "tap to move" quote
+   * the same profit for all eleven cities and collapse to one dead row. */
+  const plots = [{
+    id: 'f', itemId: 'T6_FARM_FOXGLOVE_SEED', count: 5, mode: 'grow', cityId: 'martlock',
+  }];
+  const job = { id: 'c1', recipeId: 'T6_POTION_HEAL', mode: 'fixed', perCycle: 100 };
+  const P = {
+    T6_FOXGLOVE: 260, T6_FARM_FOXGLOVE_SEED: 2200, T6_ALCOHOL: 449,
+    T5_EGG: 320, T6_POTION_HEAL: 2400,
+  };
+  const run = (plan, craftCity) => simulateCycle(plan, data, {
+    priceOf: (id) => P[id] ?? 0,
+    settings: { ...ctx().settings, craftCity, watered: false, cycleDays: 14, farmDays: 14 },
+  }).profit;
+
+  const loose = { plots, crafts: [job] };
+  const pinned = { plots, crafts: [{ ...job, cityId: 'brecilien' }] };
+
+  // Left alone, the setting decides - Brecilien specialises in potions and
+  // the island gives no bonus at all, so they cannot come out the same.
+  assert.notEqual(Math.round(run(loose, 'brecilien')), Math.round(run(loose, 'island')));
+  assert.ok(run(loose, 'brecilien') > run(loose, 'island'));
+
+  // Pinned, the job ignores the setting entirely. That is the behaviour the
+  // job editor relies on, and the reason the solver must not stamp it.
+  assert.equal(Math.round(run(pinned, 'brecilien')), Math.round(run(pinned, 'island')));
+});

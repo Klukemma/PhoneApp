@@ -793,11 +793,17 @@ function craftWhereCard(sim) {
     if (city.id === s.craftCity) {
       return { city, profit: sim.profit, weight: haulWeight(sim), here: true };
     }
-    // The same two passes plan() itself does, so the comparison is against
-    // like and not against a rougher answer.
+    /* The same two passes plan() itself does, so the comparison is against
+     * like and not against a rougher answer - and with the jobs moved as
+     * well as the setting, because a job's own city wins over the setting
+     * and would otherwise quote the same number for all eleven. */
     const at = (f) => ({ ...ctx(f), settings: { ...s, craftCity: city.id } });
-    const probe = simulateCycle(state.plan, DATA, at(1));
-    const run = simulateCycle(state.plan, DATA, at(probe.wateredFraction));
+    const moved = {
+      ...state.plan,
+      crafts: state.plan.crafts.map(({ cityId, ...job }) => job),
+    };
+    const probe = simulateCycle(moved, DATA, at(1));
+    const run = simulateCycle(moved, DATA, at(probe.wateredFraction));
     return { city, profit: run.profit, weight: haulWeight(run), here: false };
   });
 
@@ -887,11 +893,18 @@ function buyCard(sim) {
       <div class="section-head"><h2>Buy · your shopping list</h2>
         <span class="right num bad">${short(-total)}</span></div>
       ${sim.buys.map((b) => {
-        const unit = priceOf(b.id);
+        /* What it actually costs you, not what it is listed at. costOf caps a
+         * market listing at the merchant's ask, because you can always walk
+         * to the shelf - a T6 seed is 15,000 there however far the market has
+         * run off. Showing the listing here while charging the capped price
+         * below made the row disagree with its own total. */
+        const unit = costOf(b.id);
+        const capped = unit > 0 && priceOf(b.id) > unit;
         const why = !unit ? 'no price set, so this is costing you nothing on paper'
-          : b.forFarm ? `${silver(unit)} each · what the plots burn and do not give back`
-            : grown.has(b.id) ? `${silver(unit)} each, topping up what your plots grew`
-              : `${silver(unit)} each · nothing in your plan grows these`;
+          : `${silver(unit)} each${capped ? ' from the merchant' : ''} · ${
+            b.forFarm ? 'what the plots burn and do not give back'
+              : grown.has(b.id) ? 'topping up what your plots grew'
+                : 'nothing in your plan grows these'}`;
         return `
         <button class="row ${unit ? '' : 'warn'}" data-price="${esc(b.id)}">
           <span class="ico">\u{1F6D2}</span>

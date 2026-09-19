@@ -585,6 +585,20 @@ export function addSpare(spare) {
   commit();
 }
 
+/**
+ * Move where the crafting happens, and mean it.
+ *
+ * Setting craftCity alone was not enough: a job carries its own cityId and
+ * simulateCycle prefers that to the setting, so a plan the solver built stayed
+ * welded to the city it was solved in. Moving the crafting moves the jobs with
+ * it. Pin one somewhere else afterwards from the job itself if you want to.
+ */
+export function setCraftCity(cityId) {
+  state.settings.craftCity = cityId;
+  for (const job of state.plan.crafts) delete job.cityId;
+  commit();
+}
+
 export function setSettings(patch) {
   Object.assign(state.settings, patch);
   commit();

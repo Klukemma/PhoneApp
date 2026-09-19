@@ -15,7 +15,7 @@ import { $, closeSheet, sheetIsOpen } from './ui.js';
 import {
   setEarnMode, setPriceFilter, setRankTab, views,
 } from './views.js';
-import { addPlot, addCraft, setSettings } from './store.js';
+import { addPlot, addCraft, setCraftCity, setSettings } from './store.js';
 
 let current = 'earn';
 
@@ -76,7 +76,7 @@ function wire() {
 
     if (d.craftSell) { setCraftSellTo(d.craftSell); return; }
     if (d.make) { toggleMake(d.make); return; }
-    if (d.craftCity) { setSettings({ craftCity: d.craftCity }); return; }
+    if (d.craftCity) { setCraftCity(d.craftCity); return; }
     if (d.scanGroup) { setScan({ group: d.scanGroup }); return; }
     if (d.scanTier) { setScan({ tier: Number(d.scanTier) }); return; }
     if (d.scanEnchant) { setScan({ enchant: Number(d.scanEnchant) }); return; }
