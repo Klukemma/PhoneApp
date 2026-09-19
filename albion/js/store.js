@@ -105,6 +105,12 @@ function defaults() {
     // now. Its own map because it is a different question from the shelf
     // price and answered by a different side of the order book.
     bmPrices: {},
+    /* Prices for the four quality levels above plain, on the market and at
+     * the Black Market. Plain stays in `prices` and `bmPrices`, where every
+     * old save already has it and where everything that is not equipment
+     * only ever has one price anyway. */
+    qPrices: {},
+    qBmPrices: {},
     spec: {},                  // recipe id -> a flat efficiency override
     nodeLevels: {},            // destiny board node id -> level
     // What you are trying to make, and how much land you have to do it with.
@@ -135,6 +141,8 @@ function withConstants(state, data) {
   // And so does the feed table: which items each category accepts, and the
   // nutrition each carries.
   state.settings.feeds = data.feeds;
+  // The quality table is game data too, never a saved copy.
+  if (data.quality) state.settings.quality = data.quality;
   /* The NPC sells seeds and babies at a fixed price. That is a ceiling on what
    * one can ever cost you — you can always walk to the merchant — and it is
    * not a saved price of yours, so it lives apart from both price maps.
@@ -180,6 +188,8 @@ function normalize(raw) {
     prices: { ...(raw.prices || {}) },
     buyPrices: { ...(raw.buyPrices || {}) },
     bmPrices: { ...(raw.bmPrices || {}) },
+    qPrices: { ...(raw.qPrices || {}) },
+    qBmPrices: { ...(raw.qBmPrices || {}) },
     spec: { ...(raw.spec || {}) },
     nodeLevels: { ...(raw.nodeLevels || {}) },
     goal: { ...base.goal, ...(raw.goal || {}) },
@@ -209,6 +219,15 @@ function normalize(raw) {
       }),
     },
   };
+  for (const map of [s.qPrices, s.qBmPrices]) {
+    for (const [id, at] of Object.entries(map)) {
+      for (const [q, v] of Object.entries(at)) {
+        const n = Number(v);
+        if (!Number.isFinite(n) || n <= 0) delete at[q];
+      }
+      if (!Object.keys(at).length) delete map[id];
+    }
+  }
   for (const map of [s.prices, s.buyPrices, s.bmPrices]) {
     for (const [k, v] of Object.entries(map)) {
       const n = Number(v);
@@ -321,6 +340,59 @@ export function setBmPrices(map) {
   for (const [id, v] of Object.entries(map)) {
     const n = Number(v);
     if (Number.isFinite(n) && n > 0) state.bmPrices[id] = Math.round(n);
+  }
+  commit();
+}
+
+/* --------------------------------------------------- prices by quality -- */
+
+/**
+ * What one fetches at a given quality, on the market or at the Black Market.
+ *
+ * Plain is the price you already had; the four above it live in their own map
+ * so that every save written before quality existed still reads correctly.
+ * A level nobody has a price for returns 0, which callers must treat as
+ * unknown rather than as free.
+ */
+export const qPriceOf = (id, quality = 1) => (quality <= 1
+  ? priceOf(id)
+  : Number(state.qPrices[id]?.[quality]) || 0);
+
+export const qBmPriceOf = (id, quality = 1) => (quality <= 1
+  ? bmPriceOf(id)
+  : Number(state.qBmPrices[id]?.[quality]) || 0);
+
+/** True when anything above plain has a price, so the screen can say so. */
+export const hasQualityPrices = (id) =>
+  [2, 3, 4, 5].some((q) => qPriceOf(id, q) > 0 || qBmPriceOf(id, q) > 0);
+
+export function setQualityPrice(id, quality, value, black = false) {
+  const map = black ? state.qBmPrices : state.qPrices;
+  const n = Number(value);
+  if (quality <= 1) {
+    (black ? setBmPrice : setPrice)(id, value);
+    return;
+  }
+  if (!Number.isFinite(n) || n <= 0) {
+    if (map[id]) delete map[id][quality];
+    if (map[id] && !Object.keys(map[id]).length) delete map[id];
+  } else {
+    (map[id] ||= {})[quality] = Math.round(n);
+  }
+  commit();
+}
+
+/** Take a whole id -> {quality: price} table from a fetch. */
+export function setQualityPrices(table, black = false) {
+  const flat = black ? state.bmPrices : state.prices;
+  const map = black ? state.qBmPrices : state.qPrices;
+  for (const [id, at] of Object.entries(table)) {
+    for (const [q, v] of Object.entries(at)) {
+      const n = Number(v);
+      if (!Number.isFinite(n) || n <= 0) continue;
+      if (Number(q) <= 1) flat[id] = Math.round(n);
+      else (map[id] ||= {})[Number(q)] = Math.round(n);
+    }
   }
   commit();
 }

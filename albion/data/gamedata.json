@@ -13,7 +13,30 @@
   "focusPerDayNoPremium": 0,
   "itemValueToNutrition": 0.1125,
   "freeCraftingMaxTier": 2,
-  "maxUsageFee": 1000
+  "maxUsageFee": 1000,
+  "focusQualityBonus": 50.0
+ },
+ "quality": {
+  "weights": {
+   "1": 689.0,
+   "2": 250.0,
+   "3": 50.0,
+   "4": 10.0,
+   "5": 1.0
+  },
+  "itemPowerBonus": {
+   "2": 20.0,
+   "3": 40.0,
+   "4": 60.0,
+   "5": 100.0
+  },
+  "names": {
+   "1": "Normal",
+   "2": "Good",
+   "3": "Outstanding",
+   "4": "Excellent",
+   "5": "Masterpiece"
+  }
  },
  "cities": [
   {

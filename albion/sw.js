@@ -1,13 +1,13 @@
 // Cache-first shell so the app opens instantly and works with no signal.
 // Bump CACHE when the shell or the game data changes.
 
-const CACHE = 'albionfarm-v26';  // v26: equipment names and Black Market prices in the price sheet
+const CACHE = 'albionfarm-v27';  // v27: item quality, and three tabs instead of four
 const SHELL = [
   './', './index.html', './manifest.webmanifest',
   './css/app.css',
   './js/app.js', './js/views.js', './js/sheets.js', './js/store.js',
-  './js/calc.js', './js/craft.js', './js/solve.js', './js/prices.js',
-  './js/ui.js', './js/util.js',
+  './js/calc.js', './js/craft.js', './js/me.js', './js/solve.js',
+  './js/prices.js', './js/ui.js', './js/util.js',
   './data/gamedata.json',
   './icons/icon.svg', './icons/icon-192.png', './icons/icon-512.png',
 ];

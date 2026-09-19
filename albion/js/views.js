@@ -11,6 +11,7 @@ import { serverName } from './prices.js';
 import {
   craft, craftRankHTML, groupLabel, scan,
 } from './craft.js';
+import { me, setupGaps } from './me.js';
 import { esc } from './ui.js';
 import { enchantOf, hours, pct, short, silver, tierText, toneOf } from './util.js';
 
@@ -1107,7 +1108,51 @@ export function cycleFor(itemId, mode, cityId) {
   return mode === 'product' ? productCycle(a, c) : animalCycle(a, c);
 }
 
-export const views = { plan, craft, rank, prices };
+/* ------------------------------------------------------------- earn ---- */
+
+/* Three questions, one screen. They were three tabs, which made you decide
+ * which of them you were asking before you could ask it — and they all answer
+ * the same thing, which is where the money is. */
+export let earnMode = 'plan';
+export const setEarnMode = (m) => { earnMode = m; };
+
+const EARN_MODES = [
+  ['plan', 'Farm it', '\u{1F33E}'],
+  ['craft', 'Make it', '\u2696\u{FE0F}'],
+  ['rank', "What's best", '\u{1F4C8}'],
+];
+
+export function earn() {
+  const inner = earnMode === 'craft' ? craft() : earnMode === 'rank' ? rank() : plan();
+  const gaps = setupGaps();
+  return {
+    ...inner,
+    title: 'Earn',
+    html: `
+      <section>
+        <div class="seg">
+          ${EARN_MODES.map(([k, label, icon]) => `
+            <button data-earn="${k}" aria-pressed="${k === earnMode}">
+              ${icon} ${esc(label)}</button>`).join('')}
+        </div>
+      </section>
+      ${gaps.length ? `
+        <section>
+          <button class="row warn" data-act="me">
+            <span class="ico">\u{1F464}</span>
+            <span class="body">
+              <span class="title">Tell it about ${esc(sentence(gaps.map((g) => g.what)))}</span>
+              <span class="meta">Until you do, the numbers below are guesses at
+                your character rather than answers about it</span>
+            </span>
+            <span class="amt">\u203A</span>
+          </button>
+        </section>` : ''}
+      ${inner.html}`,
+  };
+}
+
+export const views = { earn, me, prices };
 
 const round1 = (n) => String(Math.round(n * 10) / 10);
 

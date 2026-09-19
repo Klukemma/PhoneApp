@@ -3,9 +3,9 @@
 import { loadGameData, hydrate, state, subscribe } from './store.js';
 import {
   acceptSpare, openAddCraft, openAddPlot, openBoard, openCraft, openCraftCity,
-  openCraftPick, openCycle, openFarm, openFarmCity, openGoal, openMastery,
-  openPlot, openPrice, openPriceSource, openSettings, runCraftPriceFetch,
-  runPriceFetch, runScanPriceFetch, runSolve,
+  openAdvanced, openCraftPick, openCycle, openData, openFarm, openFarmCity,
+  openGoal, openMastery, openPlot, openPrice, openPriceSource, openQuality,
+  runCraftPriceFetch, runPriceFetch, runScanPriceFetch, runSolve,
 } from './sheets.js';
 import {
   ensureGear, setCraftQty, setCraftRerender, setCraftSellTo, setCraftTarget,
@@ -13,24 +13,34 @@ import {
 } from './craft.js';
 import { $, closeSheet, sheetIsOpen } from './ui.js';
 import {
-  setPriceFilter, setRankTab, views,
+  setEarnMode, setPriceFilter, setRankTab, views,
 } from './views.js';
 import { addPlot, addCraft, setSettings } from './store.js';
 
-let current = 'plan';
+let current = 'earn';
 
 function render() {
   const view = views[current]();
   $('#viewTitle').textContent = view.title;
   $('#viewSub').textContent = view.sub || '';
   $('#view').innerHTML = view.html;
+  // A screen with real inputs on it, rather than only taps, wires them here.
+  view.mount?.($('#view'));
+}
+
+/** Switch the Earn tab to one of its three questions and show it. */
+function goEarn(mode) {
+  setEarnMode(mode);
+  go('earn');
 }
 
 function go(name) {
   if (!views[name]) return;
   // The weapon and armour file is two megabytes, so it is fetched the first
   // time you ask for it and not before.
-  if (name === 'craft' || name === 'rank') ensureGear();
+  // The weapon and armour file is two megabytes, so it is fetched the first
+  // time something needs it and not before.
+  if (name === 'earn') ensureGear();
   current = name;
   for (const b of document.querySelectorAll('#nav button')) {
     b.removeAttribute('aria-current');
@@ -46,7 +56,6 @@ function wire() {
     if (name) go(name);
   });
 
-  $('#gearBtn').addEventListener('click', openSettings);
   $('#scrim').addEventListener('click', closeSheet);
   $('#sheet').addEventListener('click', (e) => {
     if (e.target.closest('[data-close-sheet]')) closeSheet();
@@ -58,9 +67,11 @@ function wire() {
       '[data-price-filter],[data-toggle],[data-add-plot],[data-add-craft],' +
       '[data-add-step],[data-add-spare],[data-craft-sell],[data-make],' +
       '[data-craft-city],[data-scan-group],[data-scan-tier],[data-scan-enchant],' +
-      '[data-craft-rank]');
+      '[data-craft-rank],[data-earn]');
     if (!el) return;
     const d = el.dataset;
+
+    if (d.earn) { setEarnMode(d.earn); render(); return; }
 
     if (d.craftSell) { setCraftSellTo(d.craftSell); return; }
     if (d.make) { toggleMake(d.make); return; }
@@ -70,7 +81,7 @@ function wire() {
     if (d.scanEnchant) { setScan({ enchant: Number(d.scanEnchant) }); return; }
     if (d.scanEnchant === '0') { setScan({ enchant: 0 }); return; }
     // A ranked row is a shortcut into the tab that can actually answer it.
-    if (d.craftRank) { setCraftTarget(d.craftRank); go('craft'); return; }
+    if (d.craftRank) { setCraftTarget(d.craftRank); goEarn('craft'); return; }
 
     if (d.plot) {
       const row = state.plan.plots.find((p) => p.id === d.plot);
@@ -82,17 +93,17 @@ function wire() {
       openPrice(d.price);
     } else if (d.addPlot) {
       addPlot(d.addPlot, 9, d.mode || 'grow');
-      go('plan');
+      goEarn('plan');
     } else if (d.addCraft) {
       addCraft(d.addCraft);
-      go('plan');
+      goEarn('plan');
     } else if (d.addSpare) {
       acceptSpare();
     } else if (d.addStep) {
       // The missing intermediate is usually a cheap one, so keep focus for
       // whatever it feeds rather than burning it here.
       addCraft(d.addStep, { useFocus: false });
-      go('plan');
+      goEarn('plan');
     } else if (d.rank) {
       setRankTab(d.rank);
       render();
@@ -113,6 +124,14 @@ function wire() {
       openAddCraft();
     } else if (d.act === 'prices') {
       go('prices');
+    } else if (d.act === 'me') {
+      go('me');
+    } else if (d.act === 'quality') {
+      openQuality();
+    } else if (d.act === 'advanced') {
+      openAdvanced();
+    } else if (d.act === 'data') {
+      openData();
     } else if (d.act === 'fetch-prices') {
       runPriceFetch();
     } else if (d.act === 'price-source') {
@@ -140,15 +159,18 @@ function wire() {
        * under it. Nothing to configure — it is a different screen, not a
        * different mode. */
       setCraftTarget(state.goal.recipeId);
-      go('craft');
+      goEarn('craft');
     }
   });
 
-  // The quantity box is typed into rather than tapped, so it does not go
-  // through the click handler above.
+  // Boxes are typed into rather than tapped, so they do not go through the
+  // click handler above.
   $('#view').addEventListener('change', (e) => {
-    const box = e.target.closest('[data-craft-qty]');
-    if (box) setCraftQty(box.value);
+    const box = e.target.closest('[data-craft-qty],[data-num]');
+    if (!box) return;
+    if (box.dataset.craftQty !== undefined) { setCraftQty(box.value); return; }
+    const v = Number(box.value);
+    if (Number.isFinite(v)) setSettings({ [box.dataset.num]: v });
   });
 
   window.addEventListener('popstate', () => {
@@ -176,7 +198,7 @@ async function boot() {
   // needs a way to ask for a redraw once it has.
   setCraftRerender(() => { if (current === 'craft') render(); });
   wire();
-  go('plan');
+  go('earn');
 }
 
 boot();

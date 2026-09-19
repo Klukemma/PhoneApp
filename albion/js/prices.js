@@ -50,7 +50,7 @@ const chunk = (arr, n) =>
  * `onProgress` is called with (done, total) so the UI can show movement.
  */
 export async function fetchPrices(ids, { server = 'americas', city = 'Caerleon',
-  field = 'sell', maxAgeHours = 0, onProgress, signal } = {}) {
+  field = 'sell', qualities = [1], maxAgeHours = 0, onProgress, signal } = {}) {
   const host = hostFor(server);
   if (!host) throw new Error(`Unknown server "${server}"`);
 
@@ -61,7 +61,7 @@ export async function fetchPrices(ids, { server = 'americas', city = 'Caerleon',
 
   for (const [i, batch] of batches.entries()) {
     const url = `${host}/api/v2/stats/prices/${batch.join(',')}` +
-      `?locations=${encodeURIComponent(city)}&qualities=1`;
+      `?locations=${encodeURIComponent(city)}&qualities=${qualities.join(',')}`;
 
     const res = await fetch(url, { signal, headers: { accept: 'application/json' } });
     if (!res.ok) {
@@ -84,10 +84,14 @@ export async function fetchPrices(ids, { server = 'americas', city = 'Caerleon',
       }
       /* Several rows can come back per item. On the shelf you want the
        * cheapest; on a buy order you want the best price anyone is offering,
-       * which is the highest. */
+       * which is the highest. Quality keeps them apart: a masterpiece and a
+       * plain one are two different goods at two different prices, and
+       * flattening them was the whole reason equipment read as cheap. */
       const id = row.item_id;
-      prices[id] = prices[id]
-        ? (field === 'buy' ? Math.max(prices[id], value) : Math.min(prices[id], value))
+      const q = Number(row.quality) || 1;
+      const at = (prices[id] ||= {});
+      at[q] = at[q]
+        ? (field === 'buy' ? Math.max(at[q], value) : Math.min(at[q], value))
         : value;
     }
     onProgress?.(i + 1, batches.length);
@@ -95,7 +99,12 @@ export async function fetchPrices(ids, { server = 'americas', city = 'Caerleon',
 
   const found = Object.keys(prices);
   return {
-    prices, found,
+    // Keyed id -> { quality: price }. Callers that only asked for plain can
+    // read `.plain` and forget quality ever existed.
+    prices,
+    plain: Object.fromEntries(
+      Object.entries(prices).map(([id, at]) => [id, at[1]]).filter(([, v]) => v > 0)),
+    found,
     missing: [...new Set(ids)].filter((id) => !(id in prices)),
     stale,
   };

@@ -1,8 +1,9 @@
 // Bottom sheets: pickers, editors, settings.
 
 import {
-  TILES_PER_PLOT, cityBonus, cityFor, craftBatch, farmBonus, farmCityFor,
-  focusCostAt, focusEfficiency, perPeriod, simulateCycle, specFor,
+  QUALITY_LEVELS, TILES_PER_PLOT, cityBonus, cityFor, craftBatch, farmBonus,
+  farmCityFor, focusCostAt, focusEfficiency, mixFor, perPeriod, qualityMix,
+  qualityPoints, simulateCycle, specFor,
 } from './calc.js';
 import {
   explain, fetchItem, fetchPrices, serverName, BLACK_MARKET, CITIES, SERVERS,
@@ -12,11 +13,12 @@ import {
   priceOf, pricedItemIds, clearLand, commit, landSummary, plotsOwned,
   removeCraft, removePlot, setBuyPrice, setGoal, setHolding, setNodeLevel,
   setPrice, setPrices, setSettings, setSpec, state, updateCraft, updatePlot, wipe,
-  bmPriceOf, itemMeta, setBmPrice, setBmPrices,
+  bmPriceOf, itemMeta, qBmPriceOf, qPriceOf, setBmPrice, setQualityPrice,
+  setQualityPrices,
 } from './store.js';
 import { solve } from './solve.js';
 import { $, $$, closeSheet, esc, openSheet, toast } from './ui.js';
-import { ago, hours, short, silver, tierText } from './util.js';
+import { ago, hours, pct, short, silver, tierText } from './util.js';
 import {
   cycleFor, ctx, detailHTML, setSolution, solution, solveStamp,
 } from './views.js';
@@ -30,6 +32,10 @@ import {
  * and armour list, a steel bar has a name here too; before that it does not,
  * and showing the raw id is better than pretending. */
 const nameOf = (id) => itemMeta(id)?.name || id;
+
+/* Ask the market about all five qualities at once. It is the same request
+ * either way, and on equipment the four above plain are where the money is. */
+const QUALITIES = [1, 2, 3, 4, 5];
 
 /**
  * Which list a recipe belongs in. Butchering is its own crafting category per
@@ -823,7 +829,28 @@ export function openPrice(id, market = null, busy = false, err = null) {
           value="${black || ''}" placeholder="0">
         <div class="hint">What its standing order is offering. It only buys, so
           this is a sell price and never a cost, and filling an order that is
-          already there skips the setup fee.</div></div>` : ''}
+          already there skips the setup fee.</div></div>
+
+      <div class="field">
+        <label>Above plain</label>
+        <div class="two">
+          ${[2, 3, 4, 5].map((q) => `
+            <div class="field" style="margin:0">
+              <label style="font-size:11px">${esc(
+                state.settings.quality?.names?.[q] || `Q${q}`)}</label>
+              <input type="number" inputmode="numeric" min="0" step="1"
+                data-q="${q}" placeholder="market"
+                value="${qPriceOf(id, q) || ''}">
+              <input type="number" inputmode="numeric" min="0" step="1"
+                data-qb="${q}" placeholder="black market" style="margin-top:4px"
+                value="${qBmPriceOf(id, q) || ''}"></div>`).join('')}
+        </div>
+        <div class="hint">The market prices these separately and so does the
+          Black Market, and the gap is the whole reason quality is worth
+          having. Top box is the open market, bottom is the Black Market.
+          Anything left blank is counted at the plain price, which understates
+          what a run is worth rather than overstating it.</div>
+      </div>` : ''}
     <div class="hint" style="margin:-4px 0 12px">Leave "you pay" blank and it
       costs the same as it sells for. Set it when you buy this in cheaper than
       you would list it \u2014 materials off another city's market, say.</div>
@@ -871,6 +898,12 @@ export function openPrice(id, market = null, busy = false, err = null) {
         setPrice(id, sellIn.value);
         setBuyPrice(id, buyIn.value);
         if (blackIn) setBmPrice(id, blackIn.value);
+        for (const box of $$('[data-q]', root)) {
+          setQualityPrice(id, Number(box.dataset.q), box.value, false);
+        }
+        for (const box of $$('[data-qb]', root)) {
+          setQualityPrice(id, Number(box.dataset.qb), box.value, true);
+        }
       };
       $('#save', root).onclick = () => { save(); closeSheet(); };
       for (const el of [sellIn, buyIn, blackIn].filter(Boolean)) {
@@ -959,7 +992,7 @@ export async function runPriceFetch() {
         if (st) st.textContent = `Batch ${done} of ${total}…`;
       },
     });
-    setPrices(out.prices);
+    setPrices(out.plain);
     closeSheet();
     toast(out.missing.length
       ? `${out.found.length} prices updated, ${out.missing.length} had no market data`
@@ -979,81 +1012,37 @@ export async function runPriceFetch() {
 
 /* ---------------------------------------------------------- settings -- */
 
-export function openSettings() {
+/* ----------------------------------------------- the rest of the dials - */
+
+/**
+ * The station's posted rate and the constants out of the game files.
+ *
+ * These used to sit at the bottom of one long Setup sheet along with
+ * everything else about you. They are not about you: they are what a building
+ * charges and what the game's own tables say, and you touch them on a patch
+ * day or never. Everything you DO touch is on the Me screen now.
+ */
+export function openAdvanced() {
   const s = state.settings;
-  const toggle = (key, title, desc) => `
-    <div class="toggle">
-      <div class="body"><div class="t">${esc(title)}</div>
-        <div class="d">${esc(desc)}</div></div>
-      <button class="switch" data-set="${key}" aria-pressed="${!!s[key]}"></button>
-    </div>`;
-
   openSheet(`
-    <h2>Setup</h2>
+    <h2>Station fees and game numbers</h2>
 
-    <div class="section-head"><h2>You</h2></div>
-    ${toggle('premium', 'Premium', 'Doubles farm yield and lowers market tax.')}
-    ${toggle('watered', 'Water plots with focus', 'More seeds and babies back, at 1000 focus each.')}
-    ${toggle('favouriteFood', 'Feed animals their favourite', 'Their favourite plant is worth double nutrition.')}
-    ${toggle('useFocus', 'Craft with focus', `Adds +${s.focusCraftBonus}% to the return rate.`)}
-    ${toggle('ownInputsAtCost', 'Value inputs at my farm cost', 'Instead of what they would sell for.')}
-    ${toggle('sellSurplus', 'Sell leftover ingredients',
-      'Off by default: ingredients your crafting uses are kept for the next batch, not sold.')}
-    ${toggle('hideMounts', 'Hide mounts', 'Only show livestock and plants.')}
-
-    <div class="section-head"><h2>Your cycle</h2></div>
-    <button class="row" data-act="open-cycle" style="margin-bottom:12px">
-      <span class="ico">\u{1F504}</span>
-      <span class="body"><span class="title">${s.cycleDays}-day cycle</span>
-        <span class="meta">${s.farmDays} farming, ${s.cycleDays - s.farmDays} idle, then craft</span></span>
-      <span class="amt">\u203A</span>
-    </button>
-
-    <div class="section-head"><h2>Farming</h2></div>
-    <button class="row" data-act="open-farm-city" style="margin-bottom:12px">
-      <span class="ico">\u{1F33E}</span>
-      <span class="body"><span class="title">Farm in ${esc(farmCityFor(s)?.name || 'a city')}</span>
-        <span class="meta">+10% yield on that city's crops, herbs and produce</span></span>
-      <span class="amt">\u203A</span>
-    </button>
-
-    <div class="section-head"><h2>Crafting</h2></div>
-    <button class="row" data-act="open-city" style="margin-bottom:8px">
-      <span class="ico">\u{1F3EF}</span>
-      <span class="body"><span class="title">Craft in ${esc(cityFor(s)?.name || 'a city')}</span>
-        <span class="meta">Only Brecilien boosts potions, only Caerleon boosts cooked food</span></span>
-      <span class="amt">\u203A</span>
-    </button>
-    <button class="row" data-act="open-board" style="margin-bottom:12px">
-      <span class="ico">\u{1F31F}</span>
-      <span class="body"><span class="title">Destiny board</span>
-        <span class="meta">${Object.keys(state.nodeLevels || {}).length || 'no'}
-          ${Object.keys(state.nodeLevels || {}).length === 1 ? 'node' : 'nodes'} set
-          \u00b7 drives every focus cost</span></span>
-      <span class="amt">\u203A</span>
-    </button>
-    <button class="row" data-act="open-mastery" style="margin-bottom:12px">
-      <span class="ico">\u{1F4DA}</span>
-      <span class="body"><span class="title">Per-recipe overrides</span>
-        <span class="meta">${Object.keys(state.spec || {}).length || 'none'} set
-          \u00b7 only if you would rather type the number yourself</span></span>
-      <span class="amt">\u203A</span>
-    </button>
-
-    <div class="two">
-      <div class="field"><label>Default mastery</label>
-        <input type="number" id="specLevel" inputmode="numeric" min="0" max="120" value="${s.specLevel}">
-        <div class="hint">Halves focus cost at 100.</div></div>
-      <div class="field"><label>Harvest every (hours)</label>
-        <input type="number" id="cadenceHours" inputmode="numeric" min="1" max="72" value="${s.cadenceHours}">
-        <div class="hint">Crops ripen in 22h; 24 means once a day.</div></div>
+    <div class="field">
+      <label>Station usage fee, per 100 nutrition</label>
+      <div class="two">
+        ${(s.cities || []).filter((c) => !c.craftOnly).slice(0, 8).map((c) => `
+          <div class="field" style="margin:0">
+            <label style="font-size:11px">${esc(c.name)}</label>
+            <input type="number" inputmode="numeric" min="0" max="${s.maxUsageFee || 1000}"
+              data-fee="${esc(c.id)}" placeholder="0"
+              value="${(s.stationFee || {})[c.id] || ''}"></div>`).join('')}
+      </div>
+      <div class="hint">The number posted on the station, which its owner sets.
+        The game charges it on the nutrition a craft burns, not per craft: a
+        Major Healing Potion burns 486 and a Potato Schnapps 4.5, so one flat
+        figure cannot be right for both. Tier 1 and 2 are free, and so is your
+        own island. Capped at ${s.maxUsageFee || 1000}.</div>
     </div>
-    <div class="field"><label>Spare stock you will sit on</label>
-      <input type="number" id="stockCap" inputmode="numeric" min="0" step="500"
-        value="${s.stockCap}">
-      <div class="hint">Past this many spare units of an ingredient you would
-        stop farming it and let the pile drain. Used to warn you how many cycles
-        that is away.</div></div>
 
     <div class="field">
       <label>What goes in the trough</label>
@@ -1075,98 +1064,61 @@ export function openSettings() {
       }).join('')}
       <div class="hint">The game refuses food from the wrong list outright, so
         a direwolf eats meat whatever wheat costs and a drake eats grown mounts.
-        Crops are all 48 nutrition and meat all 52, but mount food runs from 8
-        to 59,049, so the cheapest item is not the cheapest feed. Sorted by
-        silver per nutrition, which is the number that matters.</div>
+        Sorted by silver per nutrition, which is the number that matters.</div>
     </div>
 
-    <div class="field">
-      <label>Station usage fee, per 100 nutrition</label>
-      <div class="two">
-        ${(s.cities || []).filter((c) => !c.craftOnly).slice(0, 8).map((c) => `
-          <div class="field" style="margin:0">
-            <label style="font-size:11px">${esc(c.name)}</label>
-            <input type="number" inputmode="numeric" min="0" max="${s.maxUsageFee || 1000}"
-              data-fee="${esc(c.id)}" placeholder="0"
-              value="${(s.stationFee || {})[c.id] || ''}"></div>`).join('')}
-      </div>
-      <div class="hint">The number posted on the station, which the owner sets.
-        The game charges it on the nutrition a craft burns, not per craft: a
-        Major Healing Potion burns 486 and a Potato Schnapps 4.5, so one flat
-        figure cannot be right for both. Tier 1 and 2 are free, and so is your
-        own island. Capped at ${s.maxUsageFee || 1000}.</div>
-    </div>
-
-    ${s.premium ? '' : `
-    <div class="field">
-      <label>Focus you regenerate a day, without Premium</label>
-      <input type="number" id="focusPerDayNoPremium" inputmode="numeric" min="0"
-        value="${s.focusPerDayNoPremium || 0}">
-      <div class="hint">The only figure the game publishes is
-        "+${short_(s.focusPerDay)} Focus per day", and it lists that as a Premium
-        benefit. What a free account gets is published nowhere, so put in what
-        your own screen shows you \u2014 until you do, the plan assumes none.</div>
-    </div>`}
-
-    <div class="section-head"><h2>Game numbers</h2></div>
-    <p class="muted small">Straight from the game files. The premium multipliers
-      are the word "double" on the game's own Premium benefits screen rather
-      than a number in its tables, and focus regeneration is published nowhere
-      at all, so those stay yours to set. City bonuses are read from the game's
-      own tables, so they are not listed here.</p>
+    <div class="section-head"><h2>Straight from the game files</h2></div>
+    <p class="muted small">Two of these are not in its tables. The premium
+      multipliers are the word "double" on the game's own benefits screen, and
+      focus regeneration is published nowhere at all \u2014 so those stay yours to
+      set. City bonuses are read from the game's tables and are not listed here.</p>
     <div class="two">
+      <div class="field"><label>Default mastery</label>
+        <input type="number" id="specLevel" inputmode="numeric" min="0" max="120"
+          value="${s.specLevel}">
+        <div class="hint">Used only where the board says nothing.</div></div>
+      <div class="field"><label>Harvest every (hours)</label>
+        <input type="number" id="cadenceHours" inputmode="numeric" min="1" max="72"
+          value="${s.cadenceHours}">
+        <div class="hint">Crops ripen in 22h; 24 means once a day.</div></div>
+      <div class="field"><label>Spare stock you will sit on</label>
+        <input type="number" id="stockCap" inputmode="numeric" min="0" step="500"
+          value="${s.stockCap}"></div>
       <div class="field"><label>Focus craft bonus (%)</label>
         <input type="number" id="focusCraftBonus" inputmode="decimal" value="${s.focusCraftBonus}"></div>
-      <div class="field"><label>Premium yield ×</label>
-        <input type="number" id="premiumYieldMultiplier" inputmode="decimal" step="0.1" value="${s.premiumYieldMultiplier}"></div>
-      <div class="field"><label>Premium animal growth multiplier</label>
+      <div class="field"><label>Premium yield \u00d7</label>
+        <input type="number" id="premiumYieldMultiplier" inputmode="decimal" step="0.1"
+          value="${s.premiumYieldMultiplier}"></div>
+      <div class="field"><label>Premium growth \u00d7</label>
         <input type="number" id="premiumGrowthMultiplier" inputmode="decimal" step="0.1"
-          value="${s.premiumGrowthMultiplier}">
-        <div class="hint">Premium lists three farming benefits: double crop
-          yield, double animal growth rate, and the focus a day. The word is
-          "double" in the game's own text rather than a number in its tables,
-          so both multipliers stay editable here.</div></div>
+          value="${s.premiumGrowthMultiplier}"></div>
       <div class="field"><label>Focus per day</label>
         <input type="number" id="focusPerDay" inputmode="numeric" value="${s.focusPerDay}"></div>
+      <div class="field"><label>Focus quality bonus</label>
+        <input type="number" id="focusQualityBonus" inputmode="numeric"
+          value="${s.focusQualityBonus ?? 50}"></div>
       <div class="field"><label>Market setup fee (%)</label>
-        <input type="number" id="marketSetupFee" inputmode="decimal" step="0.1" value="${s.marketSetupFee}"></div>
+        <input type="number" id="marketSetupFee" inputmode="decimal" step="0.1"
+          value="${s.marketSetupFee}"></div>
       <div class="field"><label>Transaction tax (%)</label>
-        <input type="number" id="marketTransactionTax" inputmode="decimal" step="0.1" value="${s.marketTransactionTax}">
+        <input type="number" id="marketTransactionTax" inputmode="decimal" step="0.1"
+          value="${s.marketTransactionTax}">
         <div class="hint">Premium halves this.</div></div>
     </div>
-
-    <div class="section-head"><h2>Your data</h2></div>
-    <p class="muted small">Stored on this phone only.</p>
-    <div class="btn-row">
-      <button class="btn" id="export">Export backup</button>
-      <button class="btn" id="import">Restore</button>
-    </div>
-    <button class="btn ghost danger" id="wipe" style="margin-top:10px">Erase everything</button>
-    <input type="file" id="file" accept="application/json,.json" class="hide">
 
     <div class="sheet-actions">
       <button class="btn primary" id="save">Save</button>
     </div>
   `, {
     onMount(root) {
-      const flags = {};
-      for (const btn of $$('[data-set]', root)) {
-        btn.onclick = () => {
-          const key = btn.dataset.set;
-          flags[key] = !(flags[key] ?? s[key]);
-          btn.setAttribute('aria-pressed', String(flags[key]));
-        };
-      }
       const NUM = ['specLevel', 'cadenceHours', 'focusCraftBonus',
         'premiumYieldMultiplier', 'premiumGrowthMultiplier', 'focusPerDay',
-        'focusPerDayNoPremium', 'marketSetupFee', 'marketTransactionTax',
-        'stockCap'];
-
+        'focusQualityBonus', 'marketSetupFee', 'marketTransactionTax', 'stockCap'];
       $('#save', root).onclick = () => {
-        const patch = { ...flags };
+        const patch = {};
         for (const k of NUM) {
           const box = $(`#${k}`, root);
-          if (!box) continue;              // not every field is always shown
+          if (!box) continue;
           const v = Number(box.value);
           if (Number.isFinite(v)) patch[k] = v;
         }
@@ -1179,18 +1131,33 @@ export function openSettings() {
         }
         patch.stationFee = stationFee;
         // One trough per food category: the game will not let them share.
-        const feedItemIds = { ...s.feedItemIds };
+        const feedItemIds = { ...state.settings.feedItemIds };
         for (const box of $$('[data-feed]', root)) feedItemIds[box.dataset.feed] = box.value;
         patch.feedItemIds = feedItemIds;
         setSettings(patch);
         closeSheet();
         toast('Saved');
       };
-      $('[data-act="open-cycle"]', root).onclick = openCycle;
-      $('[data-act="open-farm-city"]', root).onclick = openFarmCity;
-      $('[data-act="open-city"]', root).onclick = openCraftCity;
-      $('[data-act="open-board"]', root).onclick = () => openBoard();
-      $('[data-act="open-mastery"]', root).onclick = () => openMastery();
+    },
+  });
+}
+
+/** Your data, which lives on this phone and nowhere else. */
+export function openData() {
+  openSheet(`
+    <h2>Backup and restore</h2>
+    <p class="muted">Your prices, your plan and your settings are stored on this
+      phone only. Nothing is sent anywhere except the price lookups, which ask
+      the Albion Online Data Project about item ids and tell it nothing about
+      you.</p>
+    <div class="btn-row">
+      <button class="btn" id="export">Export backup</button>
+      <button class="btn" id="import">Restore</button>
+    </div>
+    <button class="btn ghost danger" id="wipe" style="margin-top:10px">Erase everything</button>
+    <input type="file" id="file" accept="application/json,.json" class="hide">
+  `, {
+    onMount(root) {
       $('#export', root).onclick = () => {
         const blob = new Blob([exportJSON()], { type: 'application/json' });
         const a = document.createElement('a');
@@ -1294,7 +1261,7 @@ export function openMastery(filter = '') {
       }
       const find = $('#find', root);
       find.onchange = () => openMastery(find.value);
-      $('#done', root).onclick = () => { leaveMastery(); openSettings(); };
+      $('#done', root).onclick = () => { leaveMastery(); closeSheet(); };
     },
     onDismiss: leaveMastery,
   });
@@ -1511,7 +1478,7 @@ export function openBoard(branch = null) {
       for (const input of $$('[data-node]', root)) {
         input.onchange = () => { setNodeLevel(input.dataset.node, input.value); openBoard(open); };
       }
-      $('#done', root).onclick = () => { leaveMastery(); openSettings(); };
+      $('#done', root).onclick = () => { leaveMastery(); closeSheet(); };
     },
     onDismiss: leaveMastery,
   });
@@ -1640,9 +1607,12 @@ export async function runCraftPriceFetch() {
     const out = await fetchPrices(ids, {
       server: state.settings.server,
       city: state.settings.priceCity,
+      // Every quality, because on equipment that is most of the answer: a
+      // masterpiece and a plain one are two different goods.
+      qualities: QUALITIES,
       signal: controller.signal,
     });
-    setPrices(out.prices);
+    setQualityPrices(out.prices);
 
     let bmFound = 0;
     if (bmIds.length) {
@@ -1652,9 +1622,10 @@ export async function runCraftPriceFetch() {
         server: state.settings.server,
         city: BLACK_MARKET,
         field: 'buy',
+        qualities: QUALITIES,
         signal: controller.signal,
       });
-      setBmPrices(bm.prices);
+      setQualityPrices(bm.prices, true);
       bmFound = bm.found.length;
     }
     closeSheet();
@@ -1700,6 +1671,7 @@ export async function runScanPriceFetch() {
     const out = await fetchPrices(ids, {
       server: state.settings.server,
       city: state.settings.priceCity,
+      qualities: QUALITIES,
       signal: controller.signal,
       onProgress: (done, total) => {
         const bar = $('#bar', sheet);
@@ -1708,7 +1680,7 @@ export async function runScanPriceFetch() {
         if (st) st.textContent = `Market batch ${done} of ${total}…`;
       },
     });
-    setPrices(out.prices);
+    setQualityPrices(out.prices);
 
     let bmFound = 0;
     if (bmIds.length) {
@@ -1718,13 +1690,14 @@ export async function runScanPriceFetch() {
         server: state.settings.server,
         city: BLACK_MARKET,
         field: 'buy',
+        qualities: QUALITIES,
         signal: controller.signal,
         onProgress: (done, total) => {
           const bar = $('#bar', sheet);
           if (bar) bar.style.width = `${70 + (done / total) * 30}%`;
         },
       });
-      setBmPrices(bm.prices);
+      setQualityPrices(bm.prices, true);
       bmFound = bm.found.length;
     }
     closeSheet();
@@ -1741,4 +1714,98 @@ export async function runScanPriceFetch() {
       </div>
     `, { onMount: (r) => { $('#ok', r).onclick = closeSheet; } });
   }
+}
+
+/* --------------------------------------------------------- quality ----- */
+
+/**
+ * What comes off your bench, and what each level of it is worth.
+ *
+ * This is where the money is on equipment: a masterpiece sells for a multiple
+ * of a plain one, and pricing a whole run as plain quietly throws that away.
+ *
+ * The honest part is saying what is known and what is not. gamedata.xml
+ * publishes the table a craft rolls on and the points that focus and the
+ * destiny board add to it. It does not publish how the points move the table.
+ * So the mix below is a reading, it says so, and you can replace it with what
+ * your own station actually tells you.
+ */
+export function openQuality() {
+  const s = state.settings;
+  const sample = craftTarget() && recipeOf(craftTarget())
+    ? craftTarget() : 'T4_MAIN_SWORD';
+  const { mix, source, points } = mixFor(sample, s);
+  const modelled = qualityMix(qualityPoints(sample, s).total, s);
+  const names = s.quality?.names || {};
+  const own = s.qualityMix || {};
+
+  const row = (q) => `
+    <div class="row" style="gap:8px">
+      <span class="ico">${['', '○', '◔', '◑', '◕', '●'][q]}</span>
+      <span class="body">
+        <span class="title">${esc(names[q] || `Quality ${q}`)}</span>
+        <span class="meta">the model says ${pct(modelled[q], 1)}${
+          q > 1 && s.quality?.itemPowerBonus?.[q]
+            ? ` · +${s.quality.itemPowerBonus[q]} item power` : ''}</span>
+      </span>
+      <input type="number" class="spec-input" data-mix="${q}" inputmode="decimal"
+        min="0" max="100" step="0.1" placeholder="${(modelled[q] * 100).toFixed(1)}"
+        value="${own[q] ?? ''}" aria-label="Share of ${esc(names[q] || q)}">
+    </div>`;
+
+  openSheet(`
+    <h2>Quality of what you make</h2>
+    <p class="muted">Crafting rolls on a table, and your destiny board and your
+      focus tip it towards the better end. On ${esc(nameOf(sample))} you are
+      carrying <b>${Math.round(points)}</b> quality points right now.</p>
+
+    <div class="warn-note" style="margin-bottom:12px">The game publishes the
+      table — 689 plain, 250 good, 50 outstanding, 10 excellent, 1
+      masterpiece out of a thousand — and it publishes the points. It does not
+      publish how the points move the table. The percentages below are this
+      app's reading of that, not the game's own number, so if your crafting
+      station tells you something different, type it in and it will be used
+      instead.</p>
+
+    ${QUALITY_LEVELS.map(row).join('')}
+
+    <div class="hint">Leave them blank to use the model. Put anything in and
+      the whole column becomes yours — they are treated as shares and scaled
+      to add up to a hundred, so you can enter counts off your own crafting
+      log if that is easier than percentages.</div>
+
+    <div class="section-head" style="margin-top:16px"><h2>Right now that means</h2></div>
+    <div class="card">
+      <div class="bar-row"><span class="n">Using</span>
+        <span class="v">${source === 'yours' ? 'your own numbers' : "the app's reading"}</span></div>
+      <div class="bar-row"><span class="n">Plain</span>
+        <span class="v num">${pct(mix[1], 1)}</span></div>
+      <div class="bar-row"><span class="n">Better than plain</span>
+        <span class="v num good">${pct(1 - mix[1], 1)}</span></div>
+    </div>
+
+    <div class="sheet-actions">
+      <button class="btn ghost" id="reset">Use the model</button>
+      <button class="btn primary" id="save">Save</button>
+    </div>
+  `, {
+    onMount(root) {
+      $('#save', root).onclick = () => {
+        const out = {};
+        let any = false;
+        for (const box of $$('[data-mix]', root)) {
+          const v = Number(box.value);
+          if (Number.isFinite(v) && v > 0) { out[box.dataset.mix] = v; any = true; }
+        }
+        setSettings({ qualityMix: any ? out : null });
+        closeSheet();
+        toast(any ? 'Using your quality mix' : 'Using the model');
+      };
+      $('#reset', root).onclick = () => {
+        setSettings({ qualityMix: null });
+        closeSheet();
+        toast('Using the model');
+      };
+    },
+  });
 }

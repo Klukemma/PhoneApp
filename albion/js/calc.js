@@ -474,6 +474,114 @@ export function craftBatch(recipe, {
   };
 }
 
+/* ----------------------------------------------------------- quality --- */
+
+export const QUALITY_LEVELS = [1, 2, 3, 4, 5];
+
+/**
+ * Quality points for one item: what the destiny board and focus add up to.
+ *
+ * The same nodes that cheapen focus also raise quality, in the same shape and
+ * matched the same way \u2014 achievements.xml carries both an
+ * `craftingfocuscostreduction` and an `itemcraftquality` bonus on 292 of the
+ * 317 crafting nodes. A mastery gives 0.75 a level and a specialisation 6 a
+ * level on its own item, so a maxed specialist is carrying 675 points before
+ * focus adds its 50.
+ *
+ * Nothing below tier 4 gets any of it: every quality rule in the file is
+ * written mintier="4".
+ */
+export function qualityPoints(itemId, settings) {
+  const levels = settings.nodeLevels || {};
+  const nodes = settings.focusNodes || [];
+  const parts = [];
+  let total = 0;
+  for (const node of nodes) {
+    const level = Number(levels[node.id]) || 0;
+    if (level <= 0 || !node.qualityRules) continue;
+    for (const rule of node.qualityRules) {
+      if (!ruleCovers(rule, itemId)) continue;
+      const points = level * rule.bonus;
+      total += points;
+      parts.push({ node, level, bonus: rule.bonus, points });
+    }
+  }
+  if (settings.useFocus) {
+    const bonus = settings.focusQualityBonus ?? 50;
+    total += bonus;
+    parts.push({ node: { id: '__focus', name: 'Crafting with focus' }, points: bonus });
+  }
+  parts.sort((a, b) => b.points - a.points);
+  return { total, parts };
+}
+
+/**
+ * What comes off the bench, as a share per quality level.
+ *
+ * Two of the three numbers here are the game's. gamedata.xml publishes the
+ * table a craft rolls on \u2014 689 plain, 250 good, 50 outstanding, 10 excellent,
+ * 1 masterpiece, out of a thousand \u2014 and it publishes the points that focus
+ * and the destiny board add. What it does NOT publish anywhere is how the
+ * points move the table.
+ *
+ * So this is a reading, not a rule: the points are extra weight on everything
+ * above plain, split between those four in the proportions the base table
+ * already has. Plain keeps its 689 and the pool grows underneath it, which is
+ * the only composition that stays sane at the top end \u2014 subtracting the
+ * points from plain instead sends it negative for any maxed specialist.
+ *
+ * It is shown on screen as a reading and it is editable, because your own
+ * crafting station will tell you the truth about your own character and this
+ * cannot.
+ */
+export function qualityMix(points, settings) {
+  const table = settings.quality?.weights
+    || { 1: 689, 2: 250, 3: 50, 4: 10, 5: 1 };
+  const base = QUALITY_LEVELS.map((q) => Number(table[q]) || 0);
+  const upper = base.slice(1).reduce((a, b) => a + b, 0);
+  const add = Math.max(0, Number(points) || 0);
+  const weights = base.map((w, i) => (i === 0 || upper <= 0 ? w : w + add * (w / upper)));
+  const total = weights.reduce((a, b) => a + b, 0) || 1;
+  const mix = {};
+  QUALITY_LEVELS.forEach((q, i) => { mix[q] = weights[i] / total; });
+  return mix;
+}
+
+/** The mix a plan is really using: yours if you set one, the model's if not. */
+export function mixFor(itemId, settings) {
+  const own = settings.qualityMix;
+  if (own && QUALITY_LEVELS.some((q) => Number(own[q]) > 0)) {
+    const total = QUALITY_LEVELS.reduce((t, q) => t + (Number(own[q]) || 0), 0) || 1;
+    const mix = {};
+    for (const q of QUALITY_LEVELS) mix[q] = (Number(own[q]) || 0) / total;
+    return { mix, source: 'yours', points: qualityPoints(itemId, settings).total };
+  }
+  const points = qualityPoints(itemId, settings).total;
+  return { mix: qualityMix(points, settings), source: 'model', points };
+}
+
+/**
+ * What one comes to on average, given how the output is spread across the
+ * quality levels and what each level fetches.
+ *
+ * A level nobody has priced is not free, it is unknown \u2014 so its share falls
+ * back to the plain price rather than to zero, and the caller is told which
+ * levels are guessed so it can say so.
+ */
+export function blendedPrice(itemId, mix, priceAt) {
+  const plain = priceAt(itemId, 1);
+  let value = 0;
+  const guessed = [];
+  for (const q of QUALITY_LEVELS) {
+    const share = Number(mix[q]) || 0;
+    if (share <= 0) continue;
+    const at = priceAt(itemId, q);
+    if (!at && q > 1) guessed.push(q);
+    value += share * (at || plain);
+  }
+  return { value, guessed, plain };
+}
+
 /* ------------------------------------------------- crafting to order ---- */
 
 /**
@@ -499,6 +607,10 @@ export function craftBatch(recipe, {
 export function craftPnL(recipeId, {
   recipeOf, qty = 1, make = new Set(),
   priceOf, costOf = priceOf, sellPriceOf = priceOf,
+  // What each quality of the finished thing fetches, and how the run is
+  // spread across them. Leave them out and everything is plain, which is
+  // right for a potion and wrong for a sword.
+  sellPriceAt = null, sellMix = null,
   settings, cityId, specLevel, sellInstant = false, maxDepth = 6,
 }) {
   const top = recipeOf(recipeId);
@@ -575,8 +687,16 @@ export function craftPnL(recipeId, {
   steps.push(topStep);
   for (const i of topBatch.inputs) need(i.id, i.net * crafts, 1, new Set([top.id]));
 
-  const unitPrice = sellPriceOf(recipeId);
-  if (!unitPrice) missing.add(recipeId);
+  /* What one is worth. With a quality mix that is the average across the
+   * levels the run actually produces, which on equipment is most of the
+   * answer: a masterpiece sells for a multiple of a plain one, and pricing
+   * the whole run as plain was leaving that on the table. */
+  const priceAt = sellPriceAt || ((id) => sellPriceOf(id));
+  const blend = sellMix
+    ? blendedPrice(recipeId, sellMix, priceAt)
+    : { value: sellPriceOf(recipeId), guessed: [], plain: sellPriceOf(recipeId) };
+  const unitPrice = blend.value;
+  if (!blend.plain) missing.add(recipeId);
   const tax = taxRate(settings, { instant: sellInstant });
   const gross = qty * unitPrice;
   const revenue = gross * (1 - tax);
@@ -585,6 +705,12 @@ export function craftPnL(recipeId, {
 
   return {
     recipe: top, qty, crafts, sellInstant, unitPrice,
+    // The quality side of the sale, so a screen can show the mix, the uplift
+    // over selling it all plain, and which levels it had to guess at.
+    mix: sellMix,
+    plainPrice: blend.plain,
+    qualityUplift: blend.plain > 0 ? unitPrice / blend.plain - 1 : 0,
+    qualityGuessed: blend.guessed,
     // Deepest first, so the list reads in the order you would actually do it.
     steps: steps.slice().sort((a, b) => b.depth - a.depth || a.recipe.id.localeCompare(b.recipe.id)),
     buys: Object.values(bought).sort((a, b) => b.cost - a.cost || b.qty - a.qty),

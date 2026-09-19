@@ -7,9 +7,13 @@
 // same way: materials in, focus and a station fee out, and a market or a
 // Black Market at the end of it.
 
-import { craftPnL, cityBonus, cityFor, focusEfficiency, specFor } from './calc.js';
 import {
-  DATA, GEAR, bmPriceOf, costOf, loadEquipment, priceOf, state, setSettings,
+  QUALITY_LEVELS, craftPnL, cityBonus, cityFor, focusEfficiency, mixFor,
+  specFor,
+} from './calc.js';
+import {
+  DATA, GEAR, bmPriceOf, costOf, loadEquipment, priceOf, qBmPriceOf, qPriceOf,
+  state, setSettings,
 } from './store.js';
 import { esc } from './ui.js';
 import {
@@ -128,6 +132,8 @@ function sellSide(recipe) {
     refused: !allowed,
     instant: where === 'black',
     priceOf: where === 'black' ? bmPriceOf : priceOf,
+    // Quality is a different price per level, on both sides of the market.
+    priceAt: where === 'black' ? qBmPriceOf : qPriceOf,
     label: where === 'black' ? 'Black Market' : `${cityFor(state.settings)?.name || 'the market'}`,
   };
 }
@@ -139,6 +145,11 @@ export function currentRun() {
   const recipe = recipeOf(id);
   if (!recipe) return null;
   const sell = sellSide(recipe);
+  /* Only equipment has quality. A potion, a meal and a stack of bars come off
+   * the bench at one grade, so asking for a mix there would spread a run
+   * across four prices that do not exist. */
+  const graded = ['weapon', 'armor', 'gear'].includes(groupOf(recipe));
+  const quality = graded ? mixFor(id, state.settings) : null;
   const run = craftPnL(id, {
     recipeOf,
     qty: q().qty || 100,
@@ -146,11 +157,13 @@ export function currentRun() {
     priceOf,
     costOf,
     sellPriceOf: sell.priceOf,
+    sellPriceAt: graded ? sell.priceAt : null,
+    sellMix: quality?.mix || null,
     sellInstant: sell.instant,
     settings: state.settings,
     cityId: state.settings.craftCity,
   });
-  return run ? { ...run, sell } : null;
+  return run ? { ...run, sell, quality } : null;
 }
 
 /**
@@ -279,11 +292,50 @@ function runHTML(run, recipe) {
       </div>
     </section>
 
+    ${qualityHTML(run)}
     ${moneyHTML(run)}
     ${makeHTML(run, recipe)}
     ${buysHTML(run)}
     ${stepsHTML(run)}
     ${whereHTML(run, recipe)}`;
+}
+
+/**
+ * The quality side of the sale. Equipment only, and only when it moves the
+ * number \u2014 a card saying "all plain" on a stack of bars is noise.
+ */
+function qualityHTML(run) {
+  if (!run.quality) return '';
+  const { mix, source, points } = run.quality;
+  const names = state.settings.quality?.names || {};
+  const priceAt = run.sell.priceAt;
+  const rows = QUALITY_LEVELS.filter((q) => (mix[q] || 0) > 0.001);
+  return `
+    <section>
+      <div class="section-head"><h2>Quality</h2>
+        <span class="right num ${run.qualityUplift > 0 ? 'good' : ''}">${
+          run.qualityUplift > 0 ? `+${pct(run.qualityUplift)}` : 'no uplift'}</span></div>
+      <div class="card">
+        ${rows.map((q) => {
+          const at = priceAt(run.recipe.id, q);
+          return `
+          <div class="bar-row">
+            <span class="n">${esc(names[q] || `Quality ${q}`)} \u00b7 ${pct(mix[q], 1)}</span>
+            <span class="v num ${at ? '' : 'flat'}">${at ? silver(at)
+              : q === 1 ? 'no price' : 'priced as plain'}</span></div>`;
+        }).join('')}
+        <div class="bar-row total"><span class="n">Average, per item</span>
+          <span class="v num good">${silver(run.unitPrice)}</span></div>
+      </div>
+      <div class="hint">${Math.round(points)} quality points from your board and
+        your focus. ${source === 'yours' ? 'Using the mix you entered.'
+          : 'The split is this app\u2019s reading, not a number the game publishes.'}
+        ${run.qualityGuessed.length
+          ? ` No price yet for ${run.qualityGuessed.map((q) => esc(names[q] || q)).join(', ')},
+              so ${run.qualityGuessed.length === 1 ? 'it is' : 'they are'} counted at
+              the plain price \u2014 which understates this.` : ''}
+        <button class="linkish" data-act="quality">change</button></div>
+    </section>`;
 }
 
 function moneyHTML(run) {
@@ -294,7 +346,9 @@ function moneyHTML(run) {
     <section>
       <div class="section-head"><h2>The money</h2></div>
       <div class="card">
-        ${line(`${short(run.qty)} sold at ${silver(run.unitPrice)}`, short(run.gross), 'good')}
+        ${line(run.quality
+          ? `${short(run.qty)} sold at ${silver(run.unitPrice)} average`
+          : `${short(run.qty)} sold at ${silver(run.unitPrice)}`, short(run.gross), 'good')}
         ${line(run.sellInstant
           ? `Tax (${pct(run.tax)}, no setup fee)`
           : `Market tax (${pct(run.tax)})`, short(-run.taxPaid), 'bad')}
@@ -450,14 +504,21 @@ export function scanRecipes() {
 export function rankCraft() {
   const rows = [];
   for (const recipe of scanRecipes()) {
+    // Equipment comes off the bench at five different grades that sell for
+    // five different prices, so a ranked list that priced it all as plain
+    // would put the wrong things at the top.
+    const graded = sellsToBlackMarket(recipe);
+    const quality = graded ? mixFor(recipe.id, state.settings).mix : null;
     const market = craftPnL(recipe.id, {
       recipeOf, qty: 1, priceOf, costOf, settings: state.settings,
+      sellPriceAt: graded ? qPriceOf : null, sellMix: quality,
       cityId: state.settings.craftCity,
     });
     if (!market) continue;
-    const black = sellsToBlackMarket(recipe) && bmPriceOf(recipe.id)
+    const black = graded && bmPriceOf(recipe.id)
       ? craftPnL(recipe.id, {
         recipeOf, qty: 1, priceOf, costOf, sellPriceOf: bmPriceOf,
+        sellPriceAt: qBmPriceOf, sellMix: quality,
         sellInstant: true, settings: state.settings,
         cityId: state.settings.craftCity,
       })
@@ -497,6 +558,7 @@ export function craftRankHTML() {
           <span class="title">${tierText(r.recipe.tier, r.recipe.enchant)} ${esc(r.recipe.name)}</span>
           <span class="meta">${r.ready
             ? `${perFocusTxt} · ${short(r.best.buyCost)} of materials${
+              r.best.qualityUplift > 0.005 ? ` · +${pct(r.best.qualityUplift, 0)} on quality` : ''}${
               r.where === 'black' ? ' · best at the Black Market' : ''}${
               r.black && r.where !== 'black'
                 ? ` · Black Market ${short(r.black.profit)}` : ''}`

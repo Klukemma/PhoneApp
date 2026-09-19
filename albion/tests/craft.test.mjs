@@ -6,7 +6,9 @@ import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { craftPnL, returnRate, taxRate } from '../js/calc.js';
+import {
+  craftPnL, mixFor, qualityMix, qualityPoints, returnRate, taxRate,
+} from '../js/calc.js';
 
 const data = JSON.parse(
   readFileSync(new URL('../data/gamedata.json', import.meta.url), 'utf8'));
@@ -37,6 +39,7 @@ const ctx = (over = {}) => ({
     ...data.constants,
     cities: data.cities,
     focusNodes: [...data.focusNodes, ...raw.focusNodes],
+    quality: data.quality,
     nodeLevels: {}, spec: {}, specLevel: 0,
     premium: true, useFocus: true, stationFee: {},
     ...(over.settings || {}),
@@ -213,4 +216,116 @@ test('the station fee follows the item, not a flat number per craft', () => {
   assert.ok(paid.fees > 0);
   assert.equal(Math.round(paid.profit),
     Math.round(paid.revenue - paid.buyCost - paid.fees));
+});
+
+/* ------------------------------------------------------------ quality -- */
+
+test('the quality table and the points that move it come from the game', () => {
+  // gamedata.xml <CraftingQualityChances>: 689/250/50/10/1 out of a thousand.
+  assert.deepEqual(data.quality.weights,
+    { 1: 689, 2: 250, 3: 50, 4: 10, 5: 1 });
+  // <ActionFocus><CraftingQuality bonus="50"/>
+  assert.equal(data.constants.focusQualityBonus, 50);
+  // <QualityLevels>, which is the only thing the dumps say a level DOES.
+  assert.deepEqual(data.quality.itemPowerBonus, { 2: 20, 3: 40, 4: 60, 5: 100 });
+
+  // The same nodes that cheapen focus also raise quality, in the same shape.
+  const swords = raw.focusNodes.find((n) => n.id === 'CRAFT_SWORDS');
+  assert.ok(swords.rules.length, 'it cheapens focus');
+  assert.ok(swords.qualityRules.length, 'and it raises quality');
+  assert.equal(swords.qualityRules[0].bonus, 0.75);
+  assert.equal(swords.qualityRules[0].minTier, 4, 'nothing below T4 gets any');
+  // Farming has none of it: a potion has no quality.
+  assert.ok(data.focusNodes.every((n) => !n.qualityRules));
+});
+
+test('quality points add up from the board and from focus', () => {
+  const s = (nodeLevels, useFocus) => ({ ...ctx().settings, nodeLevels, useFocus });
+  const at = (nodeLevels, useFocus) =>
+    qualityPoints('T4_MAIN_SWORD', s(nodeLevels, useFocus)).total;
+
+  assert.equal(at({}, false), 0);
+  assert.equal(at({}, true), 50, 'focus alone is the published 50');
+  // Mastery is 0.75 a level, so 100 levels is 75, plus the 50 from focus.
+  assert.equal(at({ CRAFT_SWORDS: 100 }, true), 125);
+  // The specialisation is 6 a level on its own item plus 0.75 to the branch.
+  assert.equal(at({ CRAFT_SWORDS: 100, CRAFT_SWORDS_SWORD: 100 }, true), 800);
+  // And a tier the rules do not cover gets nothing from the board.
+  assert.equal(qualityPoints('T3_MAIN_SWORD',
+    s({ CRAFT_SWORDS: 100, CRAFT_SWORDS_SWORD: 100 }, false)).total, 0);
+});
+
+test('the mix stays sane at every level of investment', () => {
+  const s = ctx().settings;
+  const shares = (points) => qualityMix(points, s);
+  const sum = (m) => Object.values(m).reduce((a, b) => a + b, 0);
+
+  const none = shares(0);
+  assert.equal(Math.round(sum(none) * 1000), 1000, 'it is a distribution');
+  // With no bonus it is the published table exactly.
+  assert.equal(Math.round(none[1] * 1000) / 10, 68.9);
+  assert.equal(Math.round(none[2] * 1000) / 10, 25);
+
+  // More points always means less plain and more of everything else, and
+  // plain never goes negative however deep the investment.
+  let last = none;
+  for (const p of [50, 125, 400, 800, 5000]) {
+    const now = shares(p);
+    assert.equal(Math.round(sum(now) * 1000), 1000);
+    assert.ok(now[1] < last[1], `${p}: less plain than before`);
+    assert.ok(now[1] > 0, `${p}: plain never goes to zero`);
+    assert.ok(now[5] > last[5], `${p}: more masterpieces than before`);
+    last = now;
+  }
+});
+
+test('your own mix beats the model, and blank means use the model', () => {
+  const base = ctx().settings;
+  const modelled = mixFor('T4_MAIN_SWORD', base);
+  assert.equal(modelled.source, 'model');
+
+  const mine = mixFor('T4_MAIN_SWORD',
+    { ...base, qualityMix: { 1: 20, 2: 50, 3: 20, 4: 8, 5: 2 } });
+  assert.equal(mine.source, 'yours');
+  // Entered as shares of anything, normalised to a distribution.
+  assert.equal(Math.round(mine.mix[1] * 100), 20);
+  assert.equal(Math.round(mine.mix[5] * 100), 2);
+
+  // Counts off a crafting log work as well as percentages.
+  const counted = mixFor('T4_MAIN_SWORD',
+    { ...base, qualityMix: { 1: 40, 2: 100, 3: 40, 4: 16, 5: 4 } });
+  assert.equal(Math.round(counted.mix[1] * 100), 20);
+
+  // An empty one falls back rather than dividing by zero.
+  assert.equal(mixFor('T4_MAIN_SWORD', { ...base, qualityMix: {} }).source, 'model');
+});
+
+test('quality is most of the money on a sword, and it is never invented', () => {
+  const s = {
+    ...ctx().settings,
+    nodeLevels: { CRAFT_SWORDS: 100, CRAFT_SWORDS_SWORD: 100 },
+  };
+  const { mix } = mixFor('T4_MAIN_SWORD', s);
+  const byQuality = { 1: 22000, 2: 26000, 3: 34000, 4: 48000, 5: 90000 };
+  const run = (over) => craftPnL('T4_MAIN_SWORD', {
+    ...ctx(), settings: s, qty: 100, ...over,
+  });
+
+  const plain = run({});
+  const graded = run({ sellMix: mix, sellPriceAt: (id, q) => byQuality[q] ?? 0 });
+  assert.equal(plain.unitPrice, 22000);
+  assert.ok(graded.unitPrice > plain.unitPrice);
+  assert.ok(graded.qualityUplift > 0.15, 'worth more than a sixth again');
+  assert.equal(Math.round(graded.profit),
+    Math.round(graded.revenue - graded.buyCost - graded.fees));
+
+  // A level nobody has priced is counted at the plain price, which understates
+  // the run rather than reading as free — and it says which ones it guessed.
+  const partial = run({
+    sellMix: mix,
+    sellPriceAt: (id, q) => (q <= 2 ? byQuality[q] : 0),
+  });
+  assert.deepEqual(partial.qualityGuessed, [3, 4, 5]);
+  assert.ok(partial.unitPrice < graded.unitPrice);
+  assert.ok(partial.unitPrice > plain.unitPrice);
 });

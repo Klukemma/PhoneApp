@@ -69,6 +69,14 @@ REFINE_CATEGORIES = ("ore", "wood", "hide", "fiber", "rock")
 EQUIP_CATEGORIES = WEAPON_CATEGORIES + ARMOR_CATEGORIES + GEAR_CATEGORIES
 REFINE_BUTTON = "@CRAFTBUILDING_ITEM_DETAILS_BUTTON_REFINE"
 
+# The five quality levels, in the order the game lists them. The names are
+# not in the tables as a set - they are scattered through localization - so
+# they are written here rather than half-guessed from an id.
+QUALITY_NAMES = {
+    "1": "Normal", "2": "Good", "3": "Outstanding",
+    "4": "Excellent", "5": "Masterpiece",
+}
+
 
 
 def fetch(name: str) -> bytes:
@@ -320,18 +328,26 @@ def build_focus_nodes(prefixes=None) -> list:
         if rewards is None:
             continue
         rules = []
+        quality = []
         # Direct rewards only - a parent must not inherit its children's.
         for b in rewards.findall("bonus"):
             kind = b.get("type") or ""
-            if "focuscostreduction" not in kind:
-                continue
-            rules.append({
+            rule = {
                 "bonus": float(b.get("bonus")),
                 "minTier": int(b.get("mintier", 1)),
                 "maxTier": int(b.get("maxtier", 8)),
                 "patterns": [p.get("pattern") for p in b.findall("itempattern")],
-            })
-        if not rules:
+            }
+            if "focuscostreduction" in kind:
+                rules.append(rule)
+            # The same nodes carry a second kind of bonus, in the same shape
+            # and matched the same way: quality points per level. The game
+            # calls it "Quality increase per Item", and it is where the money
+            # is on equipment - a masterpiece sells for a multiple of a plain
+            # one.
+            elif kind == "itemcraftquality":
+                quality.append(rule)
+        if not rules and not quality:
             continue
         parent = el.find(".//parentachievements/achievement")
         parent_id = parent.get("id") if parent is not None else None
@@ -342,6 +358,7 @@ def build_focus_nodes(prefixes=None) -> list:
             "parentId": parent_id,
             "parent": parent_id,
             "rules": rules,
+            **({"qualityRules": quality} if quality else {}),
         })
     # Deduplicate: the same node can appear as a template and an instance.
     seen = {}
@@ -778,6 +795,27 @@ def main() -> None:
                 gd.find(".//ItemValueToNutrition").get("factor")),
             "freeCraftingMaxTier": int(gd.find(".//FreeCrafting").get("maxTier")),
             "maxUsageFee": int(gd.find(".//BuildingManagement").get("maxuseagefee")),
+            # Crafting with focus adds this many quality points, from the same
+            # <ActionFocus> block as the crafting efficiency bonus.
+            "focusQualityBonus": float(
+                gd.find(".//ActionFocus/CraftingQuality").get("bonus")),
+        },
+        # What comes off the bench, before any bonus. Five levels, and the
+        # weights are out of a thousand: 689 plain, 250 good, 50 outstanding,
+        # 10 excellent, 1 masterpiece.
+        "quality": {
+            "weights": {
+                q.get("level"): float(q.get("weight"))
+                for q in gd.findall(".//CraftingQualityChances/QualityLevel")
+            },
+            # Item power, not price - kept because it is the only thing the
+            # dumps say a quality level DOES, and it is what makes the higher
+            # ones worth more.
+            "itemPowerBonus": {
+                q.get("level"): float(q.get("itempowerbonus"))
+                for q in gd.findall(".//QualityLevels/qualitylevel")
+            },
+            "names": QUALITY_NAMES,
         },
         "cities": cities,
         "focusNodes": focus_nodes,
