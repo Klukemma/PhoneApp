@@ -17,7 +17,7 @@ import { pct } from './util.js';
 /* A row that opens a sheet. The whole screen is made of these, because every
  * one of them is a question with a real answer rather than a field. */
 export const row = (act, icon, title, meta, value = '\u203A') => `
-  <button class="row" data-act="${esc(act)}">
+  <button class="row wrap" data-act="${esc(act)}">
     <span class="ico">${icon}</span>
     <span class="body"><span class="title">${title}</span>
       <span class="meta">${meta}</span></span>
@@ -38,12 +38,14 @@ const bagTitle = () => {
 
 export const toggle = (key, title, desc) => {
   const on = !!state.settings[key];
+  // The whole line is the switch, so the target is the row and not a 26px pill.
   return `
-    <div class="toggle">
-      <div class="body"><div class="t">${esc(title)}</div>
-        <div class="d">${esc(desc)}</div></div>
-      <button class="switch" data-toggle="${key}" aria-pressed="${on}"></button>
-    </div>`;
+    <button class="toggle" type="button" role="switch" aria-checked="${on}" data-toggle="${key}"
+      aria-label="${esc(title)}">
+      <span class="body"><span class="t">${esc(title)}</span>
+        <span class="d">${esc(desc)}</span></span>
+      <span class="switch" aria-pressed="${on}"></span>
+    </button>`;
 };
 
 /** How much of your setup is actually filled in, as a nudge rather than a nag. */
@@ -134,12 +136,12 @@ export function me() {
         <div class="section-head"><h2>Hauling</h2></div>
         <div class="card">
           <div class="two">
-            <div class="field" style="margin:0"><label>What you can carry</label>
-              <input type="number" data-num="carryWeight" inputmode="numeric" min="0"
+            <div class="field" style="margin:0"><label for="carryWeight">What you can carry</label>
+              <input type="number" id="carryWeight" data-num="carryWeight" inputmode="numeric" min="0"
                 step="50" value="${s.carryWeight || ''}" placeholder="0">
               <div class="hint">Kilos a trip, mount and bags included.</div></div>
-            <div class="field" style="margin:0"><label>What a kilo costs to move</label>
-              <input type="number" data-num="haulSilverPerWeight" inputmode="decimal"
+            <div class="field" style="margin:0"><label for="haulSilverPerWeight">What a kilo costs to move</label>
+              <input type="number" id="haulSilverPerWeight" data-num="haulSilverPerWeight" inputmode="decimal"
                 min="0" step="1" value="${s.haulSilverPerWeight || ''}" placeholder="0">
               <div class="hint">Silver. Zero if you ride it yourself.</div></div>
           </div>

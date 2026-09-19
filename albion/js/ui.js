@@ -24,6 +24,9 @@ export function openSheet(html, { onMount, onDismiss } = {}) {
   $('#scrim').classList.add('open');
   requestAnimationFrame(() => sheet.classList.add('open'));
   onClose = onDismiss || null;
+  // A sheet's own click handler must not outlive it: the next sheet may use
+  // the same data-* attribute for something else entirely.
+  sheet.onclick = null;
   onMount?.(sheet);
   return sheet;
 }

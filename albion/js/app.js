@@ -86,7 +86,7 @@ function act(el) {
     addCraft(d.addCraft);
     go('plan');
   } else if (d.addSpare) {
-    acceptSpare();
+    acceptSpare(d.count, d.city);
   } else if (d.addStep) {
     // The missing intermediate is usually a cheap one, so keep focus for
     // whatever it feeds rather than burning it here.
@@ -124,8 +124,6 @@ function act(el) {
     openAddCraft();
   } else if (d.act === 'prices') {
     go('prices');
-  } else if (d.act === 'me') {
-    go('me');
   } else if (d.act === 'quality') {
     openQuality();
   } else if (d.act === 'advanced') {

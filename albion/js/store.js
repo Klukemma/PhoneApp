@@ -132,7 +132,7 @@ function defaults() {
     // cycleDays 0 means "you decide" — any other number pins the cycle to the
     // rhythm you actually play to, and the solver works inside it.
     // keepDays: plan around the days you set, rather than choosing them.
-    goal: { recipeId: '', plots: 9, cycleDays: 0, keepDays: false },
+    goal: { recipeId: '', plots: 0, cycleDays: 0, keepDays: false },
     // The land you actually own: so many plots of one sort in one city.
     // Empty means you have not said, and the plan treats your plot count as
     // one undifferentiated heap in your default farming city.
@@ -595,12 +595,19 @@ export function applySolution(result, stamp = null) {
 }
 
 /** Plant the land the chain did not need with what the solver suggested. */
-export function addSpare(spare) {
+export function addSpare(spare, { count, cityId } = {}) {
   if (!spare) return;
+  const n = Math.max(1, Math.round(Number(count) || spare.plots || 0));
   state.plan.plots.push({
     id: uid(), itemId: spare.itemId, mode: spare.mode,
-    count: spare.plots, cityId: state.settings.farmCity, filler: true,
+    count: n, cityId: cityId || state.settings.farmCity, filler: true,
   });
+  commit();
+}
+
+/** Stamp the goal with what the plan on screen was worked out against. */
+export function setGoalStamp(stamp) {
+  state.goal.stamp = stamp;
   commit();
 }
 
@@ -652,6 +659,7 @@ export function carryStockIn(rows, focus) {
 }
 
 export function setCraftCity(cityId) {
+  if (!(state.settings.cities || []).some((c) => c.id === cityId)) return;
   state.settings.craftCity = cityId;
   state.settings.craftCityPicked = true;
   for (const job of state.plan.crafts) delete job.cityId;

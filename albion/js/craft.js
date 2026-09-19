@@ -56,7 +56,7 @@ export function setCraftTarget(id) {
   // "refine my own bars" means nothing once you are brewing a potion.
   setQ({ recipeId: id, make: [] });
 }
-export const setCraftQty = (n) => setQ({ qty: Math.max(1, Math.round(Number(n) || 1)) });
+export const setCraftQty = (n) => setQ({ qty: Math.min(999999, Math.max(1, Math.round(Number(n) || 1))) });
 export const setCraftSellTo = (where) => setQ({ sellTo: where });
 
 export function toggleMake(itemId) {
@@ -255,7 +255,7 @@ export function craft() {
     </div>`,
   }) + (sellsToBlackMarket(recipe) ? '' : '<div class="hint">Black Market: equipment only</div>') : '';
   const where = recipe ? askLine({
-    act: 'craft-city', k: 'In', state: s.craftCityPicked || s.craftWhere === 'best' ? 'set' : 'default',
+    act: 'craft-city', k: 'In', state: s.craftCityPicked ? 'set' : 'default',
     v: s.craftWhere === 'best' ? 'Best city per step'
       : `${esc(city?.name || 'Pick a city')}${bonus?.specialises
         ? ` · ${recipe.category === 'food' ? 'food' : recipe.category === 'potion' ? 'potions' : esc(recipe.category)} +${bonus.specialty}%`
@@ -398,8 +398,10 @@ function moneyHTML(run) {
 function buysHTML(run, recipe) {
   const make = new Set(q().make || []);
   const opts = makeable(recipe, make);
-  const makeTag = (id, chosen, depth) => `<button class="tag ${chosen ? 'on' : ''}" data-make="${esc(id)}">${
-    chosen ? 'make' : 'buy'}</button>`;
+  // A span, not a button: a button inside a button is not HTML, and the
+  // parser splits the row apart. The tap still lands on the tag first.
+  const makeTag = (id, chosen) => `<span class="tag ${chosen ? 'on' : ''}" role="button" data-make="${esc(id)}">${
+    chosen ? 'make' : 'buy'}</span>`;
   const rows = run.buys.map((b) => {
     /* What you carry to the station and what the run really costs are two
      * numbers. They only pull apart on a short run, where nothing has come
@@ -411,7 +413,7 @@ function buysHTML(run, recipe) {
       title: `${short(b.qty)} × ${esc(nameOf(b.id))}`,
       meta: esc(`${b.unit ? `${silver(b.unit)} each` : 'no price set'} · ${short(b.perCraft)} a batch${
         spare > 0.05 ? ` · ${short(spare)} come back, really ${short(b.net)}` : ''}`),
-      right: (opt ? makeTag(b.id, false, opt.depth) : '') + (b.unit ? amt(-b.cost) : tag('Set price')),
+      right: (opt ? makeTag(b.id, false) : '') + (b.unit ? amt(-b.cost) : tag('Set price')),
     });
   });
   // Things you chose to make: no longer bought, so they get a row of their own.
@@ -419,7 +421,7 @@ function buysHTML(run, recipe) {
     attrs: `data-price="${esc(o.id)}"`, icon: ICON.make, cls: o.depth > 0 ? 'nested' : '',
     title: `${tierText(tierOf(o.id), enchantOf(o.id))} ${esc(nameOf(o.id))}`,
     meta: `made from ${o.recipe.inputs.map((i) => esc(nameOf(i.id))).join(' + ')} → see Craft`,
-    right: makeTag(o.id, true, o.depth),
+    right: makeTag(o.id, true),
   }));
   if (!rows.length && !made.length) return '';
   return `
@@ -578,13 +580,13 @@ export function craftRankHTML() {
     act: 'scan-filter', icon: groupIcon(scan().group),
     title: `${esc(scanLabel())} · ${rows.length} ${rows.length === 1 ? 'recipe' : 'recipes'}`,
   })}
-    ${notReady.length ? `<button class="btn primary" data-act="scan-prices" style="margin:8px 0">
+    ${notReady.length ? `<button class="btn primary fetch" data-act="scan-prices">
       ↓ Fetch prices for these ${rows.length}</button>` : ''}
     ${ready.length ? ready.map(row).join('') : rows.length ? '' : `
       <div class="empty"><span class="e">\u{1F50D}</span>${
         gearReady() ? 'Nothing at that tier.' : 'Still loading the list…'}</div>`}
     ${notReady.length ? moreHTML('rank-needs', `${notReady.length} need prices`, '',
-    notReady.map(row).join('')) : ''}
+    notReady.map(row).join(''), !ready.length) : ''}
     ${note(`Profit on one craft, materials all bought, in ${esc(cityFor(state.settings)?.name || 'your crafting city')}. Whichever of market and Black Market pays more.`, 'centered')}`;
 }
 

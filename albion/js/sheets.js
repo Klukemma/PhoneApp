@@ -13,8 +13,8 @@ import {
   clearLand, clearStock, commit, DATA, exportJSON, importJSON, itemMeta,
   landSummary, plotsOwned, pricedItemIds, priceOf, qBmPriceOf, qPriceOf,
   removeCraft, removePlot, scheduleDays, setBmPrice, setBuyPrice,
-  setCraftCity, setDayMode, setGoal, setHolding, setNodeLevel, setPrice,
-  setPrices, setQualityPrice, setQualityPrices, setSchedule,
+  setCraftCity, setDayMode, setGoal, setGoalStamp, setHolding, setNodeLevel,
+  setPrice, setPrices, setQualityPrice, setQualityPrices, setSchedule,
   setScheduleLength, setSettings, setSpec, setStock, state, updateCraft,
   updatePlot, wipe,
 } from './store.js';
@@ -91,12 +91,12 @@ export function openGoal() {
         ${[r, ...variants].map((v) => `
           <button type="button" data-recipe="${esc(v.id)}"
             aria-pressed="${v.id === goal.recipeId}">
-            ${tierText(v.tier, v.enchant)}${priceOf(v.id) ? '' : ' ?'}</button>`).join('')}
+            ${tierText(v.tier, v.enchant)}</button>`).join('')}
       </div>`;
   };
 
   const list = (rs) => rs
-    .filter((r) => !query || r.name.toLowerCase().includes(query))
+    .filter((r) => !query || `${tierText(r.tier, r.enchant)} ${r.name}`.toLowerCase().includes(query))
     .sort((a, b) => a.tier - b.tier || a.name.localeCompare(b.name))
     .map((r) => recipeRow(r, goal.recipeId, GROUP_ICON[groupOf(r)]) + chips(r)).join('');
 
@@ -175,8 +175,10 @@ export function runSolve() {
       // A plan is only as real as its prices, so offer to go and get them
       // rather than asking you to type a number you would have to guess.
       if (result.reason === 'no-price') {
-        toast(`No market price for ${recipe.name}`,
-          { label: 'Fetch live', run: () => runPriceFetch().then(runSolve) });
+        toast(`No market price for ${recipe.name}`, {
+          label: 'Fetch live',
+          run: () => runPriceFetch(chainIds(goal.recipeId)).then((ok) => ok && runSolve()),
+        });
       } else {
         toast('No plan makes that at these prices');
       }
@@ -184,13 +186,21 @@ export function runSolve() {
     }
     // Remember what this answer was worked out against, so the screen can say
     // when the board, the prices or the question have moved on since.
+    // Taken after the answer is in place: the solver writes settings of its
+    // own (whether to water), and a stamp taken before that would be stale
+    // the moment it was made.
+    applySolution(result);
     const stamp = solveStamp();
+    // The solution first: stamping the goal redraws the screen, and the
+    // screen reads the stamp off the solution when there is one.
     setSolution({ ...result, stamp });
-    applySolution(result, stamp);
+    setGoalStamp(stamp);
     const stale = result.steps.filter((x) => !priceOf(x.itemId)).length;
     if (stale) {
-      toast(`${stale} ingredient${stale === 1 ? ' has' : 's have'} no price`,
-        { label: 'Fetch live', run: () => runPriceFetch().then(runSolve) });
+      toast(`${stale} ingredient${stale === 1 ? ' has' : 's have'} no price`, {
+        label: 'Fetch live',
+        run: () => runPriceFetch(chainIds(goal.recipeId)).then((ok) => ok && runSolve()),
+      });
     } else {
       toast(`${short(result.perDay)} a day · ${Math.round(result.made)} ${recipe.name}`);
     }
@@ -198,11 +208,12 @@ export function runSolve() {
 }
 
 /** Take the solver up on its suggestion for the land the chain did not need. */
-export function acceptSpare() {
+export function acceptSpare(count, cityId) {
   const spare = solution?.spare;
   if (!spare) return;
-  addSpare(spare);
-  toast(`${spare.plots} ${spare.plots === 1 ? 'plot' : 'plots'} added`);
+  const n = Math.round(Number(count)) || spare.plots;
+  addSpare(spare, { count: n, cityId });
+  toast(`${n} ${n === 1 ? 'plot' : 'plots'} added`);
 }
 
 /* -------------------------------------------------------------- land --- */
@@ -283,7 +294,7 @@ export function openFarm() {
     ${note('Whole 3×3 plots. Crops need a Farm, herbs a Herb Garden, livestock a Pasture, mounts a Kennel. Islands count under their city.')}
     ${state.farm.length ? '' : `
       <div class="field"><label>Plots that can grow anything</label>
-        <input type="number" id="plots" inputmode="numeric" min="0" max="999" value="${state.goal.plots}">
+        <input type="number" id="plots" inputmode="numeric" min="0" max="999" value="${state.goal.plots || ''}" placeholder="0">
         <div class="hint">Fine to start with. Say which buildings they are below and the plan stops guessing.</div></div>`}
 
     ${listed.map(cityBlock).join('')}
@@ -304,9 +315,11 @@ export function openFarm() {
   `, {
     onMount(root) {
       for (const input of $$('[data-land]', root)) {
+        // Saved as you type, without redrawing the sheet under your finger:
+        // a redraw between blur and tap would eat the Save that follows.
         input.onchange = () => {
           setHolding(input.dataset.land, input.dataset.kind, input.value);
-          openFarm();
+          $('#plots', root)?.closest('.field')?.classList.toggle('hide', state.farm.length > 0);
         };
       }
       for (const btn of $$('[data-drop]', root)) {
@@ -685,7 +698,6 @@ export function openCraftCity() {
   const recipe = craftTarget() ? recipeOf(craftTarget()) : null;
   const deltas = state.plan.crafts.length && lastSim ? cityDeltas(lastSim) : [];
   const byCity = new Map(deltas.map((d) => [d.city.id, d]));
-  const hidden = new Set(deltas.flatMap((d) => (d.others ? [] : []))); // ties collapse below
   const shown = deltas.length ? deltas.map((d) => d.city) : (s.cities || []);
 
   const rowFor = (c) => {
@@ -709,9 +721,9 @@ export function openCraftCity() {
       right = here ? tick() : '';
     }
     return rowHTML({
-      attrs: `data-city="${esc(c.id)}"`, icon: c.craftOnly ? ICON.island : ICON.city,
-      title: `${esc(c.name)}${d?.best && !here ? ` ${tag('best')}` : ''}`,
-      meta, cls: here ? 'selected' : '', right,
+      attrs: `data-pick-city="${esc(c.id)}"`, icon: c.craftOnly ? ICON.island : ICON.city,
+      title: esc(c.name),
+      meta, cls: here ? 'selected' : '', right: (d?.best && !here ? tag('best') : '') + right,
     });
   };
 
@@ -733,13 +745,14 @@ export function openCraftCity() {
         setSettings({ craftWhere: s.craftWhere === 'best' ? 'one' : 'best' });
         openCraftCity();
       });
-      root.onclick = (e) => {
-        const id = e.target.closest('[data-city]')?.dataset.city;
-        if (!id) return;
-        setCraftCity(id);
-        closeSheet();
-        toast(`Crafting in ${cityFor(state.settings, id)?.name}`);
-      };
+      for (const b of $$('[data-pick-city]', root)) {
+        b.onclick = () => {
+          const id = b.dataset.pickCity;
+          setCraftCity(id);
+          closeSheet();
+          toast(`Crafting in ${cityFor(state.settings, id)?.name}`);
+        };
+      }
     },
   });
 }
@@ -846,7 +859,7 @@ export function openPrice(id, market = null, busy = false, err = null) {
     <button class="btn ${market ? '' : 'primary'}" id="look" ${busy ? 'disabled' : ''}>
       ${busy ? 'Asking every city' + '…' : market ? 'Check again' : 'Where is it cheapest?'}</button>
     <div class="hint centered">Live from the Albion Online Data Project ·
-      ${esc(server)} · <button class="linkish" data-act="price-source">change server</button></div>
+      ${esc(server)} · <button class="linkish" data-src>change server</button></div>
 
     ${err ? `<div class="warn-note" style="margin-top:12px">${esc(err)}</div>` : ''}
 
@@ -856,12 +869,12 @@ export function openPrice(id, market = null, busy = false, err = null) {
 
     ${buyable.length ? `
       <div class="section-head" style="margin-top:18px"><h2>\u{1F53D} Cheapest to buy</h2>
-        <span class="right num" class="flat">tap to use</span></div>
+        <span class="right num flat">tap to use</span></div>
       ${quotes(buyable, 'sellMin', 'cheapest', 'buy')}` : ''}
 
     ${sellable.length ? `
       <div class="section-head" style="margin-top:18px"><h2>\u{1F53C} Best place to sell</h2>
-        <span class="right num" class="flat">tap to use</span></div>
+        <span class="right num flat">tap to use</span></div>
       <p class="muted small" style="margin:-4px 0 8px">What it is listed at there,
         so what you could ask. Your own sale still pays the market's cut.</p>
       ${quotes(sellable, 'sellMin', 'best', 'sell')}` : ''}
@@ -877,6 +890,8 @@ export function openPrice(id, market = null, busy = false, err = null) {
     </div>
   `, {
     onMount(root) {
+      $('[data-src]', root)?.addEventListener('click', () => openPriceSource());
+
       const sellIn = $('#sell', root);
       const buyIn = $('#buy', root);
       if (!market && !busy) { sellIn.focus(); sellIn.select(); }
@@ -1433,6 +1448,8 @@ function cycleOutcome(line, sim) {
  * it farming, how often) could not say "farm the weekdays, craft the weekend",
  * and that is how people actually play.
  */
+let cycleWas = null;
+
 export function openCycle() {
   const s = state.settings;
   const goal = state.goal;
@@ -1442,7 +1459,10 @@ export function openCycle() {
   const count = (m) => days.filter((d) => d === m).length;
   const LABEL = { farm: 'Farm', rest: 'Rest', craft: 'Craft' };
   const DAY_ICON = { farm: '\u{1F33E}', rest: '\u{1F4A4}', craft: '\u{1F9EA}' };
-  const was = solveStamp().goal;
+  // What the question was when the sheet first opened, kept across the
+  // re-opens every tap does, so Done knows whether anything really changed.
+  if (cycleWas === null) cycleWas = solveStamp().goal;
+  const was = cycleWas;
 
   const presets = [
     ['daily', 'Farm every day', (n) => Array.from({ length: n }, () => 'farm')],
@@ -1564,12 +1584,14 @@ export function openCycle() {
         openCycle();
       };
       $('#save', root).onclick = () => {
+        cycleWas = null;
         closeSheet();
         toast('Cycle saved');
         // A different question deserves a fresh answer; the same one does not.
         if (state.goal.recipeId && solveStamp().goal !== was) runSolve();
       };
     },
+    onDismiss: () => { cycleWas = null; },
   });
 }
 

@@ -3,7 +3,7 @@
 import {
   animalCycle, cityBonus, cityFor, craftBatch, farmCityFor, feedFor,
   perPeriod, plantCycle, productCycle, rankFarmables, rankRecipes,
-  returnRate, simulateCycle,
+  returnRate, simulateCycle, taxRate,
 } from './calc.js';
 import {
   costOf, DATA, hasOwnCost, itemMeta, landSummary, plotsOwned, priceOf,
@@ -52,6 +52,7 @@ export function solveStamp() {
     setup: JSON.stringify([s.premium, s.useFocus, s.favouriteFood, s.craftCity,
       s.farmCity, s.feedItemIds, s.cadenceHours, s.startFocus, s.stockCap,
       s.focusPerDay, s.focusCap, s.sellSurplus, s.hideMounts,
+      s.watered, s.ownInputsAtCost, s.craftWhere,
       JSON.stringify(s.stationFee || {})]),
     goal: JSON.stringify([state.goal.recipeId, state.goal.plots, state.goal.cycleDays,
       // Your calendar is part of the question only while you ask it to be kept.
@@ -157,14 +158,19 @@ export function plan() {
   const c = ctx(probe.wateredFraction);
   const sim = simulateCycle(state.plan, DATA, c);
   lastSim = sim;
-  const solved = state.plan.plots.length || state.plan.crafts.length;
+  /* A plan is only the answer while it is the answer to this question: pick
+   * a different potion and the old plan is not stale, it is somebody else's. */
+  const goalId = state.goal.recipeId;
+  const belongs = !goalId || !state.plan.crafts.length
+    || state.plan.crafts.some((c) => c.recipeId === goalId);
+  const solved = (state.plan.plots.length || state.plan.crafts.length) && belongs;
   const moved = solved ? changedSince(planStamp()) : [];
 
   if (!solved) {
     return {
       title: 'Plan',
       html: `
-        ${planStrip(sim, moved)}
+        ${planStrip(sim, moved, false)}
         ${chainNudge()}
         ${note('Pick a potion and it works out what to plant, what to buy, how many days, and what you earn.', 'centered')}`,
     };
@@ -174,7 +180,7 @@ export function plan() {
     title: 'Plan',
     action: moved.length ? { label: 'Redo', act: 'solve', warn: true } : null,
     html: `
-      ${planStrip(sim, moved)}
+      ${planStrip(sim, moved, true)}
       ${planHero(sim, moved)}
       ${nudges(sim)}
       ${plantSection(sim)}
@@ -200,11 +206,11 @@ export function plan() {
  * on what land, on which days, crafted where. A hollow dot is the app's
  * default or an instruction; a gold one is something you chose.
  */
-function planStrip(sim, moved) {
+function planStrip(sim, moved, solved) {
   const goal = state.goal;
   const s = state.settings;
   const recipe = DATA.recipes.find((r) => r.id === goal.recipeId);
-  const solved = state.plan.plots.length || state.plan.crafts.length;
+  const bare = !state.farm.length && goal.plots > 0;
 
   const make = askLine({
     act: 'goal', k: 'Make',
@@ -214,8 +220,10 @@ function planStrip(sim, moved) {
   const land = landLine();
   const on = askLine({
     act: 'land', k: 'On',
-    state: state.farm.length ? 'set' : 'unset',
-    v: state.farm.length ? esc(land.v) : 'Say what land you own',
+    state: state.farm.length ? 'set' : bare ? 'default' : 'unset',
+    v: state.farm.length ? esc(land.v)
+      : bare ? `${goal.plots} ${goal.plots === 1 ? 'plot' : 'plots'} $· say which buildings`
+        : 'Say what land you own',
     meta: state.farm.length ? esc(land.meta) : '',
   });
   const days = scheduleDays().length;
@@ -390,8 +398,8 @@ function nudges(sim) {
 
 function plantSection(sim) {
   const head = `
-    <div class="section-head"><h2>Plant · ${sim.farmingDays} ${
-      sim.farmingDays === 1 ? 'harvest' : 'harvests'}</h2>
+    <div class="section-head"><h2>Plant${sim.farmLines.length ? ` · ${sim.farmingDays} ${
+      sim.farmingDays === 1 ? 'harvest' : 'harvests'}` : ''}</h2>
       <span class="right num ${sim.farmCost > 0.5 ? 'bad' : sim.farmCost < -0.5 ? 'good' : 'flat'}">${
         Math.abs(sim.farmCost) > 0.5 ? short(-sim.farmCost) : ''}</span></div>`;
   const rows = sim.farmLines.map((l) => farmRow(l, sim)).join('');
@@ -434,14 +442,25 @@ function landRows() {
       meta: 'Nothing this potion needs grows there', right: amt('—', { tone: 'flat' }),
     }));
   }
-  if (r.spare) {
-    out.push(rowHTML({
-      attrs: 'data-add-spare="1"', icon: ICON.seed, cls: 'suggest',
-      title: `${r.spare.plots} spare ${r.spare.plots === 1 ? 'plot' : 'plots'} → ${
-        esc(r.spare.ref?.name || nameOf(r.spare.itemId))}`,
-      meta: 'Not needed by the chain · the best they could earn',
-      right: amt(r.spare.perDay, { tone: 'good', unit: '/day', sign: true }) + tag('Add'),
-    }));
+  /* The spare offer is only for land its crop can actually stand on, and it
+   * goes into the city that has that land free. Once accepted it is a row of
+   * its own, so the offer is not repeated under it. */
+  const taken = state.plan.plots.some((p) => p.filler);
+  if (r.spare && !taken) {
+    const fits = (r.idleLand || []).filter((x) => x.kind === spareBuilding
+      || (LOOSE[x.kind] || []).includes(spareBuilding) || x.kind === 'any');
+    const room = fits.reduce((t, x) => t + x.plots, 0);
+    const plots = room > 0 ? Math.min(r.spare.plots, room) : r.spare.plots;
+    const city = fits.sort((a, b) => b.plots - a.plots)[0]?.city || '';
+    if (plots > 0) {
+      out.push(rowHTML({
+        attrs: `data-add-spare="1" data-count="${plots}" data-city="${esc(city)}"`, icon: ICON.seed, cls: 'suggest',
+        title: `${plots} spare ${plots === 1 ? 'plot' : 'plots'} → ${
+          esc(r.spare.ref?.name || nameOf(r.spare.itemId))}`,
+        meta: 'Not needed by the chain · the best they could earn',
+        right: amt(r.spare.perDay * (plots / Math.max(1, r.spare.plots)), { tone: 'good', unit: '/day', sign: true }) + tag('Add'),
+      }));
+    }
   }
   return out.join('');
 }
@@ -525,7 +544,7 @@ function bagRows(sim) {
       act: 'stock', icon: ICON.bag,
       title: `${short(at.qty)} × ${esc(nameOf(id))}`,
       meta: `${fate} · ${basis}`,
-      right: amt(at.qty * priceOf(id), { tone: 'good', unit: 'in bag', sign: true }),
+      right: amt(at.qty * priceOf(id) * (1 - taxRate(state.settings)), { tone: 'good', unit: 'in bag', sign: true }),
     });
   }).join('');
 }
@@ -602,7 +621,7 @@ function craftRow(line, _i, all) {
         : `short on ${nameOf(bottleneck.id)}`)
       : 'materials run out')
     : limitedBy === 'focus'
-      ? ((all || []).some((o) => o !== line && o.crafts > 0 && o.payRate > line.payRate)
+      ? ((all || []).some((o) => o !== line && o.crafts > 0 && o.batch.focus > 0 && o.payRate > line.payRate)
         ? 'focus runs out — it went to what pays better for it'
         : 'focus runs out')
       : line.bought?.length ? 'topped up from the market'
@@ -614,8 +633,8 @@ function craftRow(line, _i, all) {
 
   const right = !crafts ? amt('—', { tone: 'flat' })
     : line.terminal ? amt(line.revenue, { tone: destroys ? 'bad' : 'good' })
-      : tag('→ next step');
-  const feeds = line.feeds ? `feeds ${nameOf(line.feeds.id)}` : '';
+      : tag(line.feeds ? `→ ${nameOf(line.feeds.id)}` : '→ next step');
+  const feeds = '';
 
   return rowHTML({
     attrs: `data-craft="${esc(job.id)}"`, icon: craftIcon(recipe.category),
@@ -700,7 +719,7 @@ function daysCard(sim) {
     <section>
       <div class="section-head"><h2>Your days · ${sim.cycleDays}-day cycle</h2>
         <span class="right flat">tap to change</span></div>
-      <button class="card days-card" data-act="cycle">
+      <div class="card days-card" role="button" tabindex="0" data-act="cycle">
         ${cells}
         ${steps.length ? `<div class="steps">${steps.map((st) => `
           <div class="step">
@@ -710,7 +729,7 @@ function daysCard(sim) {
               <span class="note">${esc(st.note)}</span>
             </span>
           </div>`).join('')}</div>` : ''}
-      </button>
+      </div>
     </section>`;
 }
 
@@ -863,7 +882,7 @@ function focusCard(sim) {
     const used = d.spent + d.craft;
     const h = Math.max(4, Math.min(100, (used / perDay) * 100));
     // A rest day is drawn as a rest day: nothing spent is the point of it.
-    const cls = d.resting ? 'rest' : used <= 0 ? 'over' : d.farming ? 'today' : 'crafting';
+    const cls = d.resting ? 'rest' : d.wasted > 0 && used <= 0 ? 'over' : d.farming ? 'today' : 'crafting';
     if (cls === 'over') wasted = true;
     const what = [
       d.farming ? 'farming' : d.resting ? 'resting' : 'at the station',
@@ -893,6 +912,8 @@ function focusCard(sim) {
       out of materials first.`);
   }
   const banking = sim.focusWasted > 0 ? ''
+    : sim.focusUsed <= 0 ? `No focus goes to crafting in this plan${
+      sim.focusCarried > 0 ? `; ${short(sim.focusCarried)} is carried into the next cycle` : ''}.`
     : `${short(sim.focusBudget)} of focus across ${sim.cycleDays} days, spent as it
        arrives rather than saved up: each craft hands most of its materials
        back, so the same pile keeps brewing with tomorrow's focus.${
@@ -984,8 +1005,10 @@ function nextCycleRow(sim) {
   return `<section>${rowHTML({
     act: 'carry-stock', icon: ICON.next,
     title: 'Start the next cycle from here',
-    meta: `Puts ${n ? `${n} ${n === 1 ? 'leftover' : 'leftovers'}` : 'nothing'}${
-      sim.focusCarried > 0 ? ` and ${short(sim.focusCarried)} focus` : ''} into the bag at what they cost`,
+    meta: n
+      ? `Puts ${n} ${n === 1 ? 'leftover' : 'leftovers'}${
+        sim.focusCarried > 0 ? ` and ${short(sim.focusCarried)} focus` : ''} into the bag at what they cost`
+      : `Carries ${short(sim.focusCarried)} focus into the next cycle`,
     right: go(),
   })}</section>`;
 }
@@ -1128,10 +1151,10 @@ function farmRank(c, missing = []) {
 
   if (!rows.length) return empty('\u{1F4CA}', 'No data.');
   return `
-    ${missing.length ? `<button class="btn primary" data-act="rank-prices" style="margin:8px 0">
+    ${missing.length ? `<button class="btn primary fetch" data-act="rank-prices">
       ↓ Fetch prices for these ${missing.length}</button>` : ''}
     ${ready.map(render).join('')}
-    ${notReady.length ? moreHTML('rank-needs', `${notReady.length} need prices`, '', notReady.map(render).join('')) : ''}`;
+    ${notReady.length ? moreHTML('rank-needs', `${notReady.length} need prices`, '', notReady.map(render).join(''), !ready.length) : ''}`;
 }
 
 function craftRank(c, missing = []) {
@@ -1158,10 +1181,10 @@ function craftRank(c, missing = []) {
 
   if (!all.length) return empty('\u{1F9EA}', 'No recipes.');
   return `
-    ${missing.length ? `<button class="btn primary" data-act="rank-prices" style="margin:8px 0">
+    ${missing.length ? `<button class="btn primary fetch" data-act="rank-prices">
       ↓ Fetch prices for these ${missing.length}</button>` : ''}
     ${ready.map(render).join('') || note('Set some prices and the best recipes rank here.', 'centered')}
-    ${notReady.length ? moreHTML('rank-needs', `${notReady.length} need prices`, '', notReady.map(render).join('')) : ''}`;
+    ${notReady.length ? moreHTML('rank-needs', `${notReady.length} need prices`, '', notReady.map(render).join(''), !ready.length) : ''}`;
 }
 
 /* ============================================================ PRICES ==== */
@@ -1189,6 +1212,8 @@ export function priceListHTML() {
   const sorted = [...groups.entries()]
     .sort((a, b) => ORDER.indexOf(a[0]) - ORDER.indexOf(b[0]));
 
+  const setCount = all.filter((id) => priceOf(id)).length;
+  if (!setCount && priceFilter !== 'all') return '';
   return sorted.map(([cat, list]) => `
     <section>
       <div class="section-head"><h2>${esc(catLabel(cat))}</h2>
@@ -1197,12 +1222,14 @@ export function priceListHTML() {
     .map((id) => rowHTML({
       attrs: `data-price="${esc(id)}"`, icon: iconFor(DATA.items[id]?.cat),
       title: esc(label(id)),
-      meta: `${esc(catLabel(cat).replace(/s$/, ''))} · T${tierOf(id)}${hasOwnCost(id) ? ` · you pay ${silver(costOf(id))}` : ''}`,
+      meta: `${esc(catLabel(cat).replace(/s$/, ''))} · ${tierText(tierOf(id), enchantOf(id))}${hasOwnCost(id) ? ` · you pay ${silver(costOf(id))}` : ''}`,
       right: priceOf(id) ? amt(silver(priceOf(id)), { tone: '' }) : tag('Set price'),
     })).join('')}
     </section>`).join('')
     || empty('\u{1F4B0}', q ? 'Nothing by that name.' : priceFilter === 'missing'
-      ? 'Every item in view has a price.' : 'Nothing to price yet.');
+      ? 'Every item in view has a price.'
+      : priceFilter === 'used' ? 'Pick something to make on Plan and its prices show here.'
+        : 'Nothing to price yet.');
 }
 
 export function prices() {
@@ -1216,7 +1243,8 @@ export function prices() {
       <section>
         ${slimRow({
     act: 'price-source', icon: ICON.prices,
-    title: `${esc(s.priceCity)} · ${esc(serverName(s.server))} · ${setCount} of ${all.length} set`,
+    title: `${esc(s.priceCity)} · ${esc(serverName(s.server))}`,
+    right: amt(`${setCount}/${all.length}`, { tone: 'flat' }) + go(),
   })}
         <div class="field" style="margin-top:8px">
           <input type="search" placeholder="Find an item…" data-price-search value="${esc(priceQuery)}" autocomplete="off">

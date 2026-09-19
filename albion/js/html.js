@@ -134,8 +134,8 @@ export function heroHTML({
 /** Which Details blocks are open, so a re-render does not slam them shut. */
 export const openDetails = new Set();
 
-export const moreHTML = (key, title, sub, inner) => `
-  <details class="more" data-key="${esc(key)}" ${openDetails.has(key) ? 'open' : ''}>
+export const moreHTML = (key, title, sub, inner, forceOpen = false) => `
+  <details class="more" data-key="${esc(key)}" ${forceOpen || openDetails.has(key) ? 'open' : ''}>
     <summary>${esc(title)}${sub ? `<span class="sub">${esc(sub)}</span>` : ''}</summary>
     ${inner}
   </details>`;
