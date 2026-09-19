@@ -15,6 +15,7 @@ import {
   DATA, GEAR, bmPriceOf, costOf, loadEquipment, priceOf, qBmPriceOf, qPriceOf,
   state, setSettings,
 } from './store.js';
+import { serverName } from './prices.js';
 import { esc } from './ui.js';
 import {
   enchantOf, pct, short, silver, tierText, toneOf,
@@ -212,24 +213,22 @@ export function craft() {
             : 'pick anything craftable'}</span>
           <span class="amt">›</span>
         </button>
-        <div class="two">
-          <div class="field"><label>How many</label>
-            <input type="number" id="craftQty" inputmode="numeric" min="1" max="999999"
-              value="${qty}" data-craft-qty></div>
-          <div class="field"><label>Sell it</label>
-            <div class="seg">
-              <button data-craft-sell="market" aria-pressed="${sell.where === 'market'}"
-                >On the market</button>
-              <button data-craft-sell="black" aria-pressed="${sell.where === 'black'}"
-                ${recipe && !sellsToBlackMarket(recipe) ? 'disabled' : ''}
-                >Black Market</button>
-            </div></div>
-        </div>
-        <button class="btn primary" data-act="craft-prices" style="margin-top:4px">
-          ↓ Fetch prices for this run</button>
-        <div class="hint centered">${esc(state.settings.priceCity)} on
-          ${esc(state.settings.server)}${recipe && sellsToBlackMarket(recipe)
-            ? ', plus the Black Market' : ''}.
+        <div class="field" style="margin-bottom:8px"><label>How many</label>
+          <input type="number" id="craftQty" inputmode="numeric" min="1" max="999999"
+            value="${qty}" data-craft-qty></div>
+        <div class="field"><label>Sell it</label>
+          <div class="seg">
+            <button data-craft-sell="market" aria-pressed="${sell.where === 'market'}"
+              >On the market</button>
+            <button data-craft-sell="black" aria-pressed="${sell.where === 'black'}"
+              ${recipe && !sellsToBlackMarket(recipe) ? 'disabled' : ''}
+              >Black Market</button>
+          </div></div>
+        <div class="hint centered" style="margin-top:2px">
+          <button class="linkish" data-act="craft-prices">↓ Fetch prices</button>
+          for ${esc(state.settings.priceCity)} on
+          ${esc(serverName(state.settings.server))}${recipe && sellsToBlackMarket(recipe)
+            ? ' and the Black Market' : ''} ·
           <button class="linkish" data-act="price-source">change</button></div>
         ${sell.refused ? `<div class="hint">The Black Market only takes
           equipment \u2014 weapons, armour, bags, capes and tools \u2014 so this is
