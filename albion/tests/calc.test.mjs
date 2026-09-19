@@ -4,11 +4,12 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
 import {
-  TILES_PER_PLOT, animalCycle, cityBonus, cityFor, craftBatch, farmBonus, feedFor,
-  farmCityFor, farmDayCount, focusCostAt, focusEfficiency, focusLedger,
-  harvestsFor, isFarmDay, perPeriod, planTotals, plantCycle, productCycle,
-  craftNutrition, focusPerDayOf, rankRecipes, returnRate, ruleCovers,
-  simulateCycle, specFor, taxRate, usageFeeFor,
+  animalCycle, cityBonus, cityFor, craftBatch, craftNutrition, farmBonus,
+  farmCityFor, farmDayCount, feedFor, focusCostAt, focusEfficiency,
+  focusLedger, focusPerDayOf, harvestsFor, isFarmDay, perPeriod, plantCycle,
+  planTotals, productCycle, rankRecipes, returnRate, ruleCovers,
+  scheduleFrom, scheduleOf, shapeOf, simulateCycle, specFor, taxRate,
+  TILES_PER_PLOT, usageFeeFor,
 } from '../js/calc.js';
 
 const data = JSON.parse(
@@ -1383,6 +1384,112 @@ test('a farm sized to its crafting leaves nothing on the pile', () => {
   assert.ok(small.stockValue < big.stockValue, 'less piles up');
   // And the smaller farm costs less to run, so realised profit can be better.
   assert.ok(small.cost < big.cost);
+});
+
+/* ----------------------------------- the cycle, day by day ------------- */
+
+test('the three numbers and the day list say the same thing', () => {
+  assert.deepEqual(scheduleFrom({ cycleDays: 5, farmDays: 3, farmEvery: 1 }),
+    ['farm', 'farm', 'farm', 'craft', 'craft']);
+  assert.deepEqual(scheduleFrom({ cycleDays: 6, farmDays: 5, farmEvery: 2 }),
+    ['farm', 'rest', 'farm', 'rest', 'farm', 'craft']);
+  // An explicit list wins over the numbers beside it.
+  assert.deepEqual(scheduleOf({ cycleDays: 14, schedule: ['craft', 'farm'] }), ['craft', 'farm']);
+  // And an empty one means the numbers.
+  assert.equal(scheduleOf({ cycleDays: 4, farmDays: 4, schedule: [] }).length, 4);
+  assert.deepEqual(shapeOf(['farm', 'rest', 'farm', 'craft']),
+    { cycleDays: 4, farmDays: 3, farmEvery: 1, farmingDays: 2, restDays: 1, craftDays: 1 });
+});
+
+test('a plan written the old way reads exactly the same on the day list', () => {
+  const plan = cyclePlan([{ id: 'c', recipeId: 'T6_POTION_HEAL', mode: 'auto' }]);
+  const numbers = simulateCycle(plan, data, cycleCtx({ cycleDays: 12, farmDays: 9, farmEvery: 2 }));
+  const list = simulateCycle(plan, data, cycleCtx({
+    cycleDays: 99, farmDays: 1, farmEvery: 1,   // ignored: the list is what counts
+    schedule: scheduleFrom({ cycleDays: 12, farmDays: 9, farmEvery: 2 }),
+  }));
+  assert.equal(list.profit, numbers.profit);
+  assert.equal(list.cycleDays, 12);
+  assert.deepEqual(list.days, numbers.days);
+});
+
+test('farm the weekdays, craft the weekend', () => {
+  const week = ['farm', 'farm', 'farm', 'farm', 'farm', 'craft', 'craft'];
+  const plan = {
+    plots: [{ id: 'f', itemId: 'T6_FARM_FOXGLOVE_SEED', count: 1, mode: 'grow', cityId: 'martlock' }],
+    crafts: [],
+  };
+  const sim = simulateCycle(plan, data, cycleCtx({ schedule: week }));
+  assert.equal(sim.cycleDays, 7);
+  assert.equal(sim.farmingDays, 5);
+  assert.equal(sim.restDays, 0);
+  assert.equal(sim.craftDays, 2);
+  assert.equal(sim.farmLines[0].harvests, 5);   // a 22-hour herb, once per farm day
+  assert.deepEqual(sim.ledger.days.map((d) => d.mode), week);
+});
+
+test('a rest day spends nothing and a craft day spends what it can', () => {
+  const l = focusLedger({
+    days: ['farm', 'rest', 'rest', 'craft'],
+    perDay: 10000, cap: 30000, start: 0, wateringPerDay: 4000, craftingPerDay: Infinity,
+  });
+  assert.equal(l.days[0].spent, 4000);
+  assert.equal(l.days[1].craft, 0);
+  assert.equal(l.days[2].craft, 0);
+  // Three more days of regeneration arrive by the craft day, less the
+  // watering: 36,000 wanted, and the bar holds 30,000. The rest is the cap.
+  assert.equal(l.days[3].craft, 30000);
+  // Plus the 6,000 the farm day had left after watering: crafting runs on
+  // farm days too, with whatever is left.
+  assert.equal(l.days[0].craft, 6000);
+  assert.equal(l.spentCrafting, 36000);
+  assert.equal(l.wasted, 0);
+  assert.equal(l.left, 0);
+});
+
+test('crafting never eats the focus a later watering was counting on', () => {
+  const opts = {
+    days: ['farm', 'farm', 'farm', 'farm'],
+    perDay: 10000, cap: 30000, start: 20000, wateringPerDay: 15000,
+  };
+  const waterOnly = focusLedger({ ...opts, craftingPerDay: 0 });
+  const greedy = focusLedger({ ...opts, craftingPerDay: Infinity });
+  // The same watering gets paid either way ...
+  assert.equal(greedy.spentWatering, waterOnly.spentWatering);
+  assert.equal(greedy.shortfall, waterOnly.shortfall);
+  // ... and the crafting takes only what the watering leaves.
+  assert.equal(greedy.spentCrafting + greedy.spentWatering + greedy.left,
+    20000 + 4 * 10000 - greedy.wasted);
+});
+
+test('a week of rest past the cap is waste, not budget', () => {
+  const plan = {
+    plots: [{ id: 'f', itemId: 'T6_FARM_FOXGLOVE_SEED', count: 1, mode: 'grow', cityId: 'martlock' }],
+    crafts: [{ id: 'c', recipeId: 'T6_POTION_HEAL', mode: 'auto' }],
+  };
+  const lazy = simulateCycle(plan, data, cycleCtx({
+    schedule: ['farm', ...Array(7).fill('rest'), 'craft'], focusPerDay: 10000, focusCap: 30000,
+  }));
+  const busy = simulateCycle(plan, data, cycleCtx({
+    schedule: ['farm', ...Array(7).fill('craft'), 'craft'], focusPerDay: 10000, focusCap: 30000,
+  }));
+  assert.ok(lazy.focusBudget < busy.focusBudget, 'the cap ate some of the rest');
+  assert.ok(lazy.focusWasted > 0);
+  // Everything the cycle regenerated is accounted for somewhere: spent
+  // crafting, spent watering, carried out, or thrown away at the cap.
+  const all = lazy.focusUsed + lazy.wateringPaid + lazy.focusCarried + lazy.focusWasted;
+  assert.ok(Math.abs(all - 9 * 10000) < 1e-6, `${all} of 90,000 accounted for`);
+});
+
+test('harvests follow the farm days, not the calendar', () => {
+  const herb = plantCycle(plant('T6_FARM_FOXGLOVE_SEED'), cycleCtx());   // 22 hours
+  assert.equal(harvestsFor(herb, { days: ['farm', 'rest', 'farm', 'rest', 'farm'] }), 3);
+  assert.equal(harvestsFor(herb, { days: ['craft', 'craft', 'farm'] }), 1);
+  assert.equal(harvestsFor(herb, { days: ['craft', 'craft', 'craft'] }), 0);
+  // A two-day grower harvests every other farm day however often you visit.
+  const slow = { ...herb, hours: 44 };
+  assert.equal(harvestsFor(slow, { days: Array(6).fill('farm') }), 3);
+  assert.equal(harvestsFor(slow, { days: ['farm', 'farm', 'rest', 'farm'] }), 2);   // days 1 and 4
 });
 
 /* ----------------------------------- what is already in the bag -------- */

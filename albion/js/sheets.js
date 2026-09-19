@@ -9,13 +9,13 @@ import {
   explain, fetchItem, fetchPrices, serverName, BLACK_MARKET, CITIES, SERVERS,
 } from './prices.js';
 import {
-  addCraft, addPlot, addSpare, applySolution, carryStockIn, clearStock, DATA,
-  exportJSON, importJSON, setStock,
-  priceOf, pricedItemIds, clearLand, commit, landSummary, plotsOwned,
-  removeCraft, removePlot, setBuyPrice, setGoal, setHolding, setNodeLevel,
-  setPrice, setPrices, setSettings, setSpec, state, updateCraft, updatePlot, wipe,
-  bmPriceOf, itemMeta, qBmPriceOf, qPriceOf, setBmPrice, setQualityPrice,
-  setQualityPrices,
+  addCraft, addPlot, addSpare, applySolution, bmPriceOf, carryStockIn,
+  clearLand, clearStock, commit, DATA, exportJSON, importJSON, itemMeta,
+  landSummary, plotsOwned, pricedItemIds, priceOf, qBmPriceOf, qPriceOf,
+  removeCraft, removePlot, scheduleDays, setBmPrice, setBuyPrice, setDayMode,
+  setGoal, setHolding, setNodeLevel, setPrice, setPrices, setQualityPrice,
+  setQualityPrices, setSchedule, setScheduleLength, setSettings, setSpec,
+  setStock, state, updateCraft, updatePlot, wipe,
 } from './store.js';
 import { solve } from './solve.js';
 import { $, $$, closeSheet, esc, openSheet, toast } from './ui.js';
@@ -130,7 +130,16 @@ export function openGoal() {
         <button class="linkish" data-act="land">Say which are Farms and which
         are Pastures</button>, and the plan will stop assuming you own both.</div></div>`}
 
+    ${goal.keepDays ? `
     <div class="field">
+      <label>Your calendar</label>
+      <button class="row" data-act="cycle" style="width:100%">
+        <span class="body"><span class="title">Your ${scheduleDays().length}-day cycle, day by day</span>
+          <span class="meta">The plan is worked out inside the days you set · tap to change</span></span>
+        <span class="amt">›</span>
+      </button>
+    </div>` : ''}
+    <div class="field" ${goal.keepDays ? 'hidden' : ''}>
       <label>How long one cycle runs</label>
       <div class="seg" id="cycleSeg" style="margin-bottom:8px">
         ${[0, 3, 7, 14].map((n) => `
@@ -170,6 +179,7 @@ export function openGoal() {
       }
       root.onclick = (e) => {
         if (e.target.closest('[data-act="land"]')) { save(); openFarm(); return; }
+        if (e.target.closest('[data-act="cycle"]')) { save(); openCycle(); return; }
         const btn = e.target.closest('[data-recipe]');
         if (!btn) return;
         save();
@@ -202,7 +212,8 @@ export function runSolve() {
        * empty bag, and the plan it hands back is then read against the real
        * one, which is where the saving shows. */
       result = solve(goal.recipeId, plotsOwned(), DATA, { ...ctx(), stock: undefined }, {
-        ...(goal.cycleDays ? { cycleDays: goal.cycleDays } : {}),
+        ...(goal.keepDays ? { schedule: scheduleDays() }
+          : goal.cycleDays ? { cycleDays: goal.cycleDays } : {}),
         ...(state.farm.length ? { holdings: state.farm } : {}),
       });
     } catch (err) {
@@ -1302,92 +1313,128 @@ function cycleOutcome(line, sim) {
 /* ------------------------------------------------------------- cycle -- */
 
 /**
- * The shape of one batch cycle. Farming and crafting are separate phases
- * because focus banks up to a cap while you farm and is then spent in one go.
+ * The cycle, day by day.
+ *
+ * Every day is one of three things: you farm, you rest, or you craft. Tap a
+ * day to change it. The three numbers this used to be (how long, how much of
+ * it farming, how often) could not say "farm the weekdays, craft the weekend",
+ * and that is how people actually play.
  */
 export function openCycle() {
   const s = state.settings;
+  const goal = state.goal;
+  const days = scheduleDays();
   const sim = simulateCycle(state.plan, DATA, ctx());
   const l = sim.ledger;
+  const count = (m) => days.filter((d) => d === m).length;
+  const LABEL = { farm: 'Farm', rest: 'Rest', craft: 'Craft' };
+  const ICON = { farm: '\u{1F33E}', rest: '\u{1F4A4}', craft: '\u{1F9EA}' };
+
+  const presets = [
+    ['daily', 'Farm every day', (n) => Array.from({ length: n }, () => 'farm')],
+    ['alternate', 'Every other day', (n) => Array.from({ length: n }, (_, i) => (i % 2 ? 'rest' : 'farm'))],
+    ['stretch', 'Farm, then craft', (n) => Array.from({ length: n },
+      (_, i) => (i < Math.max(1, Math.round(n * 0.7)) ? 'farm' : 'craft'))],
+    ['weekend', 'Weekdays farm, weekend craft', (n) => Array.from({ length: n },
+      (_, i) => (i % 7 >= 5 ? 'craft' : 'farm'))],
+  ];
 
   openSheet(`
     <h2>Your cycle</h2>
-    <p class="muted">Farm for a stretch, let focus bank up, then spend it all
-      crafting. Everything on the Plan screen is worked out over one of these.</p>
+    <p class="muted">Tap a day to change what you do on it. Farm days water and
+      harvest; rest days let focus bank up untouched; craft days spend it at the
+      station. Crafting also runs on farm days with whatever focus is left.</p>
 
-    <div class="two">
-      <div class="field"><label>Cycle length (days)</label>
-        <input type="number" id="cycleDays" inputmode="numeric" min="1" max="60"
-          value="${s.cycleDays}"></div>
-      <div class="field"><label>Of which farming</label>
-        <input type="number" id="farmDays" inputmode="numeric" min="0" max="60"
-          value="${s.farmDays}"></div>
-    </div>
     <div class="field">
-      <label>Farm how often</label>
-      <div class="seg" id="everySeg">
-        ${[1, 2, 3].map((n) => `
-          <button type="button" data-every="${n}" aria-pressed="${(s.farmEvery || 1) === n}">
-            ${n === 1 ? 'Every day' : n === 2 ? 'Every other day' : `Every ${n} days`}</button>`).join('')}
+      <div class="stepper">
+        <button type="button" class="btn" data-len="-1" aria-label="One day shorter">−</button>
+        <span class="num"><b>${days.length}</b> ${days.length === 1 ? 'day' : 'days'}</span>
+        <button type="button" class="btn" data-len="1" aria-label="One day longer">+</button>
       </div>
-      <div class="hint">Watering costs focus, so skipping a day banks another
-        ${Math.round(s.focusPerDay).toLocaleString()} for the next one \u2014 at the
-        cost of that day's harvest. ${sim.farmingDays} ${sim.farmingDays === 1 ? 'harvest' : 'harvests'}
-        over ${sim.farmDays} days.</div>
+      <div class="days">
+        ${days.map((m, i) => `
+          <button type="button" class="day ${m}" data-day="${i}"
+            aria-label="Day ${i + 1}, ${LABEL[m]}. Tap to change">
+            <span class="n">${i + 1}</span><span class="m">${ICON[m]}</span></button>`).join('')}
+      </div>
+      <div class="legend" style="margin-top:6px">
+        <span><i class="sw farm"></i> farm ${count('farm')}</span>
+        <span><i class="sw rest"></i> rest ${count('rest')}</span>
+        <span><i class="sw craft"></i> craft ${count('craft')}</span>
+      </div>
     </div>
 
-    <div class="field"><label>Focus in hand at the start</label>
+    <div class="field">
+      <label>Or start from a pattern</label>
+      <div class="seg">
+        ${presets.map(([k, label]) => `
+          <button type="button" data-preset="${k}">${label}</button>`).join('')}
+      </div>
+    </div>
+
+    <div class="toggle">
+      <div class="body"><div class="t">Plan around these days</div>
+        <div class="d">${goal.keepDays
+          ? '"Work it out" keeps this calendar and solves everything inside it.'
+          : '"Work it out" may pick a different calendar and overwrite this one.'}</div></div>
+      <button class="switch" id="keepDays" aria-pressed="${!!goal.keepDays}"></button>
+    </div>
+
+    <div class="field" style="margin-top:12px"><label>Focus in hand at the start</label>
       <input type="number" id="startFocus" inputmode="numeric" min="0" max="${s.focusCap}"
         value="${s.startFocus || 0}">
       <div class="hint">Zero if you emptied it on the last batch.</div></div>
 
     <div class="card" style="margin-bottom:12px">
-      <div class="bar-row"><span class="n">Focus banked by craft day</span>
-        <span class="v num">${Math.round(sim.focusAtCraft).toLocaleString()}</span></div>
-      <div class="bar-row"><span class="n">Regeneration wasted at the cap</span>
-        <span class="v num ${l.wasted ? 'bad' : ''}">${Math.round(l.wasted).toLocaleString()}</span></div>
-      ${l.cappedOn ? `<div class="bar-row"><span class="n">Hits the cap on</span>
-        <span class="v num">day ${l.cappedOn}</span></div>` : ''}
+      <div class="bar-row"><span class="n">Harvests this cycle</span>
+        <span class="v num">${sim.farmingDays}</span></div>
+      <div class="bar-row"><span class="n">Focus the crafting can spend</span>
+        <span class="v num">${Math.round(sim.focusBudget).toLocaleString()}</span></div>
       <div class="bar-row"><span class="n">Watering costs</span>
-        <span class="v num">${Math.round(sim.wateringPerDay).toLocaleString()} per farming day</span></div>
+        <span class="v num">${Math.round(sim.wateringPerDay).toLocaleString()} per farm day</span></div>
       ${sim.ledger.shortfall > 0 ? `<div class="bar-row">
         <span class="n">Watering you cannot pay for</span>
         <span class="v num bad">${Math.round(sim.ledger.shortfall).toLocaleString()}</span></div>` : ''}
+      <div class="bar-row"><span class="n">Regeneration wasted at the cap</span>
+        <span class="v num ${sim.focusWasted ? 'bad' : ''}">${Math.round(sim.focusWasted).toLocaleString()}</span></div>
     </div>
 
-    ${l.wasted > 0 ? `<div class="warn-note" style="margin-bottom:12px">
-      Focus caps on day ${l.cappedOn}. Every day after that throws away
-      ${Math.round(s.focusPerDay).toLocaleString()} focus. Shortening the cycle to
-      ${l.cappedOn} days would waste none.</div>` : ''}
+    ${l.cappedOn && sim.focusWasted > 0 ? `<div class="warn-note" style="margin-bottom:12px">
+      The bar is full on day ${l.cappedOn}. Every rest day after that throws
+      away ${Math.round(s.focusPerDay).toLocaleString()} focus: turn one into a
+      craft day, or shorten the cycle.</div>` : ''}
 
     <div class="sheet-actions">
-      <button class="btn primary" id="save">Save</button>
+      <button class="btn primary" id="save">Done</button>
     </div>
   `, {
     onMount(root) {
-      const refresh = () => {
-        setSettings({
-          cycleDays: Math.max(1, Number($('#cycleDays', root).value) || 14),
-          farmDays: Math.max(0, Number($('#farmDays', root).value) || 0),
-          startFocus: Math.max(0, Number($('#startFocus', root).value) || 0),
-        });
+      // Editing the days by hand is saying you want them kept.
+      const touched = () => { if (!goal.keepDays) setGoal({ keepDays: true }); };
+      for (const b of $$('[data-day]', root)) {
+        b.onclick = () => { setDayMode(Number(b.dataset.day)); touched(); openCycle(); };
+      }
+      for (const b of $$('[data-len]', root)) {
+        b.onclick = () => {
+          setScheduleLength(days.length + Number(b.dataset.len));
+          touched();
+          openCycle();
+        };
+      }
+      for (const b of $$('[data-preset]', root)) {
+        b.onclick = () => {
+          const make = presets.find(([k]) => k === b.dataset.preset)[2];
+          setSchedule(make(days.length));
+          touched();
+          openCycle();
+        };
+      }
+      $('#keepDays', root).onclick = () => { setGoal({ keepDays: !goal.keepDays }); openCycle(); };
+      $('#startFocus', root).onchange = () => {
+        setSettings({ startFocus: Math.max(0, Number($('#startFocus', root).value) || 0) });
         openCycle();
       };
-      for (const id of ['#cycleDays', '#farmDays', '#startFocus']) {
-        $(id, root).onchange = () => refresh();
-      }
-      for (const b of $$('[data-every]', root)) {
-        b.onclick = () => { setSettings({ farmEvery: Number(b.dataset.every) }); openCycle(); };
-      }
-      $('#save', root).onclick = () => {
-        setSettings({
-          cycleDays: Math.max(1, Number($('#cycleDays', root).value) || 14),
-          farmDays: Math.max(0, Number($('#farmDays', root).value) || 0),
-          startFocus: Math.max(0, Number($('#startFocus', root).value) || 0),
-        });
-        closeSheet();
-        toast('Cycle saved');
-      };
+      $('#save', root).onclick = () => { closeSheet(); toast('Cycle saved'); };
     },
   });
 }

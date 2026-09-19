@@ -714,3 +714,14 @@ test('saying nothing about your land works exactly as before', () => {
   assert.equal(Math.round(plain.perDay), Math.round(heap.perDay));
   assert.deepEqual(plain.landGaps, []);
 });
+
+test('handed the days, the solver keeps them and plans inside them', () => {
+  const days = ['farm', 'farm', 'farm', 'farm', 'farm', 'craft', 'craft'];
+  const r = solve('T6_POTION_HEAL', 12, data, ctx(), { schedule: days });
+  assert.ok(r.ok);
+  assert.deepEqual(r.settingsPatch.schedule, days);
+  assert.deepEqual(r.sim.days, days);
+  assert.equal(r.sim.cycleDays, 7);
+  // Nothing else is offered: the calendar was yours.
+  assert.equal(r.alternatives.length, 0);
+});

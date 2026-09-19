@@ -1,6 +1,7 @@
 // Local-only state: your prices, your plan, your settings.
 // Game data (gamedata.json) is read-only and never stored here.
 
+import { DAY_MODES, scheduleOf } from './calc.js';
 import { uid } from './util.js';
 
 const KEY = 'albionfarm.v1';
@@ -86,6 +87,9 @@ function defaults() {
       cycleDays: 14,
       farmDays: 10,
       farmEvery: 1,            // 1 = every day, 2 = every other day, and so on
+      // The cycle, day by day: 'farm', 'rest' or 'craft'. Empty means "read
+      // the three numbers above", which is how every plan used to say it.
+      schedule: [],
       startFocus: 0,           // focus in hand when a cycle begins
       hideMounts: false,
       sellSurplus: false,      // true = sell leftover ingredients instead of keeping them
@@ -127,7 +131,8 @@ function defaults() {
     // The solver works from these two and writes the plan below.
     // cycleDays 0 means "you decide" — any other number pins the cycle to the
     // rhythm you actually play to, and the solver works inside it.
-    goal: { recipeId: '', plots: 9, cycleDays: 0 },
+    // keepDays: plan around the days you set, rather than choosing them.
+    goal: { recipeId: '', plots: 9, cycleDays: 0, keepDays: false },
     // The land you actually own: so many plots of one sort in one city.
     // Empty means you have not said, and the plan treats your plot count as
     // one undifferentiated heap in your default farming city.
@@ -197,7 +202,12 @@ function normalize(raw) {
   const base = defaults();
   const s = {
     ...base, ...raw,
-    settings: { ...base.settings, ...(raw.settings || {}) },
+    settings: {
+      ...base.settings,
+      ...(raw.settings || {}),
+      schedule: (Array.isArray(raw.settings?.schedule) ? raw.settings.schedule : [])
+        .filter((d) => ['farm', 'rest', 'craft'].includes(d)).slice(0, 60),
+    },
     prices: { ...(raw.prices || {}) },
     buyPrices: { ...(raw.buyPrices || {}) },
     bmPrices: { ...(raw.bmPrices || {}) },
@@ -559,7 +569,8 @@ export function setGoal(patch) {
   // Asking a different question invalidates the answer outright, so the
   // fingerprint goes with it rather than being compared against.
   if (patch.recipeId !== undefined || patch.plots !== undefined
-    || patch.cycleDays !== undefined) delete state.goal.stamp;
+    || patch.cycleDays !== undefined || patch.keepDays !== undefined) delete state.goal.stamp;
+  state.goal.keepDays = !!state.goal.keepDays;
   state.goal.plots = whole(state.goal.plots, 999);
   state.goal.cycleDays = whole(state.goal.cycleDays, 60);
   commit();
@@ -648,7 +659,46 @@ export function setCraftCity(cityId) {
 
 export function setSettings(patch) {
   Object.assign(state.settings, patch);
+  // The three numbers and the day list describe the same thing. Whoever
+  // sets the numbers without the list means the shape the numbers make.
+  if (!('schedule' in patch) && ('cycleDays' in patch || 'farmDays' in patch
+    || 'farmEvery' in patch)) {
+    state.settings.schedule = [];
+  }
   commit();
+}
+
+/* ---------------------------------------------------------- the days --- */
+
+/** The cycle as a list of days, whichever way it is written down. */
+export const scheduleDays = () => scheduleOf(state.settings);
+
+/** Replace the whole day list. The numbers follow it, for anything still reading them. */
+export function setSchedule(days) {
+  const list = (days || []).filter((d) => DAY_MODES.includes(d)).slice(0, 60);
+  state.settings.schedule = list;
+  if (list.length) {
+    state.settings.cycleDays = list.length;
+    state.settings.farmDays = list.lastIndexOf('farm') + 1;
+    state.settings.farmEvery = 1;
+  }
+  commit();
+}
+
+/** One day, tapped: farm becomes rest, rest becomes craft, craft becomes farm. */
+export function setDayMode(index, mode) {
+  const days = scheduleDays();
+  if (index < 0 || index >= days.length) return;
+  days[index] = mode || DAY_MODES[(DAY_MODES.indexOf(days[index]) + 1) % DAY_MODES.length];
+  setSchedule(days);
+}
+
+/** Make the cycle this long, keeping what is there and farming any new days. */
+export function setScheduleLength(n) {
+  const len = Math.max(1, Math.min(60, Math.round(Number(n)) || 1));
+  const days = scheduleDays().slice(0, len);
+  while (days.length < len) days.push('farm');
+  setSchedule(days);
 }
 
 /** A flat efficiency override for one recipe, instead of the board. */

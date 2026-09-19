@@ -8,9 +8,9 @@
 // simulator always scores.
 
 import {
-  PLOTS, TILES_PER_PLOT, cityBonus, cityFor, farmDayCount, focusCostAt,
-  focusLedger, focusPerDayOf, harvestsFor, plotKindOf, returnRate, rowCycle,
-  rowOutput, simulateCycle, specFor,
+  cityBonus, cityFor, farmDayCount, focusCostAt, focusLedger, focusPerDayOf,
+  harvestsFor, plotKindOf, PLOTS, returnRate, rowCycle, rowOutput,
+  scheduleFrom, scheduleOf, simulateCycle, specFor, TILES_PER_PLOT,
 } from './calc.js';
 import { uid } from './util.js';
 
@@ -406,12 +406,14 @@ export function buildPlan(chain, assign, data, ctx, sched, budget, withFiller = 
   // rather than sitting on it: the same measure simulateCycle uses. Watering
   // is paid first, out of the bank, on the days you are actually farming.
   const ledgerAt = (wateringPerDay) => {
-    const banked = focusLedger({
-      cycleDays: sched.cycleDays, farmDays: sched.farmDays, farmEvery: sched.farmEvery,
+    // The same measure simulateCycle uses: what the ledger can put into
+    // crafting when the crafting wants everything, watering paid first.
+    const open = focusLedger({
+      days: daysOf(sched),
       perDay: focusPerDayOf(s), cap: s.focusCap, start: s.startFocus || 0, wateringPerDay,
+      craftingPerDay: Infinity,
     });
-    const gross = (s.startFocus || 0) + sched.cycleDays * focusPerDayOf(s);
-    return Math.max(0, gross - banked.spentWatering);
+    return Math.max(0, open.spentCrafting);
   };
 
   const craftsFrom = (focusAvail) => (focusPer > 0 ? focusAvail / focusPer : Infinity);
@@ -427,9 +429,9 @@ export function buildPlan(chain, assign, data, ctx, sched, budget, withFiller = 
     // A row's focus is the cost of one growth, so bill it per growth the row
     // completes and spread that over the days you actually farm \u2014 the same
     // measure simulateCycle uses.
-    const careDays = Math.max(1, farmDayCount(sched.farmDays, sched.farmEvery));
+    const careDays = Math.max(1, farmDayCount(daysOf(sched)));
     const careTotal = farmed.reduce((t, f, i) => t
-      + (f.cycle.focus || 0) * tiles * harvestsFor(f.cycle, sched)
+      + (f.cycle.focus || 0) * tiles * harvestsFor(f.cycle, { days: daysOf(sched), cadenceHours: s.cadenceHours })
         * Object.values(spent.got[i]).reduce((a, b) => a + b, 0), 0);
     focusAvail = ledgerAt(careTotal / careDays);
     spent = spread(focusAvail);
@@ -505,6 +507,13 @@ export function buildPlan(chain, assign, data, ctx, sched, budget, withFiller = 
 
 /* ------------------------------------------------------------ search --- */
 
+/**
+ * The day list a candidate calendar stands for. A calendar you pinned by hand
+ * carries its own list; one the search made up is the usual shape, farm for a
+ * stretch at some rhythm and then craft.
+ */
+const daysOf = (sched) => sched.days || scheduleFrom(sched);
+
 const withSched = (ctx, sched) => ({
   ...ctx,
   settings: {
@@ -512,6 +521,7 @@ const withSched = (ctx, sched) => ({
     cycleDays: sched.cycleDays,
     farmDays: sched.farmDays,
     farmEvery: sched.farmEvery,
+    schedule: daysOf(sched),
     watered: sched.watered,
   },
 });
@@ -633,6 +643,7 @@ function refine(start, chain, data, ctx, budget, rounds = 10, grid = null) {
     let next = cur;
     const tries = [];
     for (const d of [-1, 1]) {
+      if (cur.sched.days) break;   // your days are your days
       if (!grid?.pinned) tries.push({ ...cur.sched, cycleDays: cur.sched.cycleDays + d });
       tries.push({ ...cur.sched, farmDays: cur.sched.farmDays + d });
     }
@@ -693,8 +704,14 @@ export function solve(recipeId, plotBudget, data, ctx, opts = {}) {
   // With the length pinned, every day of the cycle is fair game as a farming
   // day: the point of a long cycle is no longer to bank focus, so capping the
   // idle days would hide the shapes that actually suit it.
+  // Or you can hand it the days themselves: farm these, rest those, craft the
+  // rest. Then the only calendar on the table is yours, and what gets solved
+  // is everything inside it.
+  const fixed = Array.isArray(opts.schedule) && opts.schedule.length
+    ? scheduleOf({ days: opts.schedule }) : null;
+
   const grid = {
-    minCycle, maxCycle, everies, pinned: !!pinned, cap,
+    minCycle, maxCycle, everies, pinned: !!pinned || !!fixed, cap, fixed,
     idleMax: pinned ? pinned : idleMax,
   };
 
@@ -751,6 +768,16 @@ const schedKey = (x) => `${x.cycleDays}/${x.farmDays}/${x.farmEvery}/${x.watered
 /** Score one way of sourcing the chain across every shape of cycle worth trying. */
 function sweepCalendar(chain, assign, data, ctx, budget, grid) {   // eslint-disable-line
   const out = [];
+  if (grid.fixed) {
+    const days = grid.fixed;
+    const last = days.lastIndexOf('farm');
+    for (const watered of (ctx.settings.premium ? [false, true] : [false])) {
+      const sched = { cycleDays: days.length, farmDays: last + 1, farmEvery: 1, days, watered };
+      const r = attempt(chain, assign, sched, data, ctx, budget, false, grid.cap);
+      if (Number.isFinite(r.score)) out.push(r);
+    }
+    return out.sort((a, b) => b.rank - a.rank);
+  }
   for (const cycleDays of range(grid.minCycle, grid.maxCycle)) {
     for (const farmDays of range(Math.max(1, cycleDays - grid.idleMax), cycleDays)) {
       for (const farmEvery of grid.everies) {
@@ -837,7 +864,8 @@ function describe(best, chain, data, ctx, budget, opts = {}, grid = null) {
       && farmDays >= Math.max(1, cycleDays - grid.idleMax) && farmDays <= cycleDays);
   // With the length pinned there is no other length to offer, so the choice on
   // the table becomes how much of that cycle you spend farming.
-  const shapes = grid?.pinned
+  const shapes = sched.days ? []   // you chose the days; there is nothing to offer
+    : grid?.pinned
     ? spread(sched.farmDays).filter((d) => d <= sched.cycleDays)
       .map((farmDays) => [sched.cycleDays, farmDays])
     : spread(sched.cycleDays).map((cycleDays) => [cycleDays,
@@ -888,6 +916,7 @@ function describe(best, chain, data, ctx, budget, opts = {}, grid = null) {
       cycleDays: sched.cycleDays,
       farmDays: sched.farmDays,
       farmEvery: sched.farmEvery,
+      schedule: daysOf(sched),
       watered: sched.watered,
     },
     assign: best.assign,

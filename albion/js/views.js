@@ -5,7 +5,8 @@ import {
   productCycle, rankFarmables, rankRecipes, returnRate, simulateCycle,
 } from './calc.js';
 import {
-  costOf, DATA, hasOwnCost, itemMeta, landSummary, plotsOwned, priceOf, state,
+  costOf, DATA, hasOwnCost, itemMeta, landSummary, plotsOwned, priceOf,
+  scheduleDays, state,
 } from './store.js';
 import { serverName } from './prices.js';
 import {
@@ -47,7 +48,9 @@ export function solveStamp() {
       s.farmCity, s.feedItemIds, s.cadenceHours, s.startFocus, s.stockCap,
       s.focusPerDay, s.focusCap, s.sellSurplus, s.hideMounts,
       JSON.stringify(s.stationFee || {})]),
-    goal: JSON.stringify([state.goal.recipeId, state.goal.plots, state.goal.cycleDays]),
+    goal: JSON.stringify([state.goal.recipeId, state.goal.plots, state.goal.cycleDays,
+      // Your calendar is part of the question only while you ask it to be kept.
+      state.goal.keepDays ? scheduleDays() : null]),
   };
 }
 
@@ -160,7 +163,8 @@ export function plan() {
         esc(DATA.recipes.find((r) => r.id === goal.recipeId)?.name || 'pick a potion')}`
       : `${sim.cycleDays}-day cycle · ${sim.farmingDays} ${
         sim.farmingDays === 1 ? 'harvest' : 'harvests'}${
-        sim.farmEvery > 1 ? ` every ${sim.farmEvery} days` : ''}, ${sim.idleDays} idle`,
+        sim.restDays ? `, ${sim.restDays} resting` : ''}${
+        sim.craftDays ? `, ${sim.craftDays} crafting` : ''}`,
     html: `
       ${goalCard()}
 
@@ -259,8 +263,8 @@ function goalCard() {
           ? `${tierText(recipe.tier, recipe.enchant)} ${esc(recipe.name)}`
           : 'pick a potion')}
         ${landLine()}
-        ${line('Every', goal.cycleDays
-          ? `${goal.cycleDays} days` : 'as long as it takes')}
+        ${line('Every', goal.keepDays ? `${scheduleDays().length} days, your calendar`
+          : goal.cycleDays ? `${goal.cycleDays} days` : 'as long as it takes')}
         <button class="btn primary" data-act="solve" ${recipe ? '' : 'disabled'}>
           ${state.plan.plots.length ? 'Work it out again' : 'Work it out'}</button>
         ${recipe ? `<button class="linkish" data-act="buy-instead"
@@ -324,31 +328,46 @@ function sentence(list) {
  * Read from the simulation rather than from the solver, so it keeps telling
  * the truth after you have moved a plot around by hand.
  */
+/** Consecutive days of the same kind, as one run each. */
+function runsOf(days) {
+  const out = [];
+  days.forEach((mode, i) => {
+    const last = out[out.length - 1];
+    if (last && last.mode === mode) last.to = i + 1;
+    else out.push({ mode, from: i + 1, to: i + 1 });
+  });
+  return out;
+}
+
 function routineCard(sim) {
   if (!sim.farmLines.length && !sim.craftLines.length) return '';
   const s = state.settings;
   const steps = [];
 
-  if (sim.farmDays > 0 && sim.farmLines.length) {
-    const days = sim.ledger.days.filter((d) => d.farming).map((d) => d.day);
-    const when = sim.farmEvery > 1
-      ? `days ${days.slice(0, 4).join(', ')}${days.length > 4 ? '…' : ''}`
-      : `every day`;
+  /* The days, as runs: "Days 1–5 farm, day 6 rest, days 7–8 craft". A long
+   * alternating pattern would be a step per day, so past a handful of runs it
+   * is said once as a pattern instead. */
+  const runs = runsOf(sim.days || []);
+  const span = (r) => (r.from === r.to ? `Day ${r.from}` : `Days ${r.from}–${r.to}`);
+  const perDayFocus = s.focusPerDay || 0;
+  const describe = (mode, n) => (mode === 'farm'
+    ? { what: 'Harvest and replant', note: `${s.watered ? 'water what you can afford to · ' : ''}${
+      n} ${n === 1 ? 'day' : 'days'} out there` }
+    : mode === 'rest'
+      ? { what: 'Stay away, let focus bank', note: `${short(n * perDayFocus)} banked for the next day you are back` }
+      : { what: 'Stop farming, keep brewing', note: 'Nothing to harvest, but every day still brings focus to spend' });
+  if (runs.length <= 6) {
+    for (const r of runs) {
+      if (r.mode === 'farm' && !sim.farmLines.length) continue;
+      const d = describe(r.mode, r.to - r.from + 1);
+      steps.push({ when: span(r), ...d });
+    }
+  } else {
+    const n = (m) => sim.days.filter((d) => d === m).length;
     steps.push({
-      when: sim.farmDays === 1 ? 'Day 1' : `Days 1–${sim.farmDays}`,
-      what: `Harvest and replant, ${when}`,
-      note: `${sim.farmingDays} ${sim.farmingDays === 1 ? 'harvest' : 'harvests'}${
-        sim.restDays > 0 ? `, resting the other ${sim.restDays}` : ''}${
-        s.watered ? ` · water what you can afford to` : ''}`,
-    });
-  }
-
-  if (sim.idleDays > 0) {
-    steps.push({
-      when: sim.idleDays === 1 ? `Day ${sim.cycleDays}`
-        : `Days ${sim.farmDays + 1}–${sim.cycleDays}`,
-      what: 'Stop farming, keep brewing',
-      note: 'Nothing left to harvest, but every day still brings focus to spend',
+      when: `Days 1–${sim.cycleDays}`,
+      what: `Farm ${n('farm')}, rest ${n('rest')}, craft ${n('craft')}`,
+      note: `In the order on your calendar: ${sim.days.map((d) => d[0].toUpperCase()).join('')}`,
     });
   }
 
@@ -544,12 +563,14 @@ function cycleCard(sim) {
   const bars = l.days.map((d) => {
     const used = d.spent + d.craft;
     const h = Math.max(4, Math.min(100, (used / perDay) * 100));
-    const cls = used <= 0 ? 'over'
-      : d.farming ? 'today'
-        : d.resting ? 'rest' : 'crafting';
+    // A rest day is drawn as a rest day: nothing spent is the point of it.
+    const cls = d.resting ? 'rest'
+      : used <= 0 ? 'over'
+        : d.farming ? 'today' : 'crafting';
     const what = [
       d.farming ? 'farming' : d.resting ? 'resting' : 'at the station',
-      used > 0 ? `${Math.round(used)} focus used` : 'nothing to spend it on',
+      used > 0 ? `${Math.round(used)} focus used`
+        : d.resting ? 'banking focus' : 'nothing to spend it on',
     ].join(', ');
     return `<i class="${cls}" style="height:${h}%"
       title="day ${d.day}, ${what}"></i>`;
@@ -593,7 +614,7 @@ function cycleCard(sim) {
         <div class="legend">
           <span>day 1</span>
           <span>how much of each day's ${short(perDay)} focus you used · green = farming${
-            sim.restDays ? ', teal = resting' : ''}, blue = brewing only, amber = wasted</span>
+            sim.restDays ? ', teal = resting' : ''}, blue = crafting only, amber = wasted</span>
           <span>day ${sim.cycleDays}</span></div>
         <div class="bar-row" style="margin-top:8px">
           <span class="n">Focus this cycle regenerates</span>

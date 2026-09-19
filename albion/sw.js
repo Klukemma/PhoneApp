@@ -1,7 +1,7 @@
 // Cache-first shell so the app opens instantly and works with no signal.
 // Bump CACHE when the shell or the game data changes.
 
-const CACHE = 'albionfarm-v32';  // v32: mounts, and a bag of what you already hold
+const CACHE = 'albionfarm-v33';  // v33: the cycle is a list of days you tap
 const SHELL = [
   './', './index.html', './manifest.webmanifest',
   './css/app.css',

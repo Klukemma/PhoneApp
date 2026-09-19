@@ -9,7 +9,9 @@
 import {
   cityFor, farmCityFor, focusPerDayOf, mixFor, qualityPoints,
 } from './calc.js';
-import { landSummary, plotsOwned, state } from './store.js';
+import {
+  landSummary, plotsOwned, scheduleDays, state,
+} from './store.js';
 import { serverName } from './prices.js';
 import { esc } from './ui.js';
 import { pct, short } from './util.js';
@@ -23,6 +25,13 @@ const row = (act, icon, title, meta, value = '›') => `
       <span class="meta">${meta}</span></span>
     <span class="amt">${value}</span>
   </button>`;
+
+const cycleWords = () => {
+  const days = scheduleDays();
+  const n = (m) => days.filter((d) => d === m).length;
+  return [[n('farm'), 'farming'], [n('rest'), 'resting'], [n('craft'), 'crafting']]
+    .filter(([c]) => c > 0).map(([c, w]) => `${c} ${w}`).join(', ') + ' · tap to set the days';
+};
 
 const bagTitle = () => {
   const n = Object.keys(state.stock || {}).length;
@@ -124,8 +133,8 @@ export function me() {
 
       <section>
         <div class="section-head"><h2>How you play</h2></div>
-        ${row('cycle', '\u{1F504}', `${s.cycleDays}-day cycle`,
-          `${s.farmDays} farming, ${s.cycleDays - s.farmDays} idle, then craft`)}
+        ${row('cycle', '\u{1F504}', `${scheduleDays().length}-day cycle`,
+          cycleWords())}
         ${row('stock', '\u{1F392}', bagTitle(), 'Seeds, calves and potions you already hold')}
         <div class="two" style="margin:8px 0">
           <div class="field"><label>What you can carry</label>

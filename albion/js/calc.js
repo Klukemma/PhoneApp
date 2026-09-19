@@ -997,14 +997,61 @@ export function planTotals(plan, data, ctx) {
 
 /* ======================================================= the cycle ====== */
 
+/**
+ * A cycle is a list of days, and each day is one of three things: you go out
+ * and farm, you stay away and let focus bank, or you stand at the station and
+ * craft. "Farm N of C days, every other day" was only ever a way of writing
+ * that list down, and it could not write down "farm Monday to Wednesday, rest
+ * Thursday, craft the weekend". The list can.
+ */
+export const DAY_MODES = ['farm', 'rest', 'craft'];
+
+/** The day list a length, a farming stretch and a rhythm describe. */
+export function scheduleFrom({ cycleDays, farmDays, farmEvery = 1 } = {}) {
+  const days = Math.max(1, Math.round(cycleDays) || 14);
+  const farm = Math.max(0, Math.min(days, Math.round(farmDays ?? days) || 0));
+  const every = Math.max(1, Math.round(farmEvery) || 1);
+  const out = [];
+  for (let day = 1; day <= days; day++) {
+    out.push(day > farm ? 'craft' : (day - 1) % every === 0 ? 'farm' : 'rest');
+  }
+  return out;
+}
+
+/**
+ * The day list behind any description of a cycle: an explicit list wins, and
+ * the three numbers are only read when there is none. Always a fresh copy.
+ */
+export function scheduleOf(o = {}) {
+  const list = Array.isArray(o.days) && o.days.length ? o.days
+    : Array.isArray(o.schedule) && o.schedule.length ? o.schedule : null;
+  if (list) return list.map((d) => (DAY_MODES.includes(d) ? d : 'farm'));
+  return scheduleFrom(o);
+}
+
+/** The shape of a day list in the old three numbers, for anything still reading them. */
+export function shapeOf(days) {
+  const last = days.lastIndexOf('farm');
+  return {
+    cycleDays: days.length,
+    farmDays: last + 1,
+    farmEvery: 1,
+    farmingDays: days.filter((d) => d === 'farm').length,
+    restDays: days.filter((d) => d === 'rest').length,
+    craftDays: days.filter((d) => d === 'craft').length,
+  };
+}
+
 /** Is `day` one of the days you actually go out and farm? */
 export function isFarmDay(day, farmDays, farmEvery = 1) {
+  if (Array.isArray(farmDays)) return farmDays[day - 1] === 'farm';
   const every = Math.max(1, Math.round(farmEvery) || 1);
   return day <= farmDays && (day - 1) % every === 0;
 }
 
-/** How many harvests a farming phase of this shape gives. */
+/** How many days of a farming phase of this shape you are actually out there. */
 export function farmDayCount(farmDays, farmEvery = 1) {
+  if (Array.isArray(farmDays)) return farmDays.filter((d) => d === 'farm').length;
   const every = Math.max(1, Math.round(farmEvery) || 1);
   return farmDays <= 0 ? 0 : Math.floor((farmDays - 1) / every) + 1;
 }
@@ -1023,30 +1070,33 @@ export const restsWith = (cycle) => (cycle?.focus || 0) > 0;
  * A row that outgrows your login rhythm is capped by the rhythm; a row that
  * takes longer than the rhythm is capped by its own growth time.
  */
-export function harvestsFor(cycle, {
-  cycleDays, farmDays, farmEvery = 1, cadenceHours = 24,
-}) {
-  if (!cycle || farmDays <= 0) return 0;
-  // A growth takes wall-clock days, and the clock does not stop on the days
-  // you are not there. Counting only farm days let a slow row finish more
-  // growths than the calendar has room for.
-  const span = Math.max(farmDays, cycleDays || farmDays);
-  const every = Math.max(1, Math.round(farmEvery) || 1);
-  /* You harvest no faster than the thing grows, no faster than you log in, and
-   * no faster than the rhythm you chose to farm on. Whichever of those three is
-   * slowest sets the gap between harvests: a 44-hour cow does not give you a
-   * calf a day just because you visited, and a two-day login rhythm does not
-   * harvest twice. */
+export function harvestsFor(cycle, opts = {}) {
+  if (!cycle) return 0;
+  const days = scheduleOf(opts);
+  const cadenceHours = opts.cadenceHours || 24;
+  /* You harvest no faster than the thing grows and no faster than you log in.
+   * Whichever is slower sets the gap between harvests: a 44-hour cow does not
+   * give you a calf a day just because you visited. */
   const gap = Math.max(
-    every,
-    Math.ceil((cadenceHours || 24) / 24),
+    Math.ceil(cadenceHours / 24),
     Math.ceil(cycle.hours / 24),
   );
-  /* Two ceilings, and the lower one wins: the harvest days the phase actually
-   * contains, spaced a growth apart, and the number of growths the cycle has
-   * wall-clock room for. Something slower than the whole cycle reports the
-   * fraction of a growth it really finishes rather than a whole one. */
-  return Math.min(farmDayCount(farmDays, gap), span / gap);
+  /* Walk the farm days. The first one harvests what the last cycle left
+   * growing; after that a farm day only harvests once a growth has had time
+   * to finish since the last one, and the days you are not there still count
+   * on the clock. Farming every other day with a one-day crop is half the
+   * harvests; farming every day with a two-day crop is also half. */
+  let count = 0;
+  let last = -Infinity;
+  days.forEach((mode, i) => {
+    const day = i + 1;
+    if (mode !== 'farm') return;
+    if (day - last >= gap) { count++; last = day; }
+  });
+  /* Then the ceiling the calendar itself sets: a thing slower than the whole
+   * cycle reports the fraction of a growth it really finishes, not a whole
+   * one. */
+  return Math.min(count, days.length / gap);
 }
 
 /** The cycle for one farm row, whatever it happens to be growing. */
@@ -1114,10 +1164,34 @@ export function rowOutput(row, cycle, data) {
  * when you are standing there; crafting takes whatever is left, which is the
  * real reason watering a big farm and crafting hard compete.
  */
-export function focusLedger({
-  cycleDays, farmDays, perDay, cap, start = 0, wateringPerDay = 0, farmEvery = 1,
-  craftingPerDay = 0,
-}) {
+export function focusLedger(opts) {
+  const {
+    perDay, cap, start = 0, wateringPerDay = 0, craftingPerDay = 0,
+  } = opts;
+  const sched = scheduleOf(opts);
+
+  /* Two passes. The first pays only the watering, day by day, which says what
+   * each farm day actually spends. From that, walking backwards, comes the
+   * reserve: how much has to be in hand at the end of each day so that the
+   * watering still to come can be paid. The second pass then crafts with
+   * everything above the reserve, on the days you craft at all. Without the
+   * reserve, crafting on day 3 ate the bank a day-5 watering was counting on,
+   * and the farm above was priced on watering the ledger below never paid. */
+  const water = [];
+  {
+    let focus = Math.min(cap, Math.max(0, start));
+    for (let i = 0; i < sched.length; i++) {
+      focus = Math.min(cap, focus + perDay);
+      const spent = sched[i] === 'farm' ? Math.min(focus, wateringPerDay) : 0;
+      focus -= spent;
+      water.push(spent);
+    }
+  }
+  const reserve = new Array(sched.length).fill(0);
+  for (let i = sched.length - 2; i >= 0; i--) {
+    reserve[i] = Math.min(cap, Math.max(0, water[i + 1] + reserve[i + 1] - perDay));
+  }
+
   let focus = Math.min(cap, Math.max(0, start));
   let wasted = 0;
   let shortfall = 0;        // watering you planned but could not pay for
@@ -1126,7 +1200,8 @@ export function focusLedger({
   let cappedOn = null;
   const days = [];
 
-  for (let day = 1; day <= cycleDays; day++) {
+  sched.forEach((mode, i) => {
+    const day = i + 1;
     const before = focus;
     focus = Math.min(cap, focus + perDay);
     const gained = focus - before;
@@ -1134,22 +1209,24 @@ export function focusLedger({
     wasted += lost;
     if (focus >= cap && cappedOn === null) cappedOn = day;
 
-    const farming = isFarmDay(day, farmDays, farmEvery);
+    const farming = mode === 'farm';
     // You cannot water with focus you do not have.
     const spent = farming ? Math.min(focus, wateringPerDay) : 0;
     if (farming) shortfall += wateringPerDay - spent;
     focus -= spent;
     spentWatering += spent;
 
-    const craft = Math.max(0, Math.min(focus, craftingPerDay));
+    // A rest day is a rest day: nothing is spent, the bar climbs.
+    const craft = mode === 'rest' ? 0
+      : Math.max(0, Math.min(focus - reserve[i], craftingPerDay));
     focus -= craft;
     spentCrafting += craft;
 
     days.push({
-      day, farming, gained, wasted: lost, spent, craft, focus,
-      resting: day <= farmDays && !farming,
+      day, mode, farming, gained, wasted: lost, spent, craft, focus,
+      resting: mode === 'rest',
     });
-  }
+  });
   return {
     days, atCraft: focus, left: focus,
     spentWatering, spentCrafting, wasted, shortfall, cappedOn, cap,
@@ -1218,9 +1295,14 @@ export function simulateCycle(plan, data, ctx) {
   // What you pay for a thing and what you get for it are two different numbers.
   // Where no separate buy price is kept, they collapse back into one.
   const costOf = ctx.costOf || ctx.priceOf;
-  const cycleDays = Math.max(1, s.cycleDays || 14);
-  const farmDays = Math.max(0, Math.min(cycleDays, s.farmDays ?? cycleDays));
-  // Farm every day, every other day, and so on. Skipping banks focus.
+  /* The cycle is a list of days. An explicit list on the settings wins; the
+   * three numbers that used to describe one are read only when there is none,
+   * so a plan saved before the list existed still means what it meant. */
+  const days = scheduleOf(s);
+  const shape = shapeOf(days);
+  const cycleDays = days.length;
+  const { farmDays } = shape;
+  // Kept for what still reads it; the list is what is actually farmed on.
   const farmEvery = Math.max(1, Math.round(s.farmEvery) || 1);
   const cadence = s.cadenceHours || 24;
 
@@ -1237,8 +1319,7 @@ export function simulateCycle(plan, data, ctx) {
 
   const tilesOf = (row) => (row.count || 0) * (s.tilesPerPlot || TILES_PER_PLOT);
 
-  const harvestsOf = (cycle) =>
-    harvestsFor(cycle, { cycleDays, farmDays, farmEvery, cadenceHours: cadence });
+  const harvestsOf = (cycle) => harvestsFor(cycle, { days, cadenceHours: cadence });
 
   /* Pass one: the care bill, if every tile got its focus.
    *
@@ -1253,11 +1334,11 @@ export function simulateCycle(plan, data, ctx) {
     const cycle = cycleFor(row, 1);
     if (cycle) careTotal += (cycle.focus || 0) * tilesOf(row) * harvestsOf(cycle);
   }
-  const careDays = Math.max(1, farmDayCount(farmDays, farmEvery));
+  const careDays = Math.max(1, shape.farmingDays);
   const wateringPerDay = careTotal / careDays;
 
   const ledgerAt = (craftingPerDay) => focusLedger({
-    cycleDays, farmDays, farmEvery,
+    days,
     perDay: focusPerDayOf(s), cap: s.focusCap,
     start: s.startFocus || 0,
     wateringPerDay, craftingPerDay,
@@ -1281,8 +1362,15 @@ export function simulateCycle(plan, data, ctx) {
    * regenerates over its whole length, not the thirty thousand it can hold at
    * any one moment. Focus only goes to waste at the end, when the crafting has
    * run out of materials and the bar is already full. */
-  const grossRegen = (s.startFocus || 0) + cycleDays * focusPerDayOf(s);
-  const focusBudget = Math.max(0, grossRegen - wateringPaid);
+  /* What that comes to is what the ledger can put into crafting when the
+   * crafting wants everything: all the regeneration the watering does not
+   * take, less what the cap throws away on a run of rest days. A cycle that
+   * crafts every day never caps, so this is simply the regeneration less the
+   * watering, as it always was; one that rests a week banks to the cap and
+   * then wastes what comes after, and that waste is not a budget. */
+  const open = ledgerAt(Infinity);
+  const focusBudget = Math.max(0, open.spentCrafting);
+  const capWaste = open.wasted;
 
   // Pass two: the farm as it really runs.
   const pool = {};
@@ -1649,7 +1737,9 @@ export function simulateCycle(plan, data, ctx) {
    * the rest you simply start the next cycle holding. */
   const focusUsed = focusBudget - focusLeft;
   const focusCarried = Math.min(s.focusCap, Math.max(0, focusLeft));
-  const focusWasted = Math.max(0, focusLeft - s.focusCap);
+  // Thrown away: what the crafting left over the cap at the end, plus what
+  // the cap ate on the days you rested with the bar already full.
+  const focusWasted = Math.max(0, focusLeft - s.focusCap) + capWaste;
 
   /* The chart is a replay of the cycle that was costed, not a second
    * simulation of it. Re-running the ledger with the crafting spread evenly
@@ -1661,7 +1751,8 @@ export function simulateCycle(plan, data, ctx) {
    * they really paid, and the crafting is laid over them in proportion to the
    * room each day had left. How it is spread is a drawing choice; that the
    * three totals match the plan is not. */
-  const room = banked.days.map((d) => Math.max(0, focusPerDayOf(s) - d.spent));
+  const room = banked.days.map((d) => (d.mode === 'rest' ? 0
+    : Math.max(0, focusPerDayOf(s) - d.spent)));
   const roomTotal = room.reduce((a, b) => a + b, 0);
   let craftedSoFar = 0;
   const ledger = {
@@ -1679,9 +1770,13 @@ export function simulateCycle(plan, data, ctx) {
   ledger.cappedOn = ledger.days.find((d) => d.focus >= s.focusCap)?.day ?? null;
 
   return {
-    cycleDays, farmDays, farmEvery, idleDays: cycleDays - farmDays,
-    farmingDays: farmDayCount(farmDays, farmEvery),
-    restDays: farmDays - farmDayCount(farmDays, farmEvery),
+    cycleDays, farmDays, farmEvery,
+    // The day list itself, and what it adds up to.
+    days,
+    farmingDays: shape.farmingDays,
+    restDays: shape.restDays,
+    craftDays: shape.craftDays,
+    idleDays: shape.craftDays,
     ledger,
     // What the whole cycle can put into crafting, spending it as it comes.
     focusBudget, focusAtCraft: focusBudget, focusLeft,

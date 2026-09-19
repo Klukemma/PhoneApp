@@ -259,7 +259,7 @@ nav button[aria-current="page"] .e { filter: none; opacity: 1; }
   display: flex; justify-content: space-between; gap: 8px;
   font-size: 10.5px; color: var(--faint);
 }
-.spark i.rest { background: #2dd4bf; opacity: .7; }   /* a day skipped to bank focus */
+.spark i.rest { background: #2dd4bf; opacity: .7; min-height: 30%; }   /* a day skipped to bank focus */
 
 /* ----------------------------------------------------------- the goal -- */
 
@@ -301,3 +301,24 @@ nav button[aria-current="page"] .e { filter: none; opacity: 1; }
 .stock-line .title { font-size: 13.5px; }
 .stock-line .meta { font-size: 11.5px; color: var(--faint); }
 .stock-line input { width: 84px; text-align: right; }
+
+/* The cycle, day by day: a calendar you tap. */
+.stepper { display: flex; align-items: center; justify-content: center; gap: 14px;
+  margin-bottom: 10px; }
+.stepper .btn { flex: 0 0 auto; width: 48px; min-width: 0; padding: 8px 0; }
+.stepper .num { font-size: 15px; }
+.days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.day { display: flex; flex-direction: column; align-items: center; gap: 2px;
+  min-height: 44px; padding: 5px 0; border-radius: 10px; border: 1px solid var(--line);
+  background: var(--card); color: var(--text); font: inherit; }
+.day .n { font-size: 11px; color: var(--faint); }
+.day .m { font-size: 15px; line-height: 1; }
+.day.farm { background: color-mix(in srgb, var(--good) 22%, var(--card)); border-color: var(--good); }
+.day.rest { background: color-mix(in srgb, #2dd4bf 18%, var(--card)); border-color: #2dd4bf; }
+.day.craft { background: color-mix(in srgb, var(--info, #7aa7e8) 22%, var(--card));
+  border-color: var(--info, #7aa7e8); }
+.legend .sw { display: inline-block; width: 9px; height: 9px; border-radius: 3px;
+  vertical-align: middle; margin-right: 3px; }
+.legend .sw.farm { background: var(--good); }
+.legend .sw.rest { background: #2dd4bf; }
+.legend .sw.craft { background: var(--info, #7aa7e8); }
