@@ -2,10 +2,11 @@
 
 import { loadGameData, hydrate, state, subscribe } from './store.js';
 import {
-  acceptSpare, openAddCraft, openAddPlot, openBoard, openCraft, openCraftCity,
-  openAdvanced, openCraftPick, openCycle, openData, openFarm, openFarmCity,
-  openGoal, openMastery, openPlot, openPrice, openPriceSource, openQuality,
-  runCraftPriceFetch, runPriceFetch, runScanPriceFetch, runSolve,
+  acceptSpare, carryLeftoversIn, openAddCraft, openAddPlot, openAdvanced,
+  openBoard, openCraft, openCraftCity, openCraftPick, openCycle, openData,
+  openFarm, openFarmCity, openGoal, openMastery, openPlot, openPrice,
+  openPriceSource, openQuality, openStock, runCraftPriceFetch, runPriceFetch,
+  runScanPriceFetch, runSolve,
 } from './sheets.js';
 import {
   ensureGear, setCraftQty, setCraftRerender, setCraftSellTo, setCraftTarget,
@@ -143,6 +144,10 @@ function wire() {
       openFarmCity();
     } else if (d.act === 'cycle') {
       openCycle();
+    } else if (d.act === 'stock') {
+      openStock();
+    } else if (d.act === 'carry-stock') {
+      carryLeftoversIn();
     } else if (d.act === 'mastery') {
       openMastery();
     } else if (d.act === 'board') {

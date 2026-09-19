@@ -24,6 +24,11 @@ const row = (act, icon, title, meta, value = '›') => `
     <span class="amt">${value}</span>
   </button>`;
 
+const bagTitle = () => {
+  const n = Object.keys(state.stock || {}).length;
+  return n ? `${n} ${n === 1 ? 'thing' : 'things'} in the bag` : 'Nothing in the bag';
+};
+
 const toggle = (key, title, desc) => {
   const on = !!state.settings[key];
   return `
@@ -121,6 +126,7 @@ export function me() {
         <div class="section-head"><h2>How you play</h2></div>
         ${row('cycle', '\u{1F504}', `${s.cycleDays}-day cycle`,
           `${s.farmDays} farming, ${s.cycleDays - s.farmDays} idle, then craft`)}
+        ${row('stock', '\u{1F392}', bagTitle(), 'Seeds, calves and potions you already hold')}
         <div class="two" style="margin:8px 0">
           <div class="field"><label>What you can carry</label>
             <input type="number" data-num="carryWeight" inputmode="numeric" min="0"

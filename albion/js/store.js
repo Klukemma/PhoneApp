@@ -206,6 +206,14 @@ function normalize(raw) {
     spec: { ...(raw.spec || {}) },
     nodeLevels: { ...(raw.nodeLevels || {}) },
     goal: { ...base.goal, ...(raw.goal || {}) },
+    // What you hold going into the cycle: { itemId: { qty, cost } }. cost is
+    // silver already sunk into it - zero when you typed it in, what it left
+    // the last cycle carrying when the app carried it in.
+    stock: Object.fromEntries(Object.entries(raw.stock || {})
+      .map(([id, v]) => [id, typeof v === 'number'
+        ? { qty: v, cost: 0 }
+        : { qty: Number(v?.qty) || 0, cost: Math.max(0, Number(v?.cost) || 0) }])
+      .filter(([, v]) => v.qty > 0)),
     farm: (Array.isArray(raw.farm) ? raw.farm : [])
       .map((h) => ({
         id: h.id || uid(),
@@ -593,6 +601,45 @@ export function addSpare(spare) {
  * welded to the city it was solved in. Moving the crafting moves the jobs with
  * it. Pin one somewhere else afterwards from the job itself if you want to.
  */
+/* ------------------------------------------------------------- stock --- */
+
+/** Set what you hold of one thing. A cost left undefined keeps the old one. */
+export function setStock(id, qty, cost) {
+  const n = Math.round((Number(qty) || 0) * 100) / 100;
+  if (n <= 0) { delete state.stock[id]; commit(); return; }
+  const prev = state.stock[id] || { qty: 0, cost: 0 };
+  state.stock[id] = {
+    qty: n,
+    cost: cost === undefined ? prev.cost : Math.max(0, Number(cost) || 0),
+  };
+  commit();
+}
+
+export function clearStock() {
+  state.stock = {};
+  commit();
+}
+
+/**
+ * Start the next cycle from where this one ends: what is left on the pile,
+ * carrying what it cost, and the focus that carried over. Replaces what was
+ * held, rather than adding to it, so pressing it twice is the same as once.
+ */
+export function carryStockIn(rows, focus) {
+  state.stock = {};
+  for (const r of rows || []) {
+    // The cycle deals in averages; the bag holds whole things. Rounding down
+    // is the only honest way to turn 38.6 eggs into eggs you can count on,
+    // and the fraction that goes carries its share of the cost with it.
+    const qty = Math.floor(r.qty);
+    if (!(qty >= 1)) continue;
+    const cost = Math.max(0, (r.cost || 0) * (qty / r.qty));
+    state.stock[r.id] = { qty, cost };
+  }
+  if (Number.isFinite(focus)) state.settings.startFocus = Math.max(0, Math.round(focus));
+  commit();
+}
+
 export function setCraftCity(cityId) {
   state.settings.craftCity = cityId;
   for (const job of state.plan.crafts) delete job.cityId;

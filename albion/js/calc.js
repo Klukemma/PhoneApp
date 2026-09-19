@@ -1303,7 +1303,44 @@ export function simulateCycle(plan, data, ctx) {
     if (forWhat === 'farm') at.forFarm = true;
   };
 
-  for (const row of plan.plots) {
+  /* What you already hold. Seeds left from the last round, calves that came
+   * back, a stack of foxglove, a crate of potions: it goes on the pile before
+   * anything is planted, with whatever it cost you \u2014 nothing, if you typed
+   * it in; what it left the last cycle carrying, if the app carried it in.
+   * Anything the plan does not use is sold at the end like any surplus. */
+  const stockIn = {};
+  let openingBasis = 0;
+  let openingValue = 0;
+  for (const [id, at] of Object.entries(ctx.stock || {})) {
+    const qty = Number(at?.qty ?? at) || 0;
+    if (!(qty > 0)) continue;
+    const basis = Math.max(0, Number(at?.cost) || 0);
+    add(pool, id, qty);
+    cost0.put(id, basis);
+    stockIn[id] = { qty, cost: basis };
+    openingBasis += basis;
+    openingValue += qty * ctx.priceOf(id) * (1 - taxRate(s));
+  }
+
+  /* Take from the pile first and buy the rest. The basis that leaves with it
+   * is whatever share of what it cost you those units carried. */
+  const draw = (id, need) => {
+    const have = pool[id] || 0;
+    const fromStock = Math.min(need, have);
+    const basis = cost0.take(id, fromStock, have);
+    pool[id] = Math.max(0, have - fromStock);
+    const short = Math.max(0, need - fromStock);
+    return { fromStock, short, basis, bill: short * costOf(id) };
+  };
+
+  /* Plants before animals, so a crop grown in this plan is on the pile by
+   * the time an animal wants to eat it. Whole-cycle harvest feeding
+   * whole-cycle eating is the same simplification the crafting makes. */
+  const rows = [
+    ...plan.plots.filter((r) => data.plants.some((p) => p.id === r.itemId)),
+    ...plan.plots.filter((r) => !data.plants.some((p) => p.id === r.itemId)),
+  ];
+  for (const row of rows) {
     const cycle = cycleFor(row, wateredFraction);
     if (!cycle) continue;
     const plant = cycle.kind === 'plant' ? cycle.ref : null;
@@ -1311,6 +1348,29 @@ export function simulateCycle(plan, data, ctx) {
     const harvests = harvestsOf(cycle);
     const plots = row.count || 0;
     const tiles = tilesOf(row);
+    const scale = tiles * harvests;
+
+    /* What this row has to be given before it gives anything back. Seeds
+     * and calves are drawn from the pile first \u2014 a held seed is a seed you
+     * do not buy \u2014 and only then does the row's own surplus land, or a row's
+     * watered surplus would be paying for its own seed within one growth. */
+    const took = {};
+    let bill = 0;       // cash, to the market
+    let basis = 0;      // what the units off the pile were carrying
+    const take = (id, need) => {
+      const got = draw(id, need);
+      took[id] = got.fromStock;
+      bill += got.bill;
+      basis += got.basis;
+      buy(id, got.short, got.bill, 'farm');
+    };
+    if (plant) {
+      take(plant.seedId, cycle.seedsBought * scale);
+    } else {
+      take(cycle.feedId, cycle.plantsNeeded * scale);
+      if (cycle.kind === 'animal') take(cycle.ref.babyId, cycle.babiesBought * scale);
+    }
+    const cost = bill + basis;
 
     const { itemId, perTile: perHarvest } = rowOutput(row, cycle, data);
     const produced = perHarvest * tiles * harvests;
@@ -1329,30 +1389,17 @@ export function simulateCycle(plan, data, ctx) {
       add(pool, cycle.ref.babyId, cycle.babySurplus * tiles * harvests);
     }
 
-    const costPer = plant
-      ? cycle.seedsBought * costOf(plant.seedId)        // surplus is produce, above
-      : cycle.kind === 'product' ? cycle.feedCost
-        : cycle.feedCost + cycle.babiesBought * costOf(cycle.ref.babyId);
-    const cost = costPer * tiles * harvests;
-    farmCost += cost;
-
-    const scale = tiles * harvests;
-    if (plant) {
-      buy(plant.seedId, cycle.seedsBought * scale, cost, 'farm');
-    } else {
-      buy(cycle.feedId, cycle.plantsNeeded * scale, cycle.feedCost * scale, 'farm');
-      if (cycle.kind === 'animal') {
-        buy(cycle.ref.babyId, cycle.babiesBought * scale,
-          cycle.babiesBought * costOf(cycle.ref.babyId) * scale, 'farm');
-      }
-    }
-    // The whole bill lands on the crop; surplus seeds are a by-product and
-    // carry nothing, which is why they read as pure profit when sold.
+    /* The whole bill lands on the crop \u2014 what was bought and the basis of
+     * what came off the pile \u2014 and surplus seeds are a by-product carrying
+     * nothing, which is why they read as pure profit when sold. */
+    farmCost += bill;
     cost0.put(itemId, cost);
 
     farmLines.push({
       row, cycle, harvests, itemId, produced, cost, plots, tiles,
       rests: restsWith(cycle),
+      // What this row got from the pile rather than the market.
+      fromStock: took,
     });
   }
 
@@ -1506,6 +1553,12 @@ export function simulateCycle(plan, data, ctx) {
       if (qty > 0) eatenByPlan.add(id);
     }
   }
+  // The trough is a consumer too: cabbage grown for the geese is not surplus.
+  for (const line of farmLines) {
+    for (const [id, qty] of Object.entries(line.fromStock || {})) {
+      if (qty > 0) eatenByPlan.add(id);
+    }
+  }
   const keepStock = s.sellSurplus !== true;
 
   const tax = 1 - taxRate(s);
@@ -1555,6 +1608,11 @@ export function simulateCycle(plan, data, ctx) {
       consumed[id] = (consumed[id] || 0) + qty;
     }
   }
+  for (const line of farmLines) {
+    for (const [id, qty] of Object.entries(line.fromStock || {})) {
+      consumed[id] = (consumed[id] || 0) + qty;
+    }
+  }
   const stockCap = Number(s.stockCap) > 0 ? Number(s.stockCap) : Infinity;
   const balance = farmLines.map((l) => {
     const used = consumed[l.itemId] || 0;
@@ -1564,6 +1622,7 @@ export function simulateCycle(plan, data, ctx) {
     const leftover = Math.max(0, made - used);
     return {
       itemId: l.itemId, plots: l.plots, made, used, leftover,
+      fromStock: stockIn[l.itemId]?.qty || 0,
       ratio: used > 0 ? made / used : (made > 0 ? Infinity : 1),
       balancedPlots: perPlot > 0 ? used / perPlot : 0,
       // Cycles before the pile passes what you are willing to sit on, starting
@@ -1578,7 +1637,10 @@ export function simulateCycle(plan, data, ctx) {
    * Every silver that entered the pool is tracked by cost0, so the two sides
    * partition exactly: what you sold is expensed, what you kept is carried. */
   const spend = farmCost + buyCost + feeCost;
-  const cost = spend - heldBasis;
+  /* Plus whatever the stock you started with was carrying. Typed-in stock
+   * carries nothing; stock the app carried in from the last cycle carries
+   * what it left with, so the same silver is never expensed twice. */
+  const cost = openingBasis + spend - heldBasis;
   const profit = revenue - cost;
 
   /* The honest day-by-day picture, now that the crafting has said what it
@@ -1658,6 +1720,11 @@ export function simulateCycle(plan, data, ctx) {
     wateringPerDay, wateringAsked, wateringPaid, wateredFraction,
     wateringShortfall: ledger.shortfall,
     farmCost, buyCost, feeCost, spend, heldBasis, cost, revenue, profit,
+    // What you started the cycle holding, what it was carrying, and what it
+    // would fetch sold as is.
+    stockIn, openingBasis, openingValue,
+    // Everything the plan ate, by item: trough, seed drill and station alike.
+    consumed,
     perDay: profit / cycleDays,
     perMonth: (profit / cycleDays) * 30,
     focusUsed,

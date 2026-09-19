@@ -9,7 +9,8 @@ import {
   explain, fetchItem, fetchPrices, serverName, BLACK_MARKET, CITIES, SERVERS,
 } from './prices.js';
 import {
-  addCraft, addPlot, addSpare, applySolution, DATA, exportJSON, importJSON,
+  addCraft, addPlot, addSpare, applySolution, carryStockIn, clearStock, DATA,
+  exportJSON, importJSON, setStock,
   priceOf, pricedItemIds, clearLand, commit, landSummary, plotsOwned,
   removeCraft, removePlot, setBuyPrice, setGoal, setHolding, setNodeLevel,
   setPrice, setPrices, setSettings, setSpec, state, updateCraft, updatePlot, wipe,
@@ -196,7 +197,11 @@ export function runSolve() {
   setTimeout(() => {
     let result;
     try {
-      result = solve(goal.recipeId, plotsOwned(), DATA, ctx(), {
+      /* The solver sizes the farm, and a bag of seeds is not a reason to plant
+       * fewer plots: it is a reason to buy fewer seeds. So it plans from an
+       * empty bag, and the plan it hands back is then read against the real
+       * one, which is where the saving shows. */
+      result = solve(goal.recipeId, plotsOwned(), DATA, { ...ctx(), stock: undefined }, {
         ...(goal.cycleDays ? { cycleDays: goal.cycleDays } : {}),
         ...(state.farm.length ? { holdings: state.farm } : {}),
       });
@@ -1385,6 +1390,137 @@ export function openCycle() {
       };
     },
   });
+}
+
+/* ------------------------------------------------------------ stock --- */
+
+/**
+ * What is already in the bag. Seeds and calves that came back last round, a
+ * stack of herbs you never brewed, a crate of potions waiting for a better
+ * price: all of it goes on the pile before anything is planted, so the plan
+ * buys less and the profit reads what it really is.
+ *
+ * The list starts with everything the plan touches, then lets you search for
+ * anything else the game knows. A cost is optional — typed-in stock carries
+ * nothing, stock the app carried over carries what it left the last cycle
+ * with — and it only matters for what the profit line says, never for what
+ * the plan does.
+ */
+export function openStock() {
+  const sim = simulateCycle(state.plan, DATA, ctx());
+  const stock = state.stock || {};
+  let query = '';
+
+  // The things this plan plants, feeds, brews from and makes, in that order.
+  const touched = [];
+  const seen = new Set();
+  const push = (id) => { if (id && !seen.has(id)) { seen.add(id); touched.push(id); } };
+  for (const l of sim.farmLines) {
+    const ref = l.cycle.ref;
+    push(ref.seedId); push(ref.babyId); push(l.cycle.feedId); push(l.itemId);
+  }
+  for (const l of sim.craftLines) {
+    for (const i of l.recipe.inputs || []) push(i.id);
+    push(l.recipe.id);
+  }
+  for (const id of Object.keys(stock)) push(id);
+
+  const line = (id) => {
+    const at = stock[id] || { qty: 0, cost: 0 };
+    const unit = priceOf(id);
+    return `
+      <div class="stock-line" data-stock="${esc(id)}">
+        <span class="body">
+          <span class="title">${esc(nameOf(id))}</span>
+          <span class="meta">${unit ? `${silver(unit)} each on the market` : 'no price set'}${
+            at.qty > 0 && at.cost > 0.5 ? ` · cost you ${short(at.cost)} in all` : ''}</span>
+        </span>
+        <input type="number" inputmode="numeric" min="0" step="1" placeholder="0"
+          data-qty="${esc(id)}" value="${at.qty || ''}" aria-label="How many ${esc(nameOf(id))}">
+      </div>`;
+  };
+
+  const results = () => {
+    const q = query.toLowerCase();
+    if (!q) return '';
+    const hits = Object.entries(DATA.items)
+      .filter(([id, m]) => !seen.has(id) && (m.name.toLowerCase().includes(q)
+        || id.toLowerCase().includes(q)))
+      // What you hold is usually the tier you farm, so the higher tiers first.
+      .sort((a, b) => (b[1].tier || 0) - (a[1].tier || 0) || a[1].name.localeCompare(b[1].name))
+      .slice(0, 12);
+    if (!hits.length) return '<div class="hint">Nothing the game knows by that name.</div>';
+    return hits.map(([id, m]) => `
+      <button class="row" data-add-stock="${esc(id)}">
+        <span class="body"><span class="title">${esc(m.name)}</span>
+          <span class="meta">${tierText(m.tier || 0, m.enchant || 0)} · ${esc(m.cat || '')}</span></span>
+        <span class="amt">+</span>
+      </button>`).join('');
+  };
+
+  const total = Object.entries(stock).reduce((t, [id, at]) => t + at.qty * priceOf(id), 0);
+
+  openSheet(`
+    <h2>What you already have</h2>
+    <p class="muted">Anything in the bag is something the plan does not have to
+      buy. Seeds, calves, herbs, potions — type how many you hold. What the plan
+      does not use is sold at the end like any other surplus.</p>
+
+    <div class="field">
+      <input type="search" id="stockSearch" placeholder="Add anything else…"
+        autocomplete="off">
+      <div id="stockHits"></div>
+    </div>
+
+    <div class="card" id="stockList">
+      ${touched.map(line).join('')
+        || '<div class="hint">Nothing in the plan yet. Search above to add something.</div>'}
+    </div>
+    <div class="hint" style="margin-top:8px">${total > 0
+      ? `Worth about ${short(total)} at today's prices.` : ''}
+      Costs are optional: use "Start next cycle from here" on the Plan screen
+      and they are carried in for you, at what the last cycle paid.</div>
+
+    <div class="sheet-actions">
+      <button class="btn" id="clearStock">Empty the bag</button>
+      <button class="btn primary" id="done">Done</button>
+    </div>
+  `, {
+    onMount(root) {
+      const search = $('#stockSearch', root);
+      const hits = $('#stockHits', root);
+      search.oninput = () => {
+        query = search.value.trim();
+        hits.innerHTML = results();
+        for (const b of $$('[data-add-stock]', hits)) {
+          b.onclick = () => {
+            const id = b.dataset.addStock;
+            setStock(id, 1);
+            openStock();
+          };
+        }
+      };
+      for (const box of $$('[data-qty]', root)) {
+        box.onchange = () => setStock(box.dataset.qty, Number(box.value) || 0);
+      }
+      $('#clearStock', root).onclick = () => { clearStock(); openStock(); };
+      $('#done', root).onclick = () => { closeSheet(); toast('Bag saved'); };
+    },
+  });
+}
+
+/**
+ * Start the next cycle where this one ends. What is left on the pile goes
+ * into the bag carrying what it cost, and the focus you did not spend is what
+ * you start with. Pressing it twice is the same as once.
+ */
+export function carryLeftoversIn() {
+  const sim = simulateCycle(state.plan, DATA, ctx());
+  const rows = sim.stock.map((x) => ({ id: x.id, qty: x.qty, cost: x.cost || 0 }));
+  carryStockIn(rows, sim.focusCarried);
+  toast(rows.length
+    ? `${rows.length} ${rows.length === 1 ? 'thing' : 'things'} carried into the bag`
+    : `Bag emptied · ${Math.round(sim.focusCarried || 0).toLocaleString()} focus carried`);
 }
 
 /* ------------------------------------------------------ destiny board -- */

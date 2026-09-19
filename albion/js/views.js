@@ -79,6 +79,8 @@ export function ctx(wateredFraction = 1) {
     settings: state.settings,
     inputCostOf: state.settings.ownInputsAtCost
       ? ownCostOf(wateredFraction) : undefined,
+    // What is already in the bag goes on the pile before anything is planted.
+    stock: state.stock,
   };
 }
 
@@ -167,7 +169,8 @@ export function plan() {
         <div class="card hero">
           <div class="label">Profit per cycle</div>
           <div class="amount ${toneOf(sim.profit)} num">${short(sim.profit)}</div>
-          <div class="note">${short(sim.perDay)} a day · ${short(sim.perMonth)} per 30 days</div>
+          <div class="note">${short(sim.perDay)} a day · ${short(sim.perMonth)} per 30 days${
+            sim.openingValue > 0 ? ` · starts with ${short(sim.openingValue)} in the bag` : ''}</div>
           <div class="meter"><i class="spent" style="width:${focusPct * 100}%"></i></div>
           <div class="hero-foot">
             <span class="num">${short(sim.focusUsed)} of ${short(sim.focusBudget)} focus spent</span>
@@ -202,6 +205,7 @@ export function plan() {
       </section>
 
       ${haulCard(sim)}
+      ${startCard(sim)}
       ${buyCard(sim)}
       ${craftWhereCard(sim)}
 
@@ -624,7 +628,7 @@ function farmRow(line, sim) {
           over ${harvests} ${harvests === 1 ? 'harvest' : 'harvests'}${
           !line.rests && sim.restDays ? ' \u00b7 costs no focus to keep' : ''}${
           cycle.farmBonusPct ? ` · ${cycle.city.name} +${cycle.farmBonusPct}%`
-            : spread ? ` · ${cycle.city.name}` : ''}</span>
+            : spread ? ` · ${cycle.city.name}` : ''}${fromBag(line)}</span>
       </span>
       <span class="amt num ${line.cost > 0 ? 'bad' : 'good'}">${short(-line.cost)}</span>
     </button>`;
@@ -712,6 +716,7 @@ function missingStepRow(line) {
  */
 function costLines(sim) {
   const parts = [
+    ['Stock brought in, at what it cost', sim.openingBasis],
     ['Seeds, feed and goslings', sim.farmCost],
     ['Bought from the market', sim.buyCost],
     ['Station fees', sim.feeCost],
@@ -884,6 +889,68 @@ function haulCard(sim) {
     </section>`;
 }
 
+/** "· 120 seeds from your bag" — what a row took off the pile, not the market. */
+function fromBag(line) {
+  const took = Object.entries(line.fromStock || {}).filter(([, q]) => q > 0.5);
+  if (!took.length) return '';
+  return took.map(([id, q]) => ` · ${short(q)} ${esc(nameOf(id))} from your bag`).join('');
+}
+
+/**
+ * What you walked in with. Seeds from the last round, calves that came back,
+ * a stack of herbs, a crate of potions. Each is either used by the plan, sold
+ * at the end, or still held — and the card says which, so it is obvious why
+ * the shopping list below got shorter.
+ */
+function startCard(sim) {
+  const rows = Object.entries(sim.stockIn || {});
+  const edit = `<button class="right" data-act="stock">${rows.length ? 'Edit' : '+ Add'}</button>`;
+  if (!rows.length) {
+    return `
+    <section>
+      <div class="section-head"><h2>You start with</h2>${edit}</div>
+      <button class="row" data-act="stock">
+        <span class="ico">\u{1F392}</span>
+        <span class="body">
+          <span class="title">Nothing in the bag</span>
+          <span class="meta">Seeds, calves or potions left from last time count
+            here — they are stuff you do not have to buy again.</span>
+        </span>
+        <span class="amt">\u203A</span>
+      </button>
+    </section>`;
+  }
+  // The pile is drawn down as one heap, so what you brought counts as used
+  // first: the plan reaches for the bag before it reaches for the market.
+  const usedBy = sim.consumed || {};
+  const sold = Object.fromEntries(sim.sales.map((x) => [x.id, x.qty]));
+  const held = Object.fromEntries(sim.stock.map((x) => [x.id, x.qty]));
+  return `
+    <section>
+      <div class="section-head"><h2>You start with</h2>${edit}</div>
+      ${rows.map(([id, at]) => {
+        const used = Math.min(at.qty, usedBy[id] || 0);
+        const rest = at.qty - used;
+        const fate = used >= at.qty - 0.5 ? 'all used by the plan'
+          : used > 0.5 ? `${short(used)} used, ${short(rest)} ${
+            sold[id] ? 'sold at the end' : held[id] ? 'still held' : 'left'}`
+            : sold[id] ? 'nothing here uses it, so it is sold at the end'
+              : held[id] ? 'not needed this cycle, still held'
+                : 'not used';
+        const basis = at.cost > 0.5 ? ` · cost you ${short(at.cost)}` : ' · already paid for';
+        return `
+        <button class="row" data-act="stock">
+          <span class="ico">\u{1F392}</span>
+          <span class="body">
+            <span class="title">${short(at.qty)} × ${esc(nameOf(id))}</span>
+            <span class="meta">${fate}${basis}</span>
+          </span>
+          <span class="amt num good">${short(at.qty * priceOf(id))}</span>
+        </button>`;
+      }).join('')}
+    </section>`;
+}
+
 function buyCard(sim) {
   if (!sim.buys.length) return '';
   const total = sim.buys.reduce((t, b) => t + b.cost, 0);
@@ -900,11 +967,13 @@ function buyCard(sim) {
          * below made the row disagree with its own total. */
         const unit = costOf(b.id);
         const capped = unit > 0 && priceOf(b.id) > unit;
+        const held = sim.stockIn?.[b.id]?.qty || 0;
         const why = !unit ? 'no price set, so this is costing you nothing on paper'
           : `${silver(unit)} each${capped ? ' from the merchant' : ''} · ${
-            b.forFarm ? 'what the plots burn and do not give back'
-              : grown.has(b.id) ? 'topping up what your plots grew'
-                : 'nothing in your plan grows these'}`;
+            held ? `after the ${short(held)} you hold`
+              : b.forFarm ? 'what the plots burn and do not give back'
+                : grown.has(b.id) ? 'topping up what your plots grew'
+                  : 'nothing in your plan grows these'}`;
         return `
         <button class="row ${unit ? '' : 'warn'}" data-price="${esc(b.id)}">
           <span class="ico">\u{1F6D2}</span>
@@ -1315,6 +1384,13 @@ function stockCard(sim) {
           and get worked through later, so they are held here rather than
           counted as profit.
         </div>
+        ${sim.stock.length || sim.focusLeft > 0 ? `
+        <div class="sheet-actions" style="margin-top:10px">
+          <button class="btn" data-act="carry-stock">Start next cycle from here</button>
+        </div>
+        <div class="hint">Puts what is left on the pile, and the focus you did not
+          spend, into the bag for the next plan — at what they cost you, so the
+          same silver is never counted twice.</div>` : ''}
       </div>
 
       ${over.length || unused.length ? `

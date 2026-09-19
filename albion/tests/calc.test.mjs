@@ -1341,16 +1341,33 @@ test('the farm-against-crafting ratio names what is overgrown', () => {
 });
 
 test('a crop nothing uses is reported as unused, not as balanced', () => {
+  // Carrots: no job eats them and no animal in the plan is fed them.
+  const plots = [
+    ...HIS_PLOTS,
+    { id: 'c', itemId: 'T1_FARM_CARROT_SEED', count: 1, mode: 'grow', cityId: 'thetford' },
+  ];
+  const sim = simulateCycle(chainPlan(plots), data, cycleCtx());
+  const carrot = sim.balance.find((b) => b.itemId === 'T1_CARROT');
+  assert.equal(carrot.used, 0);
+  assert.equal(carrot.ratio, Infinity);
+  // Nothing consumes it, so it is sold rather than held.
+  assert.ok(sim.sales.some((x) => x.id === 'T1_CARROT'));
+});
+
+test('a crop the geese eat is not surplus, it is feed', () => {
+  // The trough is fed from the pile: cabbage grown in this plan goes to the
+  // geese before any is bought, and what they eat counts as used.
   const plots = [
     ...HIS_PLOTS,
     { id: 'c', itemId: 'T5_FARM_CABBAGE_SEED', count: 1, mode: 'grow', cityId: 'thetford' },
   ];
-  const sim = simulateCycle(chainPlan(plots), data, cycleCtx());
-  const cabbage = sim.balance.find((b) => b.itemId === 'T5_CABBAGE');
-  assert.equal(cabbage.used, 0);
-  assert.equal(cabbage.ratio, Infinity);
-  // Nothing consumes it, so it is sold rather than held.
-  assert.ok(sim.sales.some((x) => x.id === 'T5_CABBAGE'));
+  const withCrop = simulateCycle(chainPlan(plots), data, cycleCtx());
+  const without = simulateCycle(chainPlan(HIS_PLOTS), data, cycleCtx());
+  const cabbage = withCrop.balance.find((b) => b.itemId === 'T5_CABBAGE');
+  assert.ok(cabbage.used > 0, 'the geese ate it');
+  assert.ok(withCrop.farmCost < without.farmCost, 'so less cabbage was bought');
+  const bought = (sim) => sim.buys.find((b) => b.id === 'T5_CABBAGE')?.qty || 0;
+  assert.ok(bought(withCrop) < bought(without));
 });
 
 test('a farm sized to its crafting leaves nothing on the pile', () => {
@@ -1366,6 +1383,92 @@ test('a farm sized to its crafting leaves nothing on the pile', () => {
   assert.ok(small.stockValue < big.stockValue, 'less piles up');
   // And the smaller farm costs less to run, so realised profit can be better.
   assert.ok(small.cost < big.cost);
+});
+
+/* ----------------------------------- what is already in the bag -------- */
+
+// No board levels here: at 100 mastery every seed comes back and nothing is
+// bought, which would leave the bag with no shopping list to shorten.
+const withBag = (stock, over = {}) => ({ ...cycleCtx(over), stock });
+
+test('seeds in the bag are planted before any are bought', () => {
+  const bare = simulateCycle(chainPlan(HIS_PLOTS), data, withBag({}));
+  const seedsBought = bare.buys.find((b) => b.id === 'T6_FARM_FOXGLOVE_SEED')?.qty || 0;
+  assert.ok(seedsBought > 0, 'the bare plan buys foxglove seed');
+
+  const bag = { T6_FARM_FOXGLOVE_SEED: { qty: 50, cost: 0 } };
+  const sim = simulateCycle(chainPlan(HIS_PLOTS), data, withBag(bag));
+  const now = sim.buys.find((b) => b.id === 'T6_FARM_FOXGLOVE_SEED')?.qty || 0;
+  assert.ok(now < seedsBought, 'fewer seeds bought');
+  assert.ok(Math.abs((seedsBought - now) - 50) < 0.01, 'exactly the 50 held');
+  const row = sim.farmLines.find((l) => l.itemId === 'T6_FOXGLOVE');
+  assert.equal(Math.round(row.fromStock.T6_FARM_FOXGLOVE_SEED), 50);
+  assert.equal(sim.stockIn.T6_FARM_FOXGLOVE_SEED.qty, 50);
+  assert.ok(sim.profit > bare.profit, 'and free seed is profit');
+  assert.ok(sim.openingValue > 0);
+});
+
+test('what the bag cost you is charged once, and what it saves is charged nowhere', () => {
+  const bag = { T6_FARM_FOXGLOVE_SEED: { qty: 50, cost: 50 * 1000 } };
+  const paid = simulateCycle(chainPlan(HIS_PLOTS), data, withBag(bag));
+  const free = simulateCycle(chainPlan(HIS_PLOTS), data,
+    withBag({ T6_FARM_FOXGLOVE_SEED: { qty: 50, cost: 0 } }));
+  // Same plan, same buys, same sales; only the basis differs.
+  assert.deepEqual(paid.buys, free.buys);
+  assert.equal(Math.round(paid.revenue), Math.round(free.revenue));
+  assert.equal(paid.openingBasis, 50 * 1000);
+  assert.ok(Math.abs(paid.cost - (paid.openingBasis + paid.spend - paid.heldBasis)) < 0.01);
+  // The seed's cost flows into the herbs it grew, and the herbs still on the
+  // pile carry their share of it into the next cycle rather than being
+  // expensed here. So the hit is somewhere between nothing and all of it...
+  const hit = free.profit - paid.profit;
+  assert.ok(hit > 0 && hit < 50 * 1000, `charged ${hit} of 50,000`);
+  // ...and exactly all of it once everything is sold and nothing is carried.
+  const soldOut = simulateCycle(chainPlan(HIS_PLOTS), data, withBag(bag, { sellSurplus: true }));
+  const soldFree = simulateCycle(chainPlan(HIS_PLOTS), data,
+    withBag({ T6_FARM_FOXGLOVE_SEED: { qty: 50, cost: 0 } }, { sellSurplus: true }));
+  assert.equal(Math.round(soldFree.profit - soldOut.profit), 50 * 1000);
+});
+
+test('a potion in the bag that nothing uses is sold at the end', () => {
+  const bag = { T6_POTION_HEAL: { qty: 10, cost: 0 } };
+  const sim = simulateCycle(chainPlan(HIS_PLOTS), data, withBag(bag));
+  const bare = simulateCycle(chainPlan(HIS_PLOTS), data, withBag({}));
+  const sold = (x) => x.sales.find((y) => y.id === 'T6_POTION_HEAL')?.qty || 0;
+  assert.ok(Math.abs(sold(sim) - sold(bare) - 10) < 0.01, 'ten more potions sold');
+  assert.ok(sim.revenue > bare.revenue);
+});
+
+test('the bag is read, never written', () => {
+  const bag = { T6_FARM_FOXGLOVE_SEED: { qty: 50, cost: 0 } };
+  const before = JSON.stringify(bag);
+  simulateCycle(chainPlan(HIS_PLOTS), data, withBag(bag));
+  assert.equal(JSON.stringify(bag), before);
+});
+
+test('two rows share one bag of seed', () => {
+  const two = [
+    { id: 'f1', itemId: 'T6_FARM_FOXGLOVE_SEED', count: 1, mode: 'grow', cityId: 'martlock' },
+    { id: 'f2', itemId: 'T6_FARM_FOXGLOVE_SEED', count: 1, mode: 'grow', cityId: 'martlock' },
+  ];
+  // Unwatered, so the seed does not all come back and the rows want some.
+  const sim = simulateCycle(chainPlan(two), data,
+    withBag({ T6_FARM_FOXGLOVE_SEED: { qty: 12, cost: 0 } }, { watered: false }));
+  const drawn = sim.farmLines.reduce((t, l) => t + (l.fromStock.T6_FARM_FOXGLOVE_SEED || 0), 0);
+  const need = sim.farmLines.reduce((t, l) => t + l.cycle.seedsBought * l.tiles * l.harvests, 0);
+  assert.ok(need > 0, 'the rows want seed');
+  assert.ok(drawn <= 12.0001, 'never draws more than the bag holds');
+  assert.ok(Math.abs(drawn - Math.min(12, need)) < 0.001, 'and uses what it can');
+  const each = sim.farmLines.map((l) => l.fromStock.T6_FARM_FOXGLOVE_SEED || 0);
+  assert.ok(each.every((q) => q >= 0));
+});
+
+test('a bare bag changes nothing', () => {
+  const a = simulateCycle(chainPlan(HIS_PLOTS), data, cycleCtx());
+  const b = simulateCycle(chainPlan(HIS_PLOTS), data, withBag({}));
+  assert.equal(a.profit, b.profit);
+  assert.equal(b.openingBasis, 0);
+  assert.equal(b.openingValue, 0);
 });
 
 /* ----------------------------------- rows that cost no focus ----------- */
