@@ -1,13 +1,13 @@
 // Cache-first shell so the app opens instantly and works with no signal.
 // Bump CACHE when the shell or the game data changes.
 
-const CACHE = 'albionfarm-v33';  // v33: the cycle is a list of days you tap
+const CACHE = 'albionfarm-v34';  // v34: five tabs, one ask strip
 const SHELL = [
   './', './index.html', './manifest.webmanifest',
   './css/app.css',
   './js/app.js', './js/views.js', './js/sheets.js', './js/store.js',
   './js/calc.js', './js/craft.js', './js/me.js', './js/solve.js',
-  './js/prices.js', './js/ui.js', './js/util.js',
+  './js/prices.js', './js/ui.js', './js/util.js', './js/html.js',
   './data/gamedata.json',
   './icons/icon.svg', './icons/icon-192.png', './icons/icon-512.png',
 ];

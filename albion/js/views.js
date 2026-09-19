@@ -763,7 +763,7 @@ function costLines(sim) {
   return rows + held + sum;
 }
 
-function missingPrices() {
+export function missingPrices() {
   const need = new Set();
   const add = (id) => { if (id && !priceOf(id)) need.add(id); };
   for (const row of state.plan.plots) {
@@ -1065,6 +1065,18 @@ export function rank() {
   };
 }
 
+/** Every id the Farm or Brew ranking is missing a price for, for one scoped fetch. */
+export function rankMissingIds() {
+  const c = ctx();
+  const ids = new Set();
+  if (rankTab === 'farm') {
+    for (const r of rankFarmables(DATA, c)) for (const id of missingFor(r.cycle)) ids.add(id);
+  } else if (rankTab === 'craft') {
+    for (const b of rankRecipes(DATA, c)) for (const id of missingFor(b)) ids.add(id);
+  }
+  return [...ids];
+}
+
 function farmRank(c) {
   const rows = rankFarmables(DATA, c).map((r) => ({ ...r, missing: missingFor(r.cycle) }));
   const ready = rows.filter((r) => !r.missing.length);
@@ -1329,46 +1341,7 @@ export function cycleFor(itemId, mode, cityId) {
 /* Three questions, one screen. They were three tabs, which made you decide
  * which of them you were asking before you could ask it — and they all answer
  * the same thing, which is where the money is. */
-export let earnMode = 'plan';
-export const setEarnMode = (m) => { earnMode = m; };
-
-const EARN_MODES = [
-  ['plan', 'Farm it', '\u{1F33E}'],
-  ['craft', 'Make it', '\u2696\u{FE0F}'],
-  ['rank', "What's best", '\u{1F4C8}'],
-];
-
-export function earn() {
-  const inner = earnMode === 'craft' ? craft() : earnMode === 'rank' ? rank() : plan();
-  const gaps = setupGaps();
-  return {
-    ...inner,
-    title: 'Earn',
-    html: `
-      <section>
-        <div class="seg">
-          ${EARN_MODES.map(([k, label, icon]) => `
-            <button data-earn="${k}" aria-pressed="${k === earnMode}">
-              ${icon} ${esc(label)}</button>`).join('')}
-        </div>
-      </section>
-      ${gaps.length ? `
-        <section>
-          <button class="row warn" data-act="me">
-            <span class="ico">\u{1F464}</span>
-            <span class="body">
-              <span class="title">Tell it about ${esc(sentence(gaps.map((g) => g.what)))}</span>
-              <span class="meta">Until you do, the numbers below are guesses at
-                your character rather than answers about it</span>
-            </span>
-            <span class="amt">\u203A</span>
-          </button>
-        </section>` : ''}
-      ${inner.html}`,
-  };
-}
-
-export const views = { earn, me, prices };
+export const views = { plan, craft, rank, prices, me };
 
 const round1 = (n) => String(Math.round(n * 10) / 10);
 

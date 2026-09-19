@@ -1,9 +1,9 @@
 // Bottom sheets: pickers, editors, settings.
 
 import {
-  QUALITY_LEVELS, TILES_PER_PLOT, cityBonus, cityFor, craftBatch, farmBonus,
-  farmCityFor, focusCostAt, focusEfficiency, mixFor, perPeriod, qualityMix,
-  qualityPoints, simulateCycle, specFor,
+  cityBonus, cityFor, craftBatch, farmBonus, farmCityFor, feedFor,
+  focusCostAt, focusEfficiency, mixFor, perPeriod, QUALITY_LEVELS,
+  qualityMix, qualityPoints, simulateCycle, specFor, TILES_PER_PLOT,
 } from './calc.js';
 import {
   explain, fetchItem, fetchPrices, serverName, BLACK_MARKET, CITIES, SERVERS,
@@ -19,14 +19,17 @@ import {
 } from './store.js';
 import { solve } from './solve.js';
 import { $, $$, closeSheet, esc, openSheet, toast } from './ui.js';
+import { ICON, rowHTML, tick } from './html.js';
+import { row as meRow, toggle as meToggle } from './me.js';
 import { ago, hours, pct, short, silver, tierText } from './util.js';
 import {
   cycleFor, ctx, detailHTML, setSolution, solution, solveStamp,
 } from './views.js';
 import {
-  GROUPS, allRecipes, craftTarget, currentRun, ensureGear, gearReady, groupIcon,
-  groupOf as craftGroupOf, hasQuality as craftHasQuality, nameOf as craftNameOf,
-  recipeOf, scanBlackIds, scanIds, setCraftTarget,
+  allRecipes, craftTarget, currentRun, ensureGear, gearReady, groupIcon,
+  groupOf as craftGroupOf, GROUPS, hasQuality as craftHasQuality,
+  nameOf as craftNameOf, recipeOf, scan, scanBlackIds, scanIds,
+  setCraftTarget, setScan,
 } from './craft.js';
 
 /* Whichever file knows this item. Once the Craft tab has loaded the weapon
@@ -987,14 +990,58 @@ export function openPriceSource() {
   });
 }
 
-export async function runPriceFetch() {
-  const ids = pricedItemIds();
+/**
+ * Everything one recipe needs priced: the thing itself, its inputs all the
+ * way down, and the seeds, babies and feed behind whatever is farmed.
+ */
+export function chainIds(recipeId) {
+  const ids = new Set();
+  const seen = new Set();
+  const walk = (id) => {
+    if (!id || seen.has(id)) return;
+    seen.add(id);
+    ids.add(id);
+    const r = DATA.recipes.find((x) => x.id === id);
+    if (r) for (const i of r.inputs) walk(i.id);
+    const p = DATA.plants.find((x) => x.cropId === id);
+    if (p) ids.add(p.seedId);
+    const a = DATA.animals.find((x) => x.grownId === id || x.product?.itemId === id);
+    if (a) { ids.add(a.babyId); ids.add(feedFor(a, state.settings).id); }
+  };
+  walk(recipeId);
+  return [...ids];
+}
+
+/* Recipes whose prices were fetched on your behalf this session. A fetch
+ * that failed or was cancelled is not retried on every tap of the button. */
+const autoFetched = new Set();
+
+/**
+ * Work it out, fetching the prices it needs first if they are missing. Only
+ * the recipe's own chain is asked for, once per recipe per session; after
+ * that it is runSolve, which stays synchronous and routes as it always did.
+ */
+export async function solveWithPrices() {
+  const id = state.goal.recipeId;
+  if (id && !autoFetched.has(id)) {
+    const need = chainIds(id).filter((x) => !priceOf(x));
+    if (need.length) {
+      autoFetched.add(id);
+      const ok = await runPriceFetch(need);
+      if (!ok) return;
+    }
+  }
+  runSolve();
+}
+
+/** Fetch prices for these ids, or for everything. Resolves true when they landed. */
+export async function runPriceFetch(ids = pricedItemIds()) {
   const sheet = openSheet(`
     <h2>Fetching prices</h2>
-    <p class="muted">${ids.length} items from ${esc(state.settings.server)} ·
-      ${esc(state.settings.priceCity)}</p>
-    <div class="meter big"><i class="spent" id="bar" style="width:6%"></i></div>
-    <p class="muted" id="status">Contacting the Albion Online Data Project…</p>
+    <div class="note">${ids.length} items from ${esc(serverName(state.settings.server))} ·
+      ${esc(state.settings.priceCity)}</div>
+    <div class="meter"><i id="bar" style="width:6%"></i></div>
+    <div class="note" id="status">Contacting the Albion Online Data Project…</div>
     <div class="sheet-actions"><button class="btn ghost" id="cancel">Cancel</button></div>
   `);
   const controller = new AbortController();
@@ -1017,17 +1064,120 @@ export async function runPriceFetch() {
     toast(out.missing.length
       ? `${out.found.length} prices updated, ${out.missing.length} had no market data`
       : `${out.found.length} prices updated`);
+    return true;
   } catch (err) {
-    if (controller.signal.aborted) return;
+    if (controller.signal.aborted) return false;
     closeSheet();
     openSheet(`
       <h2>Could not fetch prices</h2>
-      <p class="muted">${esc(explain(err))}</p>
+      <div class="note">${esc(explain(err))}</div>
       <div class="sheet-actions">
         <button class="btn primary" id="ok">Enter them by hand</button>
       </div>
     `, { onMount: (r) => { $('#ok', r).onclick = closeSheet; } });
+    return false;
   }
+}
+
+/* ------------------------------------------------------- assumptions -- */
+
+/**
+ * What a ranking takes for granted, editable where you read it. The same
+ * switches the Me screen has, so a setting is edited in one widget wherever
+ * you meet it.
+ */
+export function openAssumptions(tab = 'farm') {
+  const body = tab === 'farm' ? `
+      ${meRow('farm-city', ICON.farm, `Farm in ${esc(farmCityFor(state.settings)?.name || 'a city')}`,
+    "+10% on that city's crops, herbs and produce")}
+      <div class="card tight" style="margin-top:8px">
+        ${meToggle('watered', 'Water and nurture with focus', 'Every plot, as far as focus stretches.')}
+        ${meToggle('premium', 'Premium', 'Double yield, double growth, the focus a day.')}
+        ${meToggle('hideMounts', 'Hide mounts', 'Only livestock and plants in the list.')}
+      </div>`
+    : tab === 'craft' ? `
+      ${meRow('craft-city', ICON.city, `Craft in ${esc(cityFor(state.settings)?.name || 'a city')}`,
+      'Its specialty is worth +15% return')}
+      <div class="card tight" style="margin-top:8px">
+        ${meToggle('useFocus', 'Craft with focus', '+59% return rate, and better quality.')}
+        ${meToggle('ownInputsAtCost', 'Value my own produce at what it cost me', 'Rather than at what it would have sold for.')}
+      </div>`
+    : `
+      ${meRow('craft-city', ICON.city, `Craft in ${esc(cityFor(state.settings)?.name || 'a city')}`,
+      'Its specialty is worth +15% return, or +40% on refining')}
+      <div class="card tight" style="margin-top:8px">
+        ${meToggle('useFocus', 'Craft with focus', '+59% return rate, and better quality.')}
+        ${meToggle('premium', 'Premium', 'Double yield, double growth, the focus a day.')}
+      </div>`;
+  openSheet(`
+    <h2>What this assumes</h2>
+    ${body}
+    <div class="sheet-actions"><button class="btn primary" id="done">Done</button></div>
+  `, {
+    onMount(root) {
+      root.onclick = (e) => {
+        e.stopPropagation();
+        const t = e.target.closest('[data-toggle]');
+        if (t) {
+          setSettings({ [t.dataset.toggle]: !state.settings[t.dataset.toggle] });
+          openAssumptions(tab);
+          return;
+        }
+        const a = e.target.closest('[data-act]')?.dataset.act;
+        if (a === 'farm-city') openFarmCity();
+        if (a === 'craft-city') openCraftCity();
+        if (e.target.closest('#done')) closeSheet();
+      };
+    },
+  });
+}
+
+/** Which slice of the gear list the Best tab ranks: group, tier, enchant. */
+export function openScanFilter() {
+  const cur = scan();
+  openSheet(`
+    <h2>Which gear?</h2>
+    ${GROUPS.map(([k, label]) => rowHTML({
+    attrs: `data-group="${esc(k)}"`, icon: groupIcon(k), title: esc(label),
+    cls: k === cur.group ? 'selected' : '', right: k === cur.group ? tick() : '',
+  })).join('')}
+    <div class="section-head" style="margin-top:14px"><h2>Tier</h2></div>
+    <div class="chips">
+      ${[1, 2, 3, 4, 5, 6, 7, 8].map((t) => `
+        <button class="chip" data-tier="${t}" aria-pressed="${t === cur.tier}">T${t}</button>`).join('')}
+    </div>
+    <div class="section-head" style="margin-top:14px"><h2>Enchantment</h2></div>
+    <div class="chips">
+      ${[0, 1, 2, 3, 4].map((e) => `
+        <button class="chip" data-enchant="${e}" aria-pressed="${e === cur.enchant}">${e ? `.${e}` : 'plain'}</button>`).join('')}
+    </div>
+    <div class="sheet-actions"><button class="btn primary" id="done">Done</button></div>
+  `, {
+    onMount(root) {
+      for (const b of $$('[data-group]', root)) {
+        b.onclick = () => { setScan({ group: b.dataset.group }); openScanFilter(); };
+      }
+      for (const b of $$('[data-tier]', root)) {
+        b.onclick = () => { setScan({ tier: Number(b.dataset.tier) }); openScanFilter(); };
+      }
+      for (const b of $$('[data-enchant]', root)) {
+        b.onclick = () => { setScan({ enchant: Number(b.dataset.enchant) }); openScanFilter(); };
+      }
+      $('#done', root).onclick = closeSheet;
+    },
+  });
+}
+
+/** One recipe in a picker: tier and name, what goes in, a tick when chosen. */
+function recipeRow(r, selectedId, icon, attr = 'data-recipe') {
+  const on = r.id === selectedId;
+  const inputs = (r.inputs || []).map((i) => `${i.count} ${nameOf(i.id)}`).join(' + ');
+  return rowHTML({
+    attrs: `${attr}="${esc(r.id)}"`, icon,
+    title: `${tierText(r.tier, r.enchant)} ${esc(r.name)}`,
+    meta: `${esc(inputs)} → ${r.amount || 1}`,
+    cls: on ? 'selected' : '', right: on ? tick() : '',
+  });
 }
 
 /* ---------------------------------------------------------- settings -- */

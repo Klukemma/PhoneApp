@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <title>Albion Farm Profit</title>
 <meta name="description" content="Work out what farming and crafting actually earns you in Albion Online.">
-<meta name="theme-color" content="#0c0a07">
+<meta name="theme-color" content="#0d0b08">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="manifest.webmanifest">
@@ -16,18 +16,17 @@
 <body>
 <div id="app">
   <header class="topbar">
-    <div>
-      <h1 id="viewTitle">Plan</h1>
-      <div class="sub" id="viewSub"></div>
-    </div>
+    <h1 id="viewTitle">Plan</h1>
     <div class="spacer"></div>
-    <div class="stamp" id="dataStamp"></div>
+    <button id="topAct" class="top-act hide"></button>
   </header>
 
   <main id="view"></main>
 
   <nav id="nav">
-    <button data-view="earn" aria-current="page"><span class="e">&#128176;</span>Earn</button>
+    <button data-view="plan" aria-current="page"><span class="e">&#127806;</span>Plan</button>
+    <button data-view="craft"><span class="e">&#9878;&#65039;</span>Craft</button>
+    <button data-view="rank"><span class="e">&#128200;</span>Best</button>
     <button data-view="prices"><span class="e">&#127974;</span>Market</button>
     <button data-view="me"><span class="e">&#128100;</span>Me</button>
   </nav>

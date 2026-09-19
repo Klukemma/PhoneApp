@@ -36,7 +36,19 @@ export const setCraftRerender = (fn) => { rerender = fn; };
 const q = () => state.settings.craftQuery || {};
 const setQ = (patch) => setSettings({ craftQuery: { ...q(), ...patch } });
 
-export const craftTarget = () => q().recipeId || '';
+/* Craft follows the farm goal until you pick something here. So the tab
+ * opens on the potion you are planning with no taps, and picking a sword on
+ * it never touches the farm plan. */
+export const craftTarget = () => q().recipeId || state.goal.recipeId || '';
+
+/**
+ * When the goal changes while Craft is following it, the make/buy choices
+ * belong to the old potion. Nothing is written to craftQuery.recipeId here:
+ * the fallback stays a fallback.
+ */
+export function resetMakeIfFollowing() {
+  if (!q().recipeId && (q().make || []).length) setQ({ make: [] });
+}
 export function setCraftTarget(id) {
   // A new target invalidates which intermediates you said you would make:
   // "refine my own bars" means nothing once you are brewing a potion.
@@ -558,6 +570,9 @@ function whereHTML(run, recipe) {
  * comes back in a couple of seconds. */
 export const scan = () => state.settings.craftScan
   || { group: 'weapon', tier: 4, enchant: 0 };
+/** "Weapons · T4 · plain", for the filter line on the Best tab. */
+export const scanLabel = () => `${groupLabel(scan().group)} · ${tierText(scan().tier, scan().enchant)}`;
+
 export const setScan = (patch) =>
   setSettings({ craftScan: { ...scan(), ...patch } });
 

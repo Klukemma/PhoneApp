@@ -18,7 +18,7 @@ import { pct, short } from './util.js';
 
 /* A row that opens a sheet. The whole screen is made of these, because every
  * one of them is a question with a real answer rather than a field. */
-const row = (act, icon, title, meta, value = '›') => `
+export const row = (act, icon, title, meta, value = '›') => `
   <button class="row" data-act="${esc(act)}">
     <span class="ico">${icon}</span>
     <span class="body"><span class="title">${title}</span>
@@ -38,7 +38,7 @@ const bagTitle = () => {
   return n ? `${n} ${n === 1 ? 'thing' : 'things'} in the bag` : 'Nothing in the bag';
 };
 
-const toggle = (key, title, desc) => {
+export const toggle = (key, title, desc) => {
   const on = !!state.settings[key];
   return `
     <div class="toggle">
