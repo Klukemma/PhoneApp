@@ -8,7 +8,7 @@ import test from 'node:test';
 
 import {
   bestCityFor, craftPnL, haulOf, mixFor, qualityMix, qualityPoints, returnRate,
-  taxRate,
+  simulateCycle, taxRate,
 } from '../js/calc.js';
 
 const data = JSON.parse(
@@ -418,4 +418,92 @@ test('a tool can never come out above plain, so it is never quoted an uplift', (
     { ...s, qualityMix: { 1: 10, 5: 90 } }, 1);
   assert.equal(forced.mix[5], 0);
   assert.equal(forced.mix[1], 1);
+});
+
+/* ------------------------------------------------- batches, not fractions */
+
+test('a batch is a batch: potions come five at a time', () => {
+  // items.xml T6_POTION_HEAL: amountcrafted="5", 72 foxglove + 18 egg +
+  // 18 alcohol, 768 focus. Asking for seven is two batches and ten potions,
+  // because there is no button for four fifths of a craft.
+  const potion = data.recipes.find((r) => r.id === 'T6_POTION_HEAL');
+  assert.equal(potion.amount, 5);
+  assert.deepEqual(potion.inputs, [
+    { id: 'T6_FOXGLOVE', count: 72 },
+    { id: 'T5_EGG', count: 18 },
+    { id: 'T6_ALCOHOL', count: 18 },
+  ]);
+
+  const run = (qty) => craftPnL('T6_POTION_HEAL', {
+    recipeOf: (id) => data.recipes.find((r) => r.id === id) || null,
+    qty,
+    priceOf: (id) => ({
+      T6_FOXGLOVE: 260, T5_EGG: 320, T6_ALCOHOL: 900, T6_POTION_HEAL: 2400,
+    })[id] ?? 0,
+    settings: ctx().settings,
+    cityId: 'brecilien',
+  });
+
+  for (const [asked, crafts, made] of [[1, 1, 5], [5, 1, 5], [7, 2, 10],
+    [10, 2, 10], [100, 20, 100]]) {
+    const r = run(asked);
+    assert.equal(r.crafts, crafts, `${asked} asked -> ${crafts} batches`);
+    assert.equal(r.qty, made, `${asked} asked -> ${made} made`);
+    assert.equal(r.asked, asked);
+    assert.equal(r.perBatch, 5);
+    assert.ok(Number.isInteger(r.crafts), 'never a fraction of a batch');
+  }
+});
+
+test('you must bring the whole recipe, because the return comes back after', () => {
+  /* The station takes the full amount every time and hands the return over
+   * once the craft finishes - localization.xml "Saved {0} x{1}!", and
+   * "Inventory full, saved resources are lost!" if there is no room. So the
+   * returns fund later batches and never the first one: one batch of Major
+   * Healing Potion is 72 foxglove in your bags whatever your rate is. */
+  const run = (qty) => craftPnL('T6_POTION_HEAL', {
+    recipeOf: (id) => data.recipes.find((r) => r.id === id) || null,
+    qty,
+    priceOf: (id) => ({
+      T6_FOXGLOVE: 260, T5_EGG: 320, T6_ALCOHOL: 900, T6_POTION_HEAL: 2400,
+    })[id] ?? 0,
+    settings: ctx().settings,
+    cityId: 'brecilien',
+  });
+
+  const one = run(5);
+  const fox = one.buys.find((b) => b.id === 'T6_FOXGLOVE');
+  assert.equal(fox.perCraft, 72, 'what the station demands per press');
+  assert.equal(fox.qty, 72, 'and so what you have to turn up with');
+  assert.ok(fox.net < fox.qty, 'though the batch does not consume all of it');
+  // The bill is still the net figure, because the rest is yours at the end.
+  assert.equal(Math.round(fox.cost), Math.round(fox.net * 260));
+
+  // Once the run is long enough for the returns to circulate, what you buy is
+  // simply what the run consumes.
+  const many = run(100);
+  const fox100 = many.buys.find((b) => b.id === 'T6_FOXGLOVE');
+  assert.equal(Math.round(fox100.qty), Math.round(fox100.net));
+  assert.equal(Math.round(fox100.qty), Math.round(72 * 20 * (1 - many.steps[0].batch.rrr)));
+  // And never less than one batch, whatever the rate.
+  assert.ok(fox100.qty >= fox100.perCraft);
+});
+
+test('a pile smaller than one batch is worth no crafts at all', () => {
+  // Over a run the return rate stretches a pile; it cannot conjure the first
+  // batch out of less than the recipe asks for.
+  const plan = {
+    plots: [],
+    crafts: [{ id: 'c1', recipeId: 'T6_POTION_HEAL', mode: 'fill' }],
+  };
+  const c = (prices) => ({
+    priceOf: (id) => prices[id] ?? 0,
+    settings: { ...ctx().settings, craftCity: 'brecilien', cycleDays: 1, farmDays: 1 },
+  });
+  const P = { T6_FOXGLOVE: 260, T5_EGG: 320, T6_ALCOHOL: 900, T6_POTION_HEAL: 2400 };
+  // Nothing on the pile and no buying: fill mode makes nothing.
+  const sim = simulateCycle(plan, data, c(P));
+  const line = sim.craftLines.find((l) => l.recipe.id === 'T6_POTION_HEAL');
+  const short = line.inputs.find((i) => i.have < i.count);
+  if (short) assert.equal(short.allows, 0, `${short.id}: under one batch is zero crafts`);
 });

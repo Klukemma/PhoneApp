@@ -724,24 +724,40 @@ export function craftPnL(recipeId, {
   let fees = 0;
   let buyCost = 0;
 
-  const buy = (id, units, bill) => {
-    if (!(units > 0)) return;
-    const at = bought[id] || (bought[id] = { id, qty: 0, cost: 0, unit: costOf(id) });
-    at.qty += units;
+  /* What you have to go and buy, which is not simply what the run consumes.
+   *
+   * The station takes the FULL recipe amount every time you press the button
+   * and hands the return back afterwards - "Saved {0} x{1}!" - so the returns
+   * fund later crafts but never the first one. For one batch of Major Healing
+   * Potion that is 72 foxglove in your bags however good your return rate is,
+   * even though the batch only really costs you 40.7 of them.
+   *
+   * So: buy enough to start (one craft's full amount) and enough to finish
+   * (what the whole run consumes), whichever is larger. Anything over is
+   * float that comes back out at the end and is still yours, so the cost
+   * charged below stays the net figure. */
+  const buy = (id, net, perCraft, bill) => {
+    if (!(net > 0) && !(perCraft > 0)) return;
+    const at = bought[id] || (bought[id] = {
+      id, qty: 0, net: 0, perCraft: 0, cost: 0, unit: costOf(id),
+    });
+    at.net += net;
+    at.perCraft = Math.max(at.perCraft, perCraft);
+    at.qty = Math.max(at.net, at.perCraft);
     at.cost += bill;
     buyCost += bill;
   };
 
   /* One item, some number of them wanted. Either you buy them, or you make
    * them and the question moves down to what they are made of. */
-  const need = (itemId, units, depth, seen) => {
+  const need = (itemId, units, perCraft, depth, seen) => {
     if (!(units > 0)) return null;
     const recipe = depth < maxDepth && make.has(itemId) && !seen.has(itemId)
       ? recipeOf(itemId) : null;
     if (!recipe) {
       const unit = costOf(itemId);
       if (!unit) missing.add(itemId);
-      buy(itemId, units, units * unit);
+      buy(itemId, units, perCraft, units * unit);
       return null;
     }
 
@@ -749,7 +765,9 @@ export function craftPnL(recipeId, {
     const batch = craftBatch(recipe, {
       priceOf, costOf, settings, cityId: where, specLevel,
     });
-    const crafts = units / (batch.made || 1);
+    // You cannot press the button four fifths of a time. A batch is a batch,
+    // so a run is always a whole number of them.
+    const crafts = Math.ceil(units / (batch.made || 1) - 1e-9);
     focus += batch.focus * crafts;
     const fee = ((recipe.silver || 0) + batch.usageFee) * crafts;
     fees += fee;
@@ -773,7 +791,9 @@ export function craftPnL(recipeId, {
     // recursing for ever; the tier ladder in refining (a T5 bar eats a T4
     // bar) is not a cycle and walks all the way down to raw ore.
     const below = new Set(seen).add(itemId);
-    for (const i of batch.inputs) need(i.id, i.net * crafts, depth + 1, below);
+    for (const i of batch.inputs) {
+      need(i.id, i.net * crafts, i.count, depth + 1, below);
+    }
     return batch;
   };
 
@@ -781,17 +801,24 @@ export function craftPnL(recipeId, {
   const topBatch = craftBatch(top, {
     priceOf, costOf, settings, cityId: topCity, specLevel,
   });
-  const crafts = qty / (topBatch.made || 1);
+  /* Whole batches. Major Healing Potion comes five at a time, so asking for
+   * seven means two batches and ten potions - and saying "1.4 crafts" was
+   * quoting a thing the game will not let you do. */
+  const perBatch = topBatch.made || 1;
+  const crafts = Math.max(1, Math.ceil(qty / perBatch - 1e-9));
+  const made = crafts * perBatch;
   focus += topBatch.focus * crafts;
   const topFee = ((top.silver || 0) + topBatch.usageFee) * crafts;
   fees += topFee;
   const topStep = {
-    recipe: top, batch: topBatch, crafts, made: qty, depth: 0, cityId: topCity,
+    recipe: top, batch: topBatch, crafts, made, depth: 0, cityId: topCity,
     focus: topBatch.focus * crafts, fee: topFee, target: true,
   };
   stepBy.set(top.id, topStep);
   steps.push(topStep);
-  for (const i of topBatch.inputs) need(i.id, i.net * crafts, 1, new Set([top.id]));
+  for (const i of topBatch.inputs) {
+    need(i.id, i.net * crafts, i.count, 1, new Set([top.id]));
+  }
 
   /* What one is worth. With a quality mix that is the average across the
    * levels the run actually produces, which on equipment is most of the
@@ -804,13 +831,21 @@ export function craftPnL(recipeId, {
   const unitPrice = blend.value;
   if (!blend.plain) missing.add(recipeId);
   const tax = taxRate(settings, { instant: sellInstant });
-  const gross = qty * unitPrice;
+  const gross = made * unitPrice;
   const revenue = gross * (1 - tax);
   const cost = buyCost + fees;
   const profit = revenue - cost;
 
   return {
-    recipe: top, qty, crafts, sellInstant, unitPrice,
+    recipe: top,
+    // What you asked for, and what a whole number of batches actually gives
+    // you. They differ whenever the ask is not a multiple of the batch size.
+    asked: qty,
+    qty: made,
+    perBatch,
+    crafts,
+    sellInstant,
+    unitPrice,
     // The quality side of the sale, so a screen can show the mix, the uplift
     // over selling it all plain, and which levels it had to guess at.
     mix: sellMix,
@@ -826,7 +861,7 @@ export function craftPnL(recipeId, {
     focus, fees, buyCost, cost,
     gross, tax, taxPaid: gross - revenue, revenue, profit,
     margin: revenue > 0 ? profit / revenue : 0,
-    perItem: qty > 0 ? profit / qty : 0,
+    perItem: made > 0 ? profit / made : 0,
     silverPerFocus: focus > 0 ? profit / focus : null,
     // A missing price reads as free on the way in and worthless on the way
     // out, so a run with any of these is not a number, it is a gap.
@@ -1378,7 +1413,15 @@ export function simulateCycle(plan, data, ctx) {
       // Inputs the game never hands back are consumed whole.
       const net = i.count * (i.noReturn ? 1 : 1 - batch.rrr);
       const have = pool[i.id] || 0;
-      return { ...i, net, have, allows: net > 0 ? Math.floor(have / net) : Infinity };
+      /* Two different walls. Over a run the return rate means a pile of
+       * `have` is good for have/net crafts, because what comes back goes
+       * straight into the next one. But the station takes the FULL recipe
+       * amount every time you press the button, so a pile smaller than one
+       * batch is good for nothing at all however high the rate is. */
+      const allows = net <= 0 ? Infinity
+        : have < i.count ? 0
+          : Math.floor(have / net);
+      return { ...i, net, have, allows };
     });
     const byMaterial = Math.min(...perCraft.map((i) => i.allows));
     // Which input is the wall, so it can be named rather than left to guess.

@@ -208,8 +208,9 @@ export function craft() {
 
   return {
     title: 'Craft',
-    sub: recipe
-      ? `${qty.toLocaleString()} × ${recipe.name} · ${sell.label}`
+    sub: recipe && run
+      ? `${run.crafts.toLocaleString()} × batch of ${run.perBatch} = ${
+        run.qty.toLocaleString()} ${recipe.name} · ${sell.label}`
       : 'What is it worth making?',
     html: `
       <section>
@@ -222,7 +223,11 @@ export function craft() {
         </button>
         <div class="field" style="margin-bottom:8px"><label>How many</label>
           <input type="number" id="craftQty" inputmode="numeric" min="1" max="999999"
-            value="${qty}" data-craft-qty></div>
+            value="${qty}" data-craft-qty>
+          ${run && run.qty !== run.asked ? `<div class="hint">${esc(recipe.name)}
+            comes ${run.perBatch} at a time, so that is ${run.crafts}
+            ${run.crafts === 1 ? 'batch' : 'batches'} and
+            <b>${run.qty}</b> of them.</div>` : ''}</div>
         <div class="field"><label>Sell it</label>
           <div class="seg">
             <button data-craft-sell="market" aria-pressed="${sell.where === 'market'}"
@@ -437,17 +442,27 @@ function buysHTML(run) {
     <section>
       <div class="section-head"><h2>Buy · your shopping list</h2>
         <span class="right num bad">${short(-run.buyCost)}</span></div>
-      ${run.buys.map((b) => `
+      ${run.buys.map((b) => {
+        /* What you carry to the station and what the run really costs are
+         * two numbers. They only pull apart on a short run, where nothing
+         * has come back yet to spend on the next batch. */
+        const spare = b.qty - b.net;
+        return `
         <button class="row ${b.unit ? '' : 'warn'}" data-price="${esc(b.id)}">
           <span class="ico">\u{1F6D2}</span>
           <span class="body">
             <span class="title">${short(b.qty)} × ${esc(nameOf(b.id))}</span>
-            <span class="meta">${b.unit
-              ? `${silver(b.unit)} each`
-              : 'no price set, so this is costing you nothing on paper'}</span>
+            <span class="meta">${b.unit ? `${silver(b.unit)} each` : 'no price set'}
+              · ${short(b.perCraft)} a batch${spare > 0.05
+                ? ` · ${short(spare)} comes back, so it really costs ${short(b.net)}`
+                : ''}</span>
           </span>
           <span class="amt num ${b.unit ? 'bad' : 'flat'}">${b.unit ? short(-b.cost) : '?'}</span>
-        </button>`).join('')}
+        </button>`;
+      }).join('')}
+      <div class="hint">The station takes the whole recipe every time you press
+        the button and hands the return back afterwards, so the first batch is
+        never discounted — these are the amounts to actually have on you.</div>
     </section>`;
 }
 
