@@ -5,13 +5,14 @@ import {
   focusCostAt, focusEfficiency, perPeriod, simulateCycle, specFor,
 } from './calc.js';
 import {
-  explain, fetchItem, fetchPrices, serverName, CITIES, SERVERS,
+  explain, fetchItem, fetchPrices, serverName, BLACK_MARKET, CITIES, SERVERS,
 } from './prices.js';
 import {
   addCraft, addPlot, addSpare, applySolution, DATA, exportJSON, importJSON,
   priceOf, pricedItemIds, clearLand, commit, landSummary, plotsOwned,
   removeCraft, removePlot, setBuyPrice, setGoal, setHolding, setNodeLevel,
   setPrice, setPrices, setSettings, setSpec, state, updateCraft, updatePlot, wipe,
+  bmPriceOf, setBmPrices,
 } from './store.js';
 import { solve } from './solve.js';
 import { $, $$, closeSheet, esc, openSheet, toast } from './ui.js';
@@ -19,6 +20,10 @@ import { ago, hours, short, silver, tierText } from './util.js';
 import {
   cycleFor, ctx, detailHTML, setSolution, solution, solveStamp,
 } from './views.js';
+import {
+  GROUPS, allRecipes, craftTarget, currentRun, ensureGear, gearReady, groupIcon,
+  groupOf as craftGroupOf, nameOf as craftNameOf, recipeOf, setCraftTarget,
+} from './craft.js';
 
 const nameOf = (id) => DATA.items[id]?.name || id;
 
@@ -1395,11 +1400,6 @@ export function openCycle() {
 
 /* ------------------------------------------------------ destiny board -- */
 
-const BRANCH_LABEL = {
-  CROPS: 'Crops', HERBS: 'Herbs', ANIMALS: 'Animals',
-  ALCHEMIST: 'Alchemist', COOK: 'Cook',
-};
-
 /**
  * Your destiny board levels, which is where every focus cost really comes from.
  *
@@ -1411,9 +1411,13 @@ export function openBoard(branch = null) {
   rememberMastery();
   const s = state.settings;
   const nodes = s.focusNodes || [];
-  const branches = [...new Set(nodes.map((n) => n.branch))];
-  const open = branch || branches[0];
-  const mine = nodes.filter((n) => n.branch === open);
+  /* Group by the name the game gives the top of each tree. With weapons and
+   * armour loaded that is forty-odd branches rather than five, so they are
+   * sorted and the whole strip wraps. */
+  const labelOf = (n) => n.branchLabel || n.branch;
+  const branches = [...new Set(nodes.map(labelOf))].sort();
+  const open = branches.includes(branch) ? branch : branches[0];
+  const mine = nodes.filter((n) => labelOf(n) === open);
 
   // What your current levels do to the things on your plan.
   const examples = [];
@@ -1451,10 +1455,10 @@ export function openBoard(branch = null) {
       everything under it, and every specialisation also cheapens its siblings
       a little \u2014 so levelling Potato Schnapps makes healing potions cheaper too.</p>
 
-    <div class="seg" style="margin-bottom:12px">
+    <div class="seg" style="margin-bottom:12px;flex-wrap:wrap">
       ${branches.map((b) => `
         <button type="button" data-branch="${esc(b)}" aria-pressed="${b === open}">
-          ${esc(BRANCH_LABEL[b] || b)}</button>`).join('')}
+          ${esc(b)}</button>`).join('')}
     </div>
 
     ${mine.filter((n) => n.kind === 'mastery').map(nodeRow).join('')}
@@ -1493,4 +1497,159 @@ export function openBoard(branch = null) {
     },
     onDismiss: leaveMastery,
   });
+}
+
+/* ----------------------------------------------- pick a thing to craft - */
+
+/**
+ * The Craft tab's picker. Every recipe the app knows in one list — potions,
+ * food, butchering, refining, weapons, armour and gear — because the tab
+ * costs all of them the same way and the split into separate screens was
+ * never a difference the game makes.
+ */
+export function openCraftPick() {
+  ensureGear();
+  let query = '';
+  let group = craftTarget() ? craftGroupOf(recipeOf(craftTarget()) || {}) : 'weapon';
+
+  const render = (root) => {
+    const all = allRecipes();
+    const hits = all.filter((r) => {
+      if (query) {
+        const q = query.toLowerCase();
+        return r.name.toLowerCase().includes(q) || r.id.toLowerCase().includes(q);
+      }
+      return craftGroupOf(r) === group;
+    });
+    // A search runs across every group; a browse stays inside one. Either
+    // way the list is capped, because six thousand rows in a phone sheet is
+    // a scroll nobody finishes.
+    const shown = hits
+      .sort((a, b) => a.tier - b.tier || (a.enchant || 0) - (b.enchant || 0)
+        || a.name.localeCompare(b.name))
+      .slice(0, 200);
+
+    $('#craftList', root).innerHTML = `
+      ${shown.map((r) => `
+        <button class="row" data-pick="${esc(r.id)}"
+          ${r.id === craftTarget() ? 'style="border-color:var(--gold)"' : ''}>
+          <span class="ico">${groupIcon(craftGroupOf(r))}</span>
+          <span class="body">
+            <span class="title">${tierText(r.tier, r.enchant)} ${esc(r.name)}</span>
+            <span class="meta">${r.inputs.map((i) => `${i.count}× ${esc(craftNameOf(i.id))}`).join(', ')}${
+              priceOf(r.id) || bmPriceOf(r.id) ? '' : ' · no price yet'}</span>
+          </span>
+          <span class="amt">${r.id === craftTarget() ? '✓' : '+'}</span>
+        </button>`).join('')}
+      ${hits.length > shown.length
+        ? `<div class="hint centered">${hits.length - shown.length} more — type to narrow it down.</div>`
+        : ''}
+      ${!hits.length ? `<div class="empty"><span class="e">\u{1F50D}</span>${
+        gearReady() || query ? 'Nothing matches that.'
+          : 'Still loading the weapon and armour list…'}</div>` : ''}`;
+
+    for (const b of $$('[data-pick]', root)) {
+      b.onclick = () => { setCraftTarget(b.dataset.pick); closeSheet(); };
+    }
+  };
+
+  openSheet(`
+    <h2>What are you making?</h2>
+    <div class="field">
+      <input type="search" id="craftSearch" placeholder="Search every recipe…"
+        autocomplete="off">
+    </div>
+    <div class="seg" style="flex-wrap:wrap" id="craftGroups">
+      ${GROUPS.map(([k, label]) => `
+        <button data-group="${esc(k)}" aria-pressed="${k === group}">${esc(label)}</button>`).join('')}
+    </div>
+    <div id="craftList" style="margin-top:10px"></div>
+  `, {
+    onMount(root) {
+      render(root);
+      const search = $('#craftSearch', root);
+      search.oninput = () => { query = search.value.trim(); render(root); };
+      for (const b of $$('[data-group]', root)) {
+        b.onclick = () => {
+          group = b.dataset.group;
+          query = '';
+          search.value = '';
+          for (const o of $$('[data-group]', root)) {
+            o.setAttribute('aria-pressed', String(o.dataset.group === group));
+          }
+          render(root);
+        };
+      }
+    },
+  });
+}
+
+/**
+ * Prices for exactly what the Craft tab is looking at.
+ *
+ * The whole-app fetch walks 500 farming items; the equipment list is 7,500
+ * and nobody wants all of them. A run touches a dozen, so this asks for those
+ * and nothing else, and it asks the Black Market separately because the Black
+ * Market is quoted on its buy orders rather than on a shelf price.
+ */
+export async function runCraftPriceFetch() {
+  const run = currentRun();
+  if (!run) { toast('Pick something to make first'); return; }
+  const ids = [...new Set([
+    run.recipe.id,
+    ...run.buys.map((b) => b.id),
+    ...run.steps.map((s) => s.recipe.id),
+  ])];
+  // Only equipment is tradable on the Black Market, so only equipment is
+  // worth asking it about.
+  const gearGroups = new Set(['weapon', 'armor', 'gear']);
+  const bmIds = [run.recipe.id, ...run.steps.map((s) => s.recipe.id)]
+    .filter((id) => gearGroups.has(craftGroupOf(recipeOf(id) || {})));
+
+  const sheet = openSheet(`
+    <h2>Fetching prices</h2>
+    <p class="muted">${ids.length} items from ${esc(state.settings.server)} ·
+      ${esc(state.settings.priceCity)}${bmIds.length
+        ? `, and ${bmIds.length} from the Black Market` : ''}</p>
+    <div class="meter big"><i class="spent" id="bar" style="width:6%"></i></div>
+    <p class="muted" id="status">Contacting the Albion Online Data Project…</p>
+    <div class="sheet-actions"><button class="btn ghost" id="cancel">Cancel</button></div>
+  `);
+  const controller = new AbortController();
+  $('#cancel', sheet).onclick = () => { controller.abort(); closeSheet(); };
+
+  try {
+    const out = await fetchPrices(ids, {
+      server: state.settings.server,
+      city: state.settings.priceCity,
+      signal: controller.signal,
+    });
+    setPrices(out.prices);
+
+    let bmFound = 0;
+    if (bmIds.length) {
+      const st = $('#status', sheet);
+      if (st) st.textContent = 'Asking the Black Market…';
+      const bm = await fetchPrices(bmIds, {
+        server: state.settings.server,
+        city: BLACK_MARKET,
+        field: 'buy',
+        signal: controller.signal,
+      });
+      setBmPrices(bm.prices);
+      bmFound = bm.found.length;
+    }
+    closeSheet();
+    toast(`${out.found.length} prices updated${bmFound ? `, ${bmFound} from the Black Market` : ''}`);
+  } catch (err) {
+    if (controller.signal.aborted) return;
+    closeSheet();
+    openSheet(`
+      <h2>Could not fetch prices</h2>
+      <p class="muted">${esc(explain(err))}</p>
+      <div class="sheet-actions">
+        <button class="btn primary" id="ok">Enter them by hand</button>
+      </div>
+    `, { onMount: (r) => { $('#ok', r).onclick = closeSheet; } });
+  }
 }

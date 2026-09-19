@@ -1,15 +1,21 @@
 // Cache-first shell so the app opens instantly and works with no signal.
 // Bump CACHE when the shell or the game data changes.
 
-const CACHE = 'albionfarm-v23';  // v23: focus goes to whatever pays best for it
+const CACHE = 'albionfarm-v24';  // v24: weapons, armour and the Black Market
 const SHELL = [
   './', './index.html', './manifest.webmanifest',
   './css/app.css',
   './js/app.js', './js/views.js', './js/sheets.js', './js/store.js',
-  './js/calc.js', './js/solve.js', './js/prices.js', './js/ui.js', './js/util.js',
+  './js/calc.js', './js/craft.js', './js/solve.js', './js/prices.js',
+  './js/ui.js', './js/util.js',
   './data/gamedata.json',
   './icons/icon.svg', './icons/icon-192.png', './icons/icon-512.png',
 ];
+// data/equipment.json is deliberately NOT in the shell. It is two megabytes
+// against the rest of the app's three hundred kilobytes, and nobody planning
+// a potion run needs it. The fetch handler below caches it the first time the
+// Craft tab asks, so it costs a download once and then works offline like
+// everything else.
 
 self.addEventListener('install', (e) => {
   e.waitUntil(

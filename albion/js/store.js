@@ -6,6 +6,7 @@ import { uid } from './util.js';
 const KEY = 'albionfarm.v1';
 
 export let DATA = null;          // gamedata.json, loaded once at boot
+export let GEAR = null;          // equipment.json, only once you ask for it
 
 // Fixed merchant asks for seeds and babies, filled in from the game data.
 let NPC_PRICE = {};
@@ -16,6 +17,54 @@ export async function loadGameData() {
   DATA = await res.json();
   return DATA;
 }
+
+/**
+ * The weapon and armour half of the game, fetched the first time you ask.
+ *
+ * It is two megabytes against the farming file's three hundred kilobytes,
+ * because there are 6,671 equipment recipes and 403 farming ones. Nobody
+ * planning a potion run should pay for that, so it is not loaded at boot and
+ * the Craft tab waits on this instead.
+ *
+ * The rows arrive stripped of everything that can be worked out again \u2014 no
+ * name, no tier, no group, and no field that equals its own default \u2014 so
+ * they are put back together here, once, rather than at every read site.
+ */
+let gearLoading = null;
+export function loadEquipment() {
+  if (GEAR) return Promise.resolve(GEAR);
+  if (gearLoading) return gearLoading;
+  gearLoading = (async () => {
+    const res = await fetch('data/equipment.json');
+    if (!res.ok) throw new Error(`Could not load the equipment data (${res.status})`);
+    const raw = await res.json();
+    const nameOf = (id) => raw.items[id]?.name || id;
+    GEAR = {
+      ...raw,
+      recipes: raw.recipes.map((r) => ({
+        enchant: 0, amount: 1, silver: 0, refine: false, ...r,
+        name: nameOf(r.id),
+        tier: raw.items[r.id]?.tier ?? 0,
+        group: raw.groups[r.category] || 'gear',
+      })),
+    };
+    /* The destiny board is one board. Once the weapon and armour half is
+     * here, every focus cost in the app is worked out from all 371 nodes
+     * rather than from the 54 a farmer sees, so a sword quoted before and
+     * after the Craft tab was opened cannot disagree. */
+    if (state.settings.focusNodes !== ALL_NODES) {
+      ALL_NODES = [...(DATA?.focusNodes || []), ...GEAR.focusNodes];
+      state.settings.focusNodes = ALL_NODES;
+    }
+    return GEAR;
+  })();
+  return gearLoading;
+}
+
+let ALL_NODES = null;
+
+/** Look an item up in whichever file happens to know it. */
+export const itemMeta = (id) => DATA?.items[id] || GEAR?.items[id] || null;
 
 function defaults() {
   return {
@@ -52,6 +101,10 @@ function defaults() {
     },
     prices: {},                // what a thing sells for
     buyPrices: {},             // what it costs you, when that differs
+    // What the Black Market will hand you for a piece of equipment right
+    // now. Its own map because it is a different question from the shelf
+    // price and answered by a different side of the order book.
+    bmPrices: {},
     spec: {},                  // recipe id -> a flat efficiency override
     nodeLevels: {},            // destiny board node id -> level
     // What you are trying to make, and how much land you have to do it with.
@@ -75,7 +128,7 @@ function withConstants(state, data) {
   // calc reads these through settings, so keep them joined.
   state.settings.spec = state.spec;
   state.settings.nodeLevels = state.nodeLevels;
-  state.settings.focusNodes = data.focusNodes;
+  state.settings.focusNodes = ALL_NODES || data.focusNodes;
   // Cities live outside constants and are always taken fresh from the game
   // data, never from a saved copy.
   state.settings.cities = data.cities;
@@ -126,6 +179,7 @@ function normalize(raw) {
     settings: { ...base.settings, ...(raw.settings || {}) },
     prices: { ...(raw.prices || {}) },
     buyPrices: { ...(raw.buyPrices || {}) },
+    bmPrices: { ...(raw.bmPrices || {}) },
     spec: { ...(raw.spec || {}) },
     nodeLevels: { ...(raw.nodeLevels || {}) },
     goal: { ...base.goal, ...(raw.goal || {}) },
@@ -155,7 +209,7 @@ function normalize(raw) {
       }),
     },
   };
-  for (const map of [s.prices, s.buyPrices]) {
+  for (const map of [s.prices, s.buyPrices, s.bmPrices]) {
     for (const [k, v] of Object.entries(map)) {
       const n = Number(v);
       if (!Number.isFinite(n) || n < 0) delete map[k];
@@ -252,6 +306,24 @@ export function costOf(id) {
 
 /** True when this item is being costed differently from how it is sold. */
 export const hasOwnCost = (id) => Number(state.buyPrices[id]) > 0;
+
+/** What the Black Market is offering for one, right now. */
+export const bmPriceOf = (id) => Number(state.bmPrices[id]) || 0;
+
+export function setBmPrice(id, value) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) delete state.bmPrices[id];
+  else state.bmPrices[id] = Math.round(n);
+  commit();
+}
+
+export function setBmPrices(map) {
+  for (const [id, v] of Object.entries(map)) {
+    const n = Number(v);
+    if (Number.isFinite(n) && n > 0) state.bmPrices[id] = Math.round(n);
+  }
+  commit();
+}
 
 export function setBuyPrice(id, value) {
   const n = Number(value);

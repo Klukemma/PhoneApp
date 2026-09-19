@@ -30,6 +30,11 @@ BASE = "https://raw.githubusercontent.com/ao-data/ao-bin-dumps/master"
 HERE = Path(__file__).resolve().parent
 CACHE = HERE / ".cache"
 OUT = HERE.parent / "data" / "gamedata.json"
+# Weapons and armour live in their own file. There are 6,600 of them against
+# 400 farming recipes, and the farming screens never touch them, so loading
+# them on startup would cost every user a megabyte to run a potion plan. The
+# app fetches this one only when you open the Craft tab.
+OUT_EQUIP = HERE.parent / "data" / "equipment.json"
 
 LIVESTOCK = ["CHICKEN", "GOAT", "GOOSE", "SHEEP", "PIG", "COW"]
 MOUNT_STOCK = ["OX", "HORSE", "DIREWOLF", "DIREBOAR", "DIREBEAR", "SWAMPDRAGON",
@@ -42,6 +47,27 @@ MOUNT_STOCK = ["OX", "HORSE", "DIREWOLF", "DIREBOAR", "DIREBEAR", "SWAMPDRAGON",
 MEAT_CATEGORIES = ("meat_chicken", "meat_goat", "meat_goose",
                    "meat_sheep", "meat_pig", "meat_cow")
 CRAFT_CATEGORIES = ("potion", "food") + MEAT_CATEGORIES
+
+# Everything you make at a warrior's forge, a mage's tower or a hunter's
+# lodge. The craftingcategory doubles as the name of the city specialty, so
+# these strings are what cityBonus already looks up.
+WEAPON_CATEGORIES = (
+    "sword", "axe", "mace", "hammer", "dagger", "spear", "quarterstaff",
+    "bow", "crossbow", "knuckles", "firestaff", "froststaff", "arcanestaff",
+    "holystaff", "naturestaff", "cursestaff", "shapeshifterstaff",
+)
+ARMOR_CATEGORIES = (
+    "cloth_helmet", "cloth_armor", "cloth_shoes",
+    "leather_helmet", "leather_armor", "leather_shoes",
+    "plate_helmet", "plate_armor", "plate_shoes",
+)
+GEAR_CATEGORIES = ("offhand", "cape", "bag", "tools", "gatherergear")
+# Refining is its own thing: a city specialises in it at +40% rather than the
+# +15% it gives a crafting category, and a bar always eats one of the tier
+# below as well as the raw ore.
+REFINE_CATEGORIES = ("ore", "wood", "hide", "fiber", "rock")
+EQUIP_CATEGORIES = WEAPON_CATEGORIES + ARMOR_CATEGORIES + GEAR_CATEGORIES
+REFINE_BUTTON = "@CRAFTBUILDING_ITEM_DETAILS_BUTTON_REFINE"
 
 
 
@@ -64,7 +90,10 @@ def load_names() -> dict:
     """The game's own English item names, e.g. T6_ALCOHOL -> 'Potato Schnapps'.
 
     localization.xml is tens of megabytes and mostly other languages, so this
-    streams it and keeps only the first (EN-US) segment of each @ITEMS_ entry.
+    streams it and keeps only the first (EN-US) segment of the entries worth
+    having: item names under their bare id, and destiny board titles under
+    their full key. The board titles are what stop a node reading as
+    "Craft Swords" when the game calls it "Sword Crafter".
     """
     names = {}
     key = None
@@ -72,6 +101,10 @@ def load_names() -> dict:
     for raw in fetch("localization.xml").decode("utf-8-sig").splitlines():
         if 'tuid="@ITEMS_' in raw:
             m = re.search(r'tuid="@ITEMS_([^"]+)"', raw)
+            key = m.group(1) if m else None
+            want_seg = False
+        elif 'tuid="@DESTINYBOARD_TITLE_' in raw:
+            m = re.search(r'tuid="(@DESTINYBOARD_TITLE_[^"]+)"', raw)
             key = m.group(1) if m else None
             want_seg = False
         elif key and 'xml:lang="EN-US"' in raw:
@@ -267,7 +300,7 @@ FOCUS_BRANCHES = ("FARM_CROPS", "FARM_HERBS", "FARM_ANIMALS",
                   "FARM_ALCHEMIST", "FARM_COOK")
 
 
-def build_focus_nodes() -> list:
+def build_focus_nodes(prefixes=None) -> list:
     """Destiny board nodes that reduce focus cost, with what each one covers.
 
     Every node gives a fixed number of efficiency points per level to items
@@ -276,11 +309,12 @@ def build_focus_nodes() -> list:
     every other potion cheaper too. Total efficiency for an item is the sum
     over every matching rule of level x bonus.
     """
+    prefixes = prefixes or FOCUS_BRANCHES
     root = parse("achievements.xml")
     out = []
     for el in root.iter():
         nid = el.get("id")
-        if not nid or not nid.startswith(FOCUS_BRANCHES):
+        if not nid or not nid.startswith(prefixes):
             continue
         rewards = el.find("baserewards")
         if rewards is None:
@@ -305,7 +339,7 @@ def build_focus_nodes() -> list:
             "id": nid,
             "name": node_name(nid),
             "branch": nid.split("_")[1] if "_" in nid else nid,
-            "kind": "spec" if parent_id in FOCUS_BRANCHES else "mastery",
+            "parentId": parent_id,
             "parent": parent_id,
             "rules": rules,
         })
@@ -313,7 +347,24 @@ def build_focus_nodes() -> list:
     seen = {}
     for n in out:
         seen.setdefault(n["id"], n)
-    return sorted(seen.values(), key=lambda n: (n["branch"], n["kind"] != "mastery", n["id"]))
+    # A node is a mastery when its parent is outside this set - it is the top
+    # of the tree we kept - and a specialisation when it hangs off one we
+    # also kept. The weapon branches are three deep (Mage -> Arcane Staffs ->
+    # Arcane Staff) where the farming ones are two, so this has to be read off
+    # the tree rather than from a fixed list of roots.
+    for n in seen.values():
+        n["kind"] = "spec" if n.pop("parentId") in seen else "mastery"
+    # And the branch it sits in is whatever it hangs off at the top. The
+    # weapon branches are named things like CRAFT_SWORDS, which reads as
+    # "SWORDS" if you take it apart by underscores, so the label is the root
+    # node's own in-game title instead.
+    for n in seen.values():
+        root = n
+        while root.get("parent") in seen:
+            root = seen[root["parent"]]
+        n["branchLabel"] = root["name"]
+    return sorted(seen.values(),
+                  key=lambda n: (n["branchLabel"], n["kind"] != "mastery", n["id"]))
 
 
 def node_name(nid: str) -> str:
@@ -326,6 +377,103 @@ def node_name(nid: str) -> str:
         if body.startswith(branch):
             return body[len(branch):].replace("_", " ").title()
     return body.replace("_", " ").title()
+
+
+GROUP_OF = {}
+for _c in WEAPON_CATEGORIES:
+    GROUP_OF[_c] = "weapon"
+for _c in ARMOR_CATEGORIES:
+    GROUP_OF[_c] = "armor"
+for _c in GEAR_CATEGORIES:
+    GROUP_OF[_c] = "gear"
+for _c in REFINE_CATEGORIES:
+    GROUP_OF[_c] = "refined"
+
+
+def build_equipment(items, item_value):
+    """Weapons, armour, gear and the refining that feeds them.
+
+    Kept apart from the farming file on size alone: 6,600 rows against 400.
+    Everything here is shaped exactly like a farming recipe so the same engine
+    costs both - the only extra fields are `group`, for which list the app
+    files it under, and `refine`, because a refining bench pays a city's +40%
+    specialty where a crafting bench pays +15%.
+    """
+    recipes = []
+    meta = {}
+
+    def register(unique, group):
+        if unique and unique not in meta:
+            meta[unique] = {
+                "name": pretty(unique), "tier": tier_of(unique), "cat": group,
+            }
+
+    for el in items.iter():
+        req = el.find("craftingrequirements")
+        cat = el.get("craftingcategory")
+        unique = el.get("uniquename")
+        if req is None or not unique or "PROTOTYPE" in unique:
+            continue
+        if cat not in EQUIP_CATEGORIES + REFINE_CATEGORIES:
+            continue
+        group = GROUP_OF[cat]
+        # The game labels a refining bench's button differently from a
+        # crafting bench's, which is the only place the dumps say which of
+        # the two a recipe belongs to.
+        refine = req.get("craftbuttonlocaoverride") == REFINE_BUTTON
+
+        def add(rid, rreq, enchant):
+            inputs = []
+            for c in rreq.findall("craftresource"):
+                item = {"id": c.get("uniquename"), "count": int(c.get("count"))}
+                # Artefacts. The game hands back no part of one however much
+                # focus you spend, and on a T8 weapon the artefact is most of
+                # the bill, so this flag is the difference between a plan that
+                # works and one that is out by millions.
+                if c.get("maxreturnamount") == "0":
+                    item["noReturn"] = True
+                inputs.append(item)
+            if not inputs:
+                return
+            for i in inputs:
+                register(i["id"], meta.get(i["id"], {}).get("cat", "material"))
+            register(rid, group)
+            amount = int(rreq.get("amountcrafted", 1))
+            silver = int(float(rreq.get("silver", 0)))
+            # Six thousand rows, so anything the app can work out for itself
+            # is left out: the name and tier are in `items`, the group is in
+            # `groups` keyed by category, and a field equal to its default is
+            # not written at all. Reconstructed in js/equipment.js, which is
+            # the only thing that reads this file.
+            recipes.append({
+                "id": rid,
+                "category": cat,
+                **({"enchant": enchant} if enchant else {}),
+                **({"refine": True} if refine else {}),
+                **({"amount": amount} if amount != 1 else {}),
+                **({"silver": silver} if silver else {}),
+                "focus": int(float(rreq.get("craftingfocus", 0))),
+                "itemValue": round(
+                    sum(i["count"] * item_value(i["id"]) for i in inputs)
+                    / float(amount or 1), 2),
+                "inputs": inputs,
+            })
+
+        add(unique, req, 0)
+        # Equipment enchants to .4, one level further than a potion, and each
+        # level swaps every material for its own enchanted version rather
+        # than adding an extract on top.
+        for ench in el.findall("./enchantments/enchantment"):
+            ereq = ench.find("craftingrequirements")
+            level = int(ench.get("enchantmentlevel", 0))
+            if ereq is None or not level:
+                continue
+            add(f"{unique}@{level}", ereq, level)
+
+    recipes.sort(key=lambda x: (GROUP_OF[x["category"]], x["category"],
+                                tier_of(x["id"]), meta[x["id"]]["name"],
+                                x.get("enchant", 0)))
+    return recipes, meta
 
 
 def main() -> None:
@@ -651,6 +799,27 @@ def main() -> None:
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(data, indent=1))
     print(f"\nWrote {OUT.relative_to(HERE.parent.parent)}")
+
+    # --- weapons, armour and refining, in their own file ------------------
+    equip_recipes, equip_items = build_equipment(items, item_value)
+    equip_nodes = build_focus_nodes(("CRAFT_",))
+    equip = {
+        "source": OUT.name + " companion (items.xml, achievements.xml)",
+        "generated": data["generated"],
+        "recipes": equip_recipes,
+        # Which list a category belongs under, so 6,600 rows do not each
+        # carry the same word.
+        "groups": GROUP_OF,
+        # The weapon, armour and refining half of the destiny board. It rides
+        # with the recipes rather than with the farming file for the same
+        # reason they do: 317 nodes nobody brewing a potion will ever open.
+        "focusNodes": equip_nodes,
+        "items": equip_items,
+    }
+    # No separator spaces: at six thousand rows that alone is 300 KB over the
+    # wire, and nobody reads this file by hand.
+    OUT_EQUIP.write_text(json.dumps(equip, separators=(",", ":")))
+    print(f"Wrote {OUT_EQUIP.relative_to(HERE.parent.parent)}")
     if item_value.unknown:
         print(f"  {len(item_value.unknown)} items have no value and no recipe",
               file=sys.stderr)
@@ -661,6 +830,10 @@ def main() -> None:
     print(f"  {len(cities)} crafting/farming locations (from craftingmodifiers.xml "
           f"+ farmingmodifiers.xml)")
     print(f"  {len(focus_nodes)} destiny board focus nodes (from achievements.xml)")
+    kb = OUT_EQUIP.stat().st_size / 1024
+    print(f"  {len(equip_recipes)} weapon/armour/refining recipes, "
+          f"{len(equip_items)} items, {len(equip_nodes)} craft board nodes "
+          f"({kb:.0f} KB, loaded only when the Craft tab is opened)")
 
 
 if __name__ == "__main__":

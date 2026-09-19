@@ -133,10 +133,16 @@ export function focusEfficiency(itemId, settings) {
  * both from gamedata.xml. Premium halves the transaction tax (2.5 + 4 = 6.5%
  * against 2.5 + 8 = 10.5%).
  */
-export const taxRate = (s) => {
+export const taxRate = (s, { instant = false } = {}) => {
   const setup = s.marketSetupFee ?? 2.5;
   const txn = (s.marketTransactionTax ?? 8) / (s.premium ? 2 : 1);
-  return (setup + txn) / 100;
+  /* Two charges, and only one of them is always due. The transaction tax is
+   * taken out of every sale. The setup fee is what it costs to PUT an order
+   * on the board, so accepting somebody else's standing offer skips it \u2014
+   * which is the only way you can sell to the Black Market. gamedata.xml
+   * publishes both rates and says nothing about when each applies, so that
+   * split is a reading of the game rather than a line in its tables. */
+  return (instant ? txn : setup + txn) / 100;
 };
 
 /**
@@ -465,6 +471,131 @@ export function craftBatch(recipe, {
     revenue, profit,
     margin: revenue > 0 ? profit / revenue : 0,
     silverPerFocus: focus > 0 ? profit / focus : null,
+  };
+}
+
+/* ------------------------------------------------- crafting to order ---- */
+
+/**
+ * What it costs to make a run of something, and what you get back for it.
+ *
+ * This is the whole profit and loss for one batch, with no farm anywhere in
+ * it: you decide what to buy and what to make yourself, and it tells you the
+ * shopping list, the focus, the station's cut and what is left. It is the
+ * same engine whether the thing is a potion, a sword or a stack of steel
+ * bars \u2014 the game costs all three the same way, and the only difference is
+ * which list the recipe came out of.
+ *
+ * `make` is the set of input ids you would rather craft than buy. Anything
+ * not in it is bought, which is the honest default: most people buy their
+ * bars. Putting an id in it walks one level deeper and buys ITS inputs
+ * instead, and so on down, so "refine my own ore" and "buy the bars" are the
+ * same question asked at different depths.
+ *
+ * Returns fractional crafts rather than rounding. You are pricing a run, not
+ * pressing the button, and rounding 812.4 up to 813 quietly adds a craft's
+ * worth of focus to every answer.
+ */
+export function craftPnL(recipeId, {
+  recipeOf, qty = 1, make = new Set(),
+  priceOf, costOf = priceOf, sellPriceOf = priceOf,
+  settings, cityId, specLevel, sellInstant = false, maxDepth = 6,
+}) {
+  const top = recipeOf(recipeId);
+  if (!top) return null;
+
+  const steps = [];
+  const stepBy = new Map();      // the same bar can be wanted by two things
+  const bought = {};
+  const missing = new Set();
+  let focus = 0;
+  let fees = 0;
+  let buyCost = 0;
+
+  const buy = (id, units, bill) => {
+    if (!(units > 0)) return;
+    const at = bought[id] || (bought[id] = { id, qty: 0, cost: 0, unit: costOf(id) });
+    at.qty += units;
+    at.cost += bill;
+    buyCost += bill;
+  };
+
+  /* One item, some number of them wanted. Either you buy them, or you make
+   * them and the question moves down to what they are made of. */
+  const need = (itemId, units, depth, seen) => {
+    if (!(units > 0)) return null;
+    const recipe = depth < maxDepth && make.has(itemId) && !seen.has(itemId)
+      ? recipeOf(itemId) : null;
+    if (!recipe) {
+      const unit = costOf(itemId);
+      if (!unit) missing.add(itemId);
+      buy(itemId, units, units * unit);
+      return null;
+    }
+
+    const batch = craftBatch(recipe, { priceOf, costOf, settings, cityId, specLevel });
+    const crafts = units / (batch.made || 1);
+    focus += batch.focus * crafts;
+    const fee = ((recipe.silver || 0) + batch.usageFee) * crafts;
+    fees += fee;
+
+    const at = stepBy.get(recipe.id);
+    if (at) {
+      at.crafts += crafts;
+      at.made += units;
+      at.focus += batch.focus * crafts;
+      at.fee += fee;
+    } else {
+      const step = {
+        recipe, batch, crafts, made: units, depth,
+        focus: batch.focus * crafts, fee,
+      };
+      stepBy.set(recipe.id, step);
+      steps.push(step);
+    }
+
+    // Down a level. `seen` stops a recipe that somehow names itself from
+    // recursing for ever; the tier ladder in refining (a T5 bar eats a T4
+    // bar) is not a cycle and walks all the way down to raw ore.
+    const below = new Set(seen).add(itemId);
+    for (const i of batch.inputs) need(i.id, i.net * crafts, depth + 1, below);
+    return batch;
+  };
+
+  const topBatch = craftBatch(top, { priceOf, costOf, settings, cityId, specLevel });
+  const crafts = qty / (topBatch.made || 1);
+  focus += topBatch.focus * crafts;
+  const topFee = ((top.silver || 0) + topBatch.usageFee) * crafts;
+  fees += topFee;
+  const topStep = {
+    recipe: top, batch: topBatch, crafts, made: qty, depth: 0,
+    focus: topBatch.focus * crafts, fee: topFee, target: true,
+  };
+  stepBy.set(top.id, topStep);
+  steps.push(topStep);
+  for (const i of topBatch.inputs) need(i.id, i.net * crafts, 1, new Set([top.id]));
+
+  const unitPrice = sellPriceOf(recipeId);
+  if (!unitPrice) missing.add(recipeId);
+  const tax = taxRate(settings, { instant: sellInstant });
+  const gross = qty * unitPrice;
+  const revenue = gross * (1 - tax);
+  const cost = buyCost + fees;
+  const profit = revenue - cost;
+
+  return {
+    recipe: top, qty, crafts, sellInstant, unitPrice,
+    // Deepest first, so the list reads in the order you would actually do it.
+    steps: steps.slice().sort((a, b) => b.depth - a.depth || a.recipe.id.localeCompare(b.recipe.id)),
+    buys: Object.values(bought).sort((a, b) => b.cost - a.cost || b.qty - a.qty),
+    focus, fees, buyCost, cost,
+    gross, tax, taxPaid: gross - revenue, revenue, profit,
+    margin: revenue > 0 ? profit / revenue : 0,
+    perItem: qty > 0 ? profit / qty : 0,
+    silverPerFocus: focus > 0 ? profit / focus : null,
+    // A missing price reads as free on the way in and worthless on the way
+    // out, so a run with any of these is not a number, it is a gap.
+    missing: [...missing],
   };
 }
 

@@ -3,9 +3,14 @@
 import { loadGameData, hydrate, state, subscribe } from './store.js';
 import {
   acceptSpare, openAddCraft, openAddPlot, openBoard, openCraft, openCraftCity,
-  openCycle, openFarm, openFarmCity, openGoal, openMastery, openPlot, openPrice,
-  openPriceSource, openSettings, runPriceFetch, runSolve,
+  openCraftPick, openCycle, openFarm, openFarmCity, openGoal, openMastery,
+  openPlot, openPrice, openPriceSource, openSettings, runCraftPriceFetch,
+  runPriceFetch, runSolve,
 } from './sheets.js';
+import {
+  ensureGear, setCraftQty, setCraftRerender, setCraftSellTo, setCraftTarget,
+  toggleMake,
+} from './craft.js';
 import { $, closeSheet, sheetIsOpen } from './ui.js';
 import {
   setPriceFilter, setRankTab, views,
@@ -23,6 +28,9 @@ function render() {
 
 function go(name) {
   if (!views[name]) return;
+  // The weapon and armour file is two megabytes, so it is fetched the first
+  // time you ask for it and not before.
+  if (name === 'craft') ensureGear();
   current = name;
   for (const b of document.querySelectorAll('#nav button')) {
     b.removeAttribute('aria-current');
@@ -48,9 +56,14 @@ function wire() {
     const el = e.target.closest(
       '[data-act],[data-plot],[data-craft],[data-price],[data-rank],' +
       '[data-price-filter],[data-toggle],[data-add-plot],[data-add-craft],' +
-      '[data-add-step],[data-add-spare]');
+      '[data-add-step],[data-add-spare],[data-craft-sell],[data-make],' +
+      '[data-craft-city]');
     if (!el) return;
     const d = el.dataset;
+
+    if (d.craftSell) { setCraftSellTo(d.craftSell); return; }
+    if (d.make) { toggleMake(d.make); return; }
+    if (d.craftCity) { setSettings({ craftCity: d.craftCity }); return; }
 
     if (d.plot) {
       const row = state.plan.plots.find((p) => p.id === d.plot);
@@ -107,7 +120,26 @@ function wire() {
       openMastery();
     } else if (d.act === 'board') {
       openBoard();
+    } else if (d.act === 'craft-pick') {
+      openCraftPick();
+    } else if (d.act === 'craft-prices') {
+      runCraftPriceFetch();
+    } else if (d.act === 'buy-instead') {
+      /* The other half of the same question. The farming plan answers "what
+       * should I grow to make this"; the Craft tab answers "what if I just
+       * buy the lot and brew", which is the same recipe costed with no farm
+       * under it. Nothing to configure — it is a different screen, not a
+       * different mode. */
+      setCraftTarget(state.goal.recipeId);
+      go('craft');
     }
+  });
+
+  // The quantity box is typed into rather than tapped, so it does not go
+  // through the click handler above.
+  $('#view').addEventListener('change', (e) => {
+    const box = e.target.closest('[data-craft-qty]');
+    if (box) setCraftQty(box.value);
   });
 
   window.addEventListener('popstate', () => {
@@ -131,6 +163,9 @@ async function boot() {
     return;
   }
   subscribe(render);
+  // The Craft tab finishes loading its data after the first paint, so it
+  // needs a way to ask for a redraw once it has.
+  setCraftRerender(() => { if (current === 'craft') render(); });
   wire();
   go('plan');
 }

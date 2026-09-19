@@ -8,6 +8,7 @@ import {
   costOf, DATA, hasOwnCost, landSummary, plotsOwned, priceOf, state,
 } from './store.js';
 import { serverName } from './prices.js';
+import { craft } from './craft.js';
 import { esc } from './ui.js';
 import { enchantOf, hours, pct, short, silver, tierText, toneOf } from './util.js';
 
@@ -253,6 +254,9 @@ function goalCard() {
           ? `${goal.cycleDays} days` : 'as long as it takes')}
         <button class="btn primary" data-act="solve" ${recipe ? '' : 'disabled'}>
           ${state.plan.plots.length ? 'Work it out again' : 'Work it out'}</button>
+        ${recipe ? `<button class="linkish" data-act="buy-instead"
+          style="margin-top:10px">Or price it with the materials bought \u2192</button>`
+          : ''}
       </div>
       ${moved.length ? `
         <button class="row warn" data-act="solve" style="margin-top:10px">
@@ -1089,7 +1093,7 @@ export function cycleFor(itemId, mode, cityId) {
   return mode === 'product' ? productCycle(a, c) : animalCycle(a, c);
 }
 
-export const views = { plan, rank, prices };
+export const views = { plan, craft, rank, prices };
 
 const round1 = (n) => String(Math.round(n * 10) / 10);
 

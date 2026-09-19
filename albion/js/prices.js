@@ -28,6 +28,16 @@ export const CITIES = [
   'Thetford', 'Brecilien',
 ];
 
+/**
+ * The Black Market is a city to the data project and not a city to a player.
+ * It sits under Caerleon, it only ever buys \u2014 "Sell Equipment, it becomes
+ * part of Albion's loot" \u2014 and it only takes equipment, never a potion or a
+ * sheaf of wheat. So it is quoted on its standing buy orders rather than on a
+ * shelf price, which is why it is kept out of CITIES: asking it for a
+ * sell_price_min gets you a column of zeroes.
+ */
+export const BLACK_MARKET = 'Black Market';
+
 const BATCH = 100;          // keep the URL comfortably short
 const chunk = (arr, n) =>
   Array.from({ length: Math.ceil(arr.length / n) }, (_, i) => arr.slice(i * n, i * n + n));
@@ -40,7 +50,7 @@ const chunk = (arr, n) =>
  * `onProgress` is called with (done, total) so the UI can show movement.
  */
 export async function fetchPrices(ids, { server = 'americas', city = 'Caerleon',
-  maxAgeHours = 0, onProgress, signal } = {}) {
+  field = 'sell', maxAgeHours = 0, onProgress, signal } = {}) {
   const host = hostFor(server);
   if (!host) throw new Error(`Unknown server "${server}"`);
 
@@ -61,16 +71,24 @@ export async function fetchPrices(ids, { server = 'americas', city = 'Caerleon',
     const rows = await res.json();
     if (!Array.isArray(rows)) throw new Error('Price server sent an unexpected reply.');
 
+    /* Which side of the book to read. A shelf price is what you pay to buy
+     * one; a standing buy order is what you are handed the moment you accept
+     * it. The Black Market has only the second kind. */
+    const key = field === 'buy' ? 'buy_price_max' : 'sell_price_min';
     for (const row of rows) {
-      const value = Number(row?.sell_price_min);
+      const value = Number(row?.[key]);
       if (!Number.isFinite(value) || value <= 0) continue;
       if (cutoff) {
-        const seen = Date.parse(row.sell_price_min_date || '');
+        const seen = Date.parse(row[`${key}_date`] || '');
         if (Number.isFinite(seen) && seen < cutoff) { stale++; continue; }
       }
-      // Several rows can come back per item; keep the cheapest offer.
+      /* Several rows can come back per item. On the shelf you want the
+       * cheapest; on a buy order you want the best price anyone is offering,
+       * which is the highest. */
       const id = row.item_id;
-      prices[id] = prices[id] ? Math.min(prices[id], value) : value;
+      prices[id] = prices[id]
+        ? (field === 'buy' ? Math.max(prices[id], value) : Math.min(prices[id], value))
+        : value;
     }
     onProgress?.(i + 1, batches.length);
   }
