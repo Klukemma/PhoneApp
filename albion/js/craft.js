@@ -92,6 +92,7 @@ export const GROUPS = [
   ['weapon', 'Weapons', '\u{2694}\u{FE0F}'],
   ['armor', 'Armour', '\u{1F6E1}\u{FE0F}'],
   ['gear', 'Bags, capes and tools', '\u{1F392}'],
+  ['mount', 'Mounts', '\u{1F40E}'],
 ];
 const GROUP_NAME = Object.fromEntries(GROUPS.map(([k, label]) => [k, label]));
 const GROUP_ICON = Object.fromEntries(GROUPS.map(([k, , icon]) => [k, icon]));
@@ -119,6 +120,15 @@ export const gearStatus = () => gearState;
  */
 export const sellsToBlackMarket = (recipe) =>
   ['weapon', 'armor', 'gear'].includes(groupOf(recipe || {}));
+
+/**
+ * What comes off the bench in five grades. Equipment does, and so does a
+ * saddled mount \u2014 items.xml gives 26 of the 27 farm mounts maxqualitylevel=5
+ * \u2014 but the Black Market takes no mounts (loot.xml has none), so this is a
+ * different question from the one above.
+ */
+export const hasQuality = (recipe) =>
+  ['weapon', 'armor', 'gear', 'mount'].includes(groupOf(recipe || {}));
 
 /** Where this run is sold, and for how much a piece. */
 function sellSide(recipe) {
@@ -149,7 +159,7 @@ export function currentRun() {
   /* Only equipment has quality. A potion, a meal and a stack of bars come off
    * the bench at one grade, so asking for a mix there would spread a run
    * across four prices that do not exist. */
-  const graded = ['weapon', 'armor', 'gear'].includes(groupOf(recipe));
+  const graded = hasQuality(recipe);
   const quality = graded ? mixFor(id, state.settings, recipe.maxQuality ?? 5) : null;
   const run = craftPnL(id, {
     recipeOf,
@@ -167,8 +177,11 @@ export function currentRun() {
      * made of your own bars is genuinely two cities. Either you accept that
      * and ride between them, or you do the lot in one place and pay for it in
      * materials. The switch is the whole multi-city question in one tap. */
+    // No city specialises in saddlery, so a mount step stays where you are
+    // rather than being sent to whichever tied city happens to sort first.
     cityOf: state.settings.craftWhere === 'best'
-      ? (r) => bestCityFor(r.category, state.settings).id
+      ? (r) => (r.category === 'mount'
+        ? state.settings.craftCity : bestCityFor(r.category, state.settings).id)
       : null,
   });
   return run ? { ...run, sell, quality } : null;
@@ -570,7 +583,7 @@ export function rankCraft() {
     // Equipment comes off the bench at five different grades that sell for
     // five different prices, so a ranked list that priced it all as plain
     // would put the wrong things at the top.
-    const graded = sellsToBlackMarket(recipe);
+    const graded = hasQuality(recipe);
     const quality = graded
       ? mixFor(recipe.id, state.settings, recipe.maxQuality ?? 5).mix : null;
     const market = craftPnL(recipe.id, {
@@ -579,7 +592,7 @@ export function rankCraft() {
       cityId: state.settings.craftCity,
     });
     if (!market) continue;
-    const black = graded && bmPriceOf(recipe.id)
+    const black = sellsToBlackMarket(recipe) && bmPriceOf(recipe.id)
       ? craftPnL(recipe.id, {
         recipeOf, qty: 1, priceOf, costOf, sellPriceOf: bmPriceOf,
         sellPriceAt: qBmPriceOf, sellMix: quality,

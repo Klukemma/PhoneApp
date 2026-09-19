@@ -24,8 +24,8 @@ import {
 } from './views.js';
 import {
   GROUPS, allRecipes, craftTarget, currentRun, ensureGear, gearReady, groupIcon,
-  groupOf as craftGroupOf, nameOf as craftNameOf, recipeOf, scanBlackIds,
-  scanIds, setCraftTarget,
+  groupOf as craftGroupOf, hasQuality as craftHasQuality, nameOf as craftNameOf,
+  recipeOf, scanBlackIds, scanIds, setCraftTarget,
 } from './craft.js';
 
 /* Whichever file knows this item. Once the Craft tab has loaded the weapon
@@ -783,6 +783,9 @@ export function openPrice(id, market = null, busy = false, err = null) {
   // has it: it buys weapons, armour, bags, capes and tools, and nothing else.
   const takesBlack = ['weapon', 'armor', 'gear']
     .includes(craftGroupOf(recipeOf(id) || {}));
+  // Quality is a wider net than the Black Market: a saddled mount comes in
+  // five grades too, and the Black Market takes no mounts at all.
+  const graded = craftHasQuality(recipeOf(id) || {});
   const black = bmPriceOf(id);
 
   const quotes = (rows, key, best, target) => rows.map((r, n) => {
@@ -831,6 +834,8 @@ export function openPrice(id, market = null, busy = false, err = null) {
           this is a sell price and never a cost, and filling an order that is
           already there skips the setup fee.</div></div>
 
+    ` : ''}
+    ${graded ? `
       <div class="field">
         <label>Above plain</label>
         <div class="two">
@@ -841,15 +846,14 @@ export function openPrice(id, market = null, busy = false, err = null) {
               <input type="number" inputmode="numeric" min="0" step="1"
                 data-q="${q}" placeholder="market"
                 value="${qPriceOf(id, q) || ''}">
-              <input type="number" inputmode="numeric" min="0" step="1"
+              ${takesBlack ? `<input type="number" inputmode="numeric" min="0" step="1"
                 data-qb="${q}" placeholder="black market" style="margin-top:4px"
-                value="${qBmPriceOf(id, q) || ''}"></div>`).join('')}
+                value="${qBmPriceOf(id, q) || ''}">` : ''}</div>`).join('')}
         </div>
-        <div class="hint">The market prices these separately and so does the
-          Black Market, and the gap is the whole reason quality is worth
-          having. Top box is the open market, bottom is the Black Market.
-          Anything left blank is counted at the plain price, which understates
-          what a run is worth rather than overstating it.</div>
+        <div class="hint">The market prices each grade separately${takesBlack
+          ? ', and so does the Black Market: top box is the market, bottom the Black Market'
+          : ''}. Anything left blank is counted at the plain price, which
+          understates what a run is worth rather than overstating it.</div>
       </div>` : ''}
     <div class="hint" style="margin:-4px 0 12px">Leave "you pay" blank and it
       costs the same as it sells for. Set it when you buy this in cheaper than

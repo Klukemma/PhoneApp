@@ -67,6 +67,12 @@ GEAR_CATEGORIES = ("offhand", "cape", "bag", "tools", "gatherergear")
 # below as well as the raw ore.
 REFINE_CATEGORIES = ("ore", "wood", "hide", "fiber", "rock")
 EQUIP_CATEGORIES = WEAPON_CATEGORIES + ARMOR_CATEGORIES + GEAR_CATEGORIES
+# A <mount> carries no craftingcategory at all, and no city specialises in
+# saddlery, so mounts get a category of their own here: base +18 everywhere,
+# nothing extra anywhere. What a saddler recipe eats is the grown animal in
+# full (maxreturnamount="0" on every one of the 45) plus leather, planks, or
+# cloth and bars that come back at the return rate.
+MOUNT_CATEGORY = "mount"
 REFINE_BUTTON = "@CRAFTBUILDING_ITEM_DETAILS_BUTTON_REFINE"
 
 # The five quality levels, in the order the game lists them. The names are
@@ -405,6 +411,7 @@ for _c in GEAR_CATEGORIES:
     GROUP_OF[_c] = "gear"
 for _c in REFINE_CATEGORIES:
     GROUP_OF[_c] = "refined"
+GROUP_OF[MOUNT_CATEGORY] = "mount"
 
 
 def build_equipment(items, item_value, weights):
@@ -432,7 +439,18 @@ def build_equipment(items, item_value, weights):
         unique = el.get("uniquename")
         if req is None or not unique or "PROTOTYPE" in unique:
             continue
-        if cat not in EQUIP_CATEGORIES + REFINE_CATEGORIES:
+        if el.tag == "mount":
+            # Only what a farmer can make: a saddler recipe that eats a grown
+            # farm animal. That leaves out skins and upgrades (they eat a
+            # finished mount), battle mounts and faction mounts (they eat a
+            # GvG or faction token no market sells), and two hidden test rows.
+            ins = [c.get("uniquename") or "" for c in req.findall("craftresource")]
+            if el.get("hidefromplayeroncontext") == "all":
+                continue
+            if not any("_FARM_" in i for i in ins) or any("TOKEN" in i for i in ins):
+                continue
+            cat = MOUNT_CATEGORY
+        if cat not in EQUIP_CATEGORIES + REFINE_CATEGORIES + (MOUNT_CATEGORY,):
             continue
         group = GROUP_OF[cat]
         # The game labels a refining bench's button differently from a

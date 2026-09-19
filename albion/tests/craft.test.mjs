@@ -539,3 +539,53 @@ test('a craft job with no city of its own follows the setting', () => {
   // job editor relies on, and the reason the solver must not stamp it.
   assert.equal(Math.round(run(pinned, 'brecilien')), Math.round(run(pinned, 'island')));
 });
+
+/* ------------------------------------------------------------- mounts -- */
+
+test('a grown horse can be saddled, and the horse never comes back', () => {
+  // items.xml <mount> T5_MOUNT_HORSE: 1x T5_FARM_HORSE_GROWN maxreturnamount="0"
+  // + 20x T5_LEATHER, craftingfocus 1876, silver 0, no craftingcategory.
+  const horse = recipeOf('T5_MOUNT_HORSE');
+  assert.ok(horse, 'the saddler recipe exists');
+  assert.equal(horse.group, 'mount');
+  assert.equal(horse.category, 'mount');
+  assert.equal(horse.focus, 1876);
+  assert.deepEqual(horse.inputs, [
+    { id: 'T5_FARM_HORSE_GROWN', count: 1, noReturn: true },
+    { id: 'T5_LEATHER', count: 20 },
+  ]);
+  assert.deepEqual(recipeOf('T8_MOUNT_OX').inputs, [
+    { id: 'T8_FARM_OX_GROWN', count: 1, noReturn: true },
+    { id: 'T8_PLANKS', count: 30 },
+  ]);
+  // Only what a farmer can make: no skins, upgrades, battle or faction mounts.
+  const mounts = gear.filter((r) => r.group === 'mount');
+  assert.equal(mounts.length, 27);
+  assert.ok(mounts.every((r) => r.inputs.some((i) => i.id.includes('_FARM_'))));
+  assert.ok(mounts.every((r) => !r.inputs.some((i) => i.id.includes('TOKEN'))));
+  // The drake is the one mount pinned at plain quality.
+  assert.equal(recipeOf('T8_MOUNT_DRAKE_FIRE').maxQuality, 1);
+  assert.equal(horse.maxQuality, undefined);
+});
+
+test('no city specialises in saddlery, so a mount pays the flat base everywhere', () => {
+  const s = ctx().settings;
+  for (const c of s.cities) {
+    if (c.id === 'island') continue;
+    const b = bestCityFor('mount', s);
+    assert.equal(b.craftSpecialties?.mount, undefined);
+  }
+  const run = craftPnL('T5_MOUNT_HORSE', {
+    ...ctx({ cityId: 'lymhurst' }),
+    priceOf: (id) => ({ T5_FARM_HORSE_GROWN: 60000, T5_LEATHER: 1200, T5_MOUNT_HORSE: 120000 })[id] ?? 0,
+    qty: 10,
+  });
+  assert.equal(Math.round(run.steps[0].batch.rrr * 1000) / 10, 43.5, '18 base + 59 focus');
+  // The horse is charged in full: ten crafts, ten horses, none returned.
+  const horses = run.buys.find((b) => b.id === 'T5_FARM_HORSE_GROWN');
+  assert.equal(horses.qty, 10);
+  assert.equal(horses.net, 10);
+  const leather = run.buys.find((b) => b.id === 'T5_LEATHER');
+  assert.ok(leather.net < 200, 'while the leather comes back at the rate');
+  assert.equal(Math.round(run.profit), Math.round(run.revenue - run.buyCost - run.fees));
+});
