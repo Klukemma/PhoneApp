@@ -203,6 +203,7 @@ export function plan() {
 
       ${haulCard(sim)}
       ${buyCard(sim)}
+      ${craftWhereCard(sim)}
 
       <section>
         <div class="section-head"><h2>Craft · end of cycle</h2>
@@ -774,6 +775,79 @@ function missingPrices() {
  * plan never said so. Only what the crafting actually gets through makes the
  * trip; what stays on the pile stays where it grew.
  */
+/**
+ * Where you do the crafting, and what each city would be worth.
+ *
+ * The return rate is the biggest lever on a batch and it is decided by which
+ * building you walk into, so this re-runs the whole cycle in every city and
+ * shows the difference rather than making you take one on trust. Eleven runs
+ * of the simulator is about ten milliseconds, which is cheaper than being
+ * wrong about it.
+ */
+function craftWhereCard(sim) {
+  const s = state.settings;
+  const cities = s.cities || [];
+  if (!sim.craftLines.length || cities.length < 2) return '';
+
+  const rows = cities.map((city) => {
+    if (city.id === s.craftCity) {
+      return { city, profit: sim.profit, weight: haulWeight(sim), here: true };
+    }
+    // The same two passes plan() itself does, so the comparison is against
+    // like and not against a rougher answer.
+    const at = (f) => ({ ...ctx(f), settings: { ...s, craftCity: city.id } });
+    const probe = simulateCycle(state.plan, DATA, at(1));
+    const run = simulateCycle(state.plan, DATA, at(probe.wateredFraction));
+    return { city, profit: run.profit, weight: haulWeight(run), here: false };
+  });
+
+  /* Half the cities pay exactly the same for a potion, because only one of
+   * them specialises in it. Listing all eleven is a scroll that hides the
+   * one decision worth making, so cities that pay alike are collapsed to the
+   * one you would carry least to — which is the only thing separating them. */
+  const groups = new Map();
+  for (const r of rows) {
+    const key = Math.round(r.profit);
+    const at = groups.get(key) || { profit: r.profit, all: [] };
+    at.all.push(r);
+    if (!at.pick || r.weight < at.pick.weight) at.pick = r;
+    if (r.here) { at.pick = r; at.here = true; }
+    groups.set(key, at);
+  }
+  const shown = [...groups.values()].sort((a, b) => b.profit - a.profit);
+  const best = shown[0].profit;
+
+  return `
+    <section>
+      <div class="section-head"><h2>Craft in</h2>
+        <span class="right">tap to move</span></div>
+      ${shown.map((g) => {
+        const r = g.pick;
+        const delta = r.profit - sim.profit;
+        const others = g.all.length - 1;
+        return `
+        <button class="row" data-craft-city="${esc(r.city.id)}"
+          ${g.here ? 'style="border-color:var(--gold)"' : ''}>
+          <span class="ico">${r.city.id === 'island' ? '\u{1F3DD}\u{FE0F}' : '\u{1F3EF}'}</span>
+          <span class="body">
+            <span class="title">${esc(r.city.name)}${
+              r.profit === best && !g.here ? ' <small>best</small>' : ''}</span>
+            <span class="meta">${short(r.profit)} a cycle \u00b7 ${
+              short(r.weight)} kg to carry${g.here ? ' \u00b7 where you are now' : ''}${
+              others ? ` \u00b7 same in ${others} other ${
+                others === 1 ? 'city' : 'cities'}, further to ride` : ''}</span>
+          </span>
+          <span class="amt num ${g.here ? '' : toneOf(delta)}">${
+            g.here ? '\u2713' : `${delta > 0 ? '+' : ''}${short(delta)}`}</span>
+        </button>`;
+      }).join('')}
+      <div class="hint">Each is the whole cycle run again there: its return
+        rate, its specialty, its fee, and the extra ride.</div>
+    </section>`;
+}
+
+const haulWeight = (sim) => (sim.legs || []).reduce((t, l) => t + l.weight, 0);
+
 function haulCard(sim) {
   const legs = sim.legs || [];
   if (!legs.length) return '';
