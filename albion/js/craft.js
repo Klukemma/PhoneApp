@@ -419,3 +419,134 @@ function whereHTML(run, recipe) {
         real money.</div>
     </section>`;
 }
+
+/* ------------------------------------------------------------- rank ---- */
+
+/* Which slice of the six thousand to price and rank. You cannot fetch them
+ * all — that is 67 batches of market prices and another 67 of Black Market
+ * ones — so the scan is one group at one tier, which is 20 to 200 rows and
+ * comes back in a couple of seconds. */
+export const scan = () => state.settings.craftScan
+  || { group: 'weapon', tier: 4, enchant: 0 };
+export const setScan = (patch) =>
+  setSettings({ craftScan: { ...scan(), ...patch } });
+
+/** Every recipe in the slice the Best tab is looking at. */
+export function scanRecipes() {
+  const { group, tier, enchant } = scan();
+  return allRecipes().filter((r) => groupOf(r) === group
+    && r.tier === tier && (r.enchant || 0) === enchant);
+}
+
+/**
+ * Rank a slice on what one craft of it earns.
+ *
+ * Every row buys all its materials, because that is the comparison that makes
+ * sense across a list: how deep you would refine is a decision per item, and
+ * folding it in here would rank the items you happen to have thought about
+ * above the ones you have not. Each row is a link into the Craft tab, where
+ * the refining choice lives.
+ */
+export function rankCraft() {
+  const rows = [];
+  for (const recipe of scanRecipes()) {
+    const market = craftPnL(recipe.id, {
+      recipeOf, qty: 1, priceOf, costOf, settings: state.settings,
+      cityId: state.settings.craftCity,
+    });
+    if (!market) continue;
+    const black = sellsToBlackMarket(recipe) && bmPriceOf(recipe.id)
+      ? craftPnL(recipe.id, {
+        recipeOf, qty: 1, priceOf, costOf, sellPriceOf: bmPriceOf,
+        sellInstant: true, settings: state.settings,
+        cityId: state.settings.craftCity,
+      })
+      : null;
+    // Whichever side of the market pays more for the same work.
+    const best = black && black.profit > market.profit ? black : market;
+    rows.push({
+      recipe, market, black, best,
+      where: best === black ? 'black' : 'market',
+      // A row missing a price is not a zero, it is an unknown, and mixing the
+      // two into one sorted list is how a plan built on nothing looks good.
+      ready: best.missing.length === 0,
+      missing: best.missing,
+    });
+  }
+  rows.sort((a, b) => {
+    if (a.ready !== b.ready) return a.ready ? -1 : 1;
+    return b.best.profit - a.best.profit;
+  });
+  return rows;
+}
+
+export function craftRankHTML() {
+  const { group, tier, enchant } = scan();
+  const rows = rankCraft();
+  const ready = rows.filter((r) => r.ready);
+  const top = Math.max(...ready.map((r) => Math.abs(r.best.profit)), 1);
+
+  const row = (r) => {
+    const w = (Math.abs(r.best.profit) / top) * 100;
+    const perFocusTxt = r.best.silverPerFocus != null
+      ? `${perFocus(r.best.silverPerFocus)}/focus` : 'no focus';
+    return `
+      <button class="row rank" data-craft-rank="${esc(r.recipe.id)}">
+        <span class="ico">${groupIcon(groupOf(r.recipe))}</span>
+        <span class="body">
+          <span class="title">${tierText(r.recipe.tier, r.recipe.enchant)} ${esc(r.recipe.name)}</span>
+          <span class="meta">${r.ready
+            ? `${perFocusTxt} · ${short(r.best.buyCost)} of materials${
+              r.where === 'black' ? ' · best at the Black Market' : ''}${
+              r.black && r.where !== 'black'
+                ? ` · Black Market ${short(r.black.profit)}` : ''}`
+            : `needs a price for ${esc(r.missing.map(nameOf).slice(0, 2).join(', '))}${
+              r.missing.length > 2 ? ` and ${r.missing.length - 2} more` : ''}`}</span>
+          ${r.ready ? `<span class="bar"><i class="${toneOf(r.best.profit)}"
+            style="width:${w.toFixed(1)}%"></i></span>` : ''}
+        </span>
+        <span class="amt num ${r.ready ? toneOf(r.best.profit) : 'flat'}">${
+          r.ready ? short(r.best.profit) : '—'}</span>
+      </button>`;
+  };
+
+  return `
+    <div class="card toggle-card">
+      ${GROUPS.map(([k, label]) => `
+        <button class="mini" data-scan-group="${esc(k)}"
+          aria-pressed="${k === group}">${esc(label)}</button>`).join('')}
+    </div>
+    <div class="card toggle-card" style="margin-top:8px">
+      ${[1, 2, 3, 4, 5, 6, 7, 8].map((t) => `
+        <button class="mini" data-scan-tier="${t}" aria-pressed="${t === tier}">T${t}</button>`).join('')}
+      ${[0, 1, 2, 3, 4].map((e) => `
+        <button class="mini" data-scan-enchant="${e}"
+          aria-pressed="${e === enchant}">${e ? `.${e}` : 'plain'}</button>`).join('')}
+    </div>
+    <button class="btn primary" data-act="scan-prices" style="margin-top:10px">
+      ↓ Fetch prices for these ${rows.length}</button>
+    <div class="hint centered">Profit on one craft, materials all bought, in
+      ${esc(cityFor(state.settings)?.name || 'your crafting city')}. Whichever of
+      the market and the Black Market pays more is the one shown. Tap a row to
+      open it properly.</div>
+    ${rows.length ? rows.map(row).join('') : `
+      <div class="empty"><span class="e">\u{1F50D}</span>${
+        gearReady() ? 'Nothing at that tier.' : 'Still loading the list…'}</div>`}
+    ${ready.length === 0 && rows.length ? `
+      <div class="warn-note">None of these have prices yet. Fetch them above —
+        it is one request per hundred items, so this slice is quick.</div>` : ''}`;
+}
+
+/** The ids this slice needs priced, for the fetch button. */
+export function scanIds() {
+  const ids = new Set();
+  for (const r of scanRecipes()) {
+    ids.add(r.id);
+    for (const i of r.inputs) ids.add(i.id);
+  }
+  return [...ids];
+}
+
+/** Of those, the ones the Black Market will actually quote. */
+export const scanBlackIds = () =>
+  scanRecipes().filter(sellsToBlackMarket).map((r) => r.id);

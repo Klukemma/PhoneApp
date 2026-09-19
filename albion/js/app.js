@@ -5,11 +5,11 @@ import {
   acceptSpare, openAddCraft, openAddPlot, openBoard, openCraft, openCraftCity,
   openCraftPick, openCycle, openFarm, openFarmCity, openGoal, openMastery,
   openPlot, openPrice, openPriceSource, openSettings, runCraftPriceFetch,
-  runPriceFetch, runSolve,
+  runPriceFetch, runScanPriceFetch, runSolve,
 } from './sheets.js';
 import {
   ensureGear, setCraftQty, setCraftRerender, setCraftSellTo, setCraftTarget,
-  toggleMake,
+  setScan, toggleMake,
 } from './craft.js';
 import { $, closeSheet, sheetIsOpen } from './ui.js';
 import {
@@ -30,7 +30,7 @@ function go(name) {
   if (!views[name]) return;
   // The weapon and armour file is two megabytes, so it is fetched the first
   // time you ask for it and not before.
-  if (name === 'craft') ensureGear();
+  if (name === 'craft' || name === 'rank') ensureGear();
   current = name;
   for (const b of document.querySelectorAll('#nav button')) {
     b.removeAttribute('aria-current');
@@ -57,13 +57,20 @@ function wire() {
       '[data-act],[data-plot],[data-craft],[data-price],[data-rank],' +
       '[data-price-filter],[data-toggle],[data-add-plot],[data-add-craft],' +
       '[data-add-step],[data-add-spare],[data-craft-sell],[data-make],' +
-      '[data-craft-city]');
+      '[data-craft-city],[data-scan-group],[data-scan-tier],[data-scan-enchant],' +
+      '[data-craft-rank]');
     if (!el) return;
     const d = el.dataset;
 
     if (d.craftSell) { setCraftSellTo(d.craftSell); return; }
     if (d.make) { toggleMake(d.make); return; }
     if (d.craftCity) { setSettings({ craftCity: d.craftCity }); return; }
+    if (d.scanGroup) { setScan({ group: d.scanGroup }); return; }
+    if (d.scanTier) { setScan({ tier: Number(d.scanTier) }); return; }
+    if (d.scanEnchant) { setScan({ enchant: Number(d.scanEnchant) }); return; }
+    if (d.scanEnchant === '0') { setScan({ enchant: 0 }); return; }
+    // A ranked row is a shortcut into the tab that can actually answer it.
+    if (d.craftRank) { setCraftTarget(d.craftRank); go('craft'); return; }
 
     if (d.plot) {
       const row = state.plan.plots.find((p) => p.id === d.plot);
@@ -124,6 +131,8 @@ function wire() {
       openCraftPick();
     } else if (d.act === 'craft-prices') {
       runCraftPriceFetch();
+    } else if (d.act === 'scan-prices') {
+      runScanPriceFetch();
     } else if (d.act === 'buy-instead') {
       /* The other half of the same question. The farming plan answers "what
        * should I grow to make this"; the Craft tab answers "what if I just

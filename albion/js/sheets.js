@@ -22,7 +22,8 @@ import {
 } from './views.js';
 import {
   GROUPS, allRecipes, craftTarget, currentRun, ensureGear, gearReady, groupIcon,
-  groupOf as craftGroupOf, nameOf as craftNameOf, recipeOf, setCraftTarget,
+  groupOf as craftGroupOf, nameOf as craftNameOf, recipeOf, scanBlackIds,
+  scanIds, setCraftTarget,
 } from './craft.js';
 
 const nameOf = (id) => DATA.items[id]?.name || id;
@@ -1641,6 +1642,77 @@ export async function runCraftPriceFetch() {
     }
     closeSheet();
     toast(`${out.found.length} prices updated${bmFound ? `, ${bmFound} from the Black Market` : ''}`);
+  } catch (err) {
+    if (controller.signal.aborted) return;
+    closeSheet();
+    openSheet(`
+      <h2>Could not fetch prices</h2>
+      <p class="muted">${esc(explain(err))}</p>
+      <div class="sheet-actions">
+        <button class="btn primary" id="ok">Enter them by hand</button>
+      </div>
+    `, { onMount: (r) => { $('#ok', r).onclick = closeSheet; } });
+  }
+}
+
+/**
+ * Prices for one slice of the equipment list, so the Best tab can rank it.
+ *
+ * A slice is one group at one tier — twenty to two hundred rows — which is a
+ * couple of requests. Pricing all 6,671 would be 134 of them, and a ranked
+ * list of things you cannot make at a tier you are not is not worth the wait.
+ */
+export async function runScanPriceFetch() {
+  const ids = scanIds();
+  const bmIds = scanBlackIds();
+  if (!ids.length) { toast('Nothing to price in this slice'); return; }
+
+  const sheet = openSheet(`
+    <h2>Fetching prices</h2>
+    <p class="muted">${ids.length} items from ${esc(state.settings.server)} ·
+      ${esc(state.settings.priceCity)}${bmIds.length
+        ? `, and ${bmIds.length} from the Black Market` : ''}</p>
+    <div class="meter big"><i class="spent" id="bar" style="width:6%"></i></div>
+    <p class="muted" id="status">Contacting the Albion Online Data Project…</p>
+    <div class="sheet-actions"><button class="btn ghost" id="cancel">Cancel</button></div>
+  `);
+  const controller = new AbortController();
+  $('#cancel', sheet).onclick = () => { controller.abort(); closeSheet(); };
+
+  try {
+    const out = await fetchPrices(ids, {
+      server: state.settings.server,
+      city: state.settings.priceCity,
+      signal: controller.signal,
+      onProgress: (done, total) => {
+        const bar = $('#bar', sheet);
+        if (bar) bar.style.width = `${Math.max(6, (done / total) * 70)}%`;
+        const st = $('#status', sheet);
+        if (st) st.textContent = `Market batch ${done} of ${total}…`;
+      },
+    });
+    setPrices(out.prices);
+
+    let bmFound = 0;
+    if (bmIds.length) {
+      const st = $('#status', sheet);
+      if (st) st.textContent = 'Asking the Black Market…';
+      const bm = await fetchPrices(bmIds, {
+        server: state.settings.server,
+        city: BLACK_MARKET,
+        field: 'buy',
+        signal: controller.signal,
+        onProgress: (done, total) => {
+          const bar = $('#bar', sheet);
+          if (bar) bar.style.width = `${70 + (done / total) * 30}%`;
+        },
+      });
+      setBmPrices(bm.prices);
+      bmFound = bm.found.length;
+    }
+    closeSheet();
+    toast(`${out.found.length} prices updated${
+      bmFound ? `, ${bmFound} from the Black Market` : ''}`);
   } catch (err) {
     if (controller.signal.aborted) return;
     closeSheet();

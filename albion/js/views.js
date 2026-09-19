@@ -8,7 +8,9 @@ import {
   costOf, DATA, hasOwnCost, landSummary, plotsOwned, priceOf, state,
 } from './store.js';
 import { serverName } from './prices.js';
-import { craft } from './craft.js';
+import {
+  craft, craftRankHTML, groupLabel, scan,
+} from './craft.js';
 import { esc } from './ui.js';
 import { enchantOf, hours, pct, short, silver, tierText, toneOf } from './util.js';
 
@@ -797,7 +799,10 @@ export function rank() {
   const s = state.settings;
   return {
     title: 'Best',
-    sub: rankTab === 'farm'
+    sub: rankTab === 'gear'
+      ? `${esc(groupLabel(scan().group))} · ${tierText(scan().tier, scan().enchant)} · in ${
+        cityFor(s)?.name || '—'}`
+      : rankTab === 'farm'
       // One row at a time, so there is no plan to say how far the focus
       // stretches: every plot is taken as watered.
       ? `${farmCityFor(s)?.name || '—'} · ${
@@ -807,12 +812,20 @@ export function rank() {
       <section>
         <div class="seg">
           <button data-rank="farm" aria-pressed="${rankTab === 'farm'}">Farm</button>
-          <button data-rank="craft" aria-pressed="${rankTab === 'craft'}">Craft</button>
+          <button data-rank="craft" aria-pressed="${rankTab === 'craft'}">Brew</button>
+          <button data-rank="gear" aria-pressed="${rankTab === 'gear'}">Gear</button>
         </div>
       </section>
       <section>
         <div class="card toggle-card">
-          ${rankTab === 'farm' ? `
+          ${rankTab === 'gear' ? `
+            <button class="mini" data-toggle="useFocus" aria-pressed="${s.useFocus}">
+              Use focus</button>
+            <button class="mini" data-toggle="premium" aria-pressed="${s.premium}">
+              Premium</button>
+            <button class="mini" data-act="craft-city">
+              ${esc(cityFor(s)?.name || 'Pick a city')} ▾</button>`
+          : rankTab === 'farm' ? `
             <button class="mini" data-toggle="watered" aria-pressed="${s.watered}">
               Water with focus</button>
             <button class="mini" data-toggle="premium" aria-pressed="${s.premium}">
@@ -830,7 +843,8 @@ export function rank() {
               Inputs from my farm</button>`}
         </div>
       </section>
-      <section>${rankTab === 'farm' ? farmRank(c) : craftRank(c)}</section>`,
+      <section>${rankTab === 'gear' ? craftRankHTML()
+        : rankTab === 'farm' ? farmRank(c) : craftRank(c)}</section>`,
   };
 }
 
