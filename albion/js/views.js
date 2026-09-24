@@ -13,7 +13,7 @@ import { serverName } from './prices.js';
 import {
   craft, craftRankHTML, groupLabel, recipeOf, scan,
 } from './craft.js';
-import { kitOf, rawId } from './gather.js';
+import { gatherRun, kitOf, rawId } from './gather.js';
 import { resourceExits } from './exits.js';
 import { me } from './me.js';
 import {
@@ -1163,13 +1163,22 @@ export function gatherRank() {
   const rows = [];
   for (const family of state.settings.gathering?.families || []) {
     const id = rawId(family, tier, 0);
+    /* Ask whether it can be gathered at all before asking what to do with it.
+     * A tool two tiers under the node, or a sort of node that does not exist
+     * at this tier, is a row with a reason on it rather than a row missing. */
+    const run = gatherRun(id, { qty: 999, settings: state.settings });
+    if (!run) continue;
+    if (run.impossible) {
+      rows.push({ family, id, tier, exits: [], best: null, blocked: run, missing: [] });
+      continue;
+    }
     const exits = resourceExits(id, ctxNow, { qty: 999 });
     if (!exits.length) continue;
     const ready = exits.filter((e) => !e.missing.length);
     rows.push({
       family, id, tier, exits,
       best: ready[0] || null,
-      blocked: exits[0]?.pnl?.gathered?.[id]?.impossible ? exits[0].pnl.gathered[id] : null,
+      blocked: null,
       missing: [...new Set(exits.flatMap((e) => e.missing))],
     });
   }

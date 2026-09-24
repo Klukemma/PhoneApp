@@ -286,6 +286,51 @@ test('a grade a node never rolls is refused, not quoted', () => {
   assert.equal(none.why, 'no tool set yet');
 });
 
+test('a node the game does not have at that tier is a reason, not a null', () => {
+  /* There is no T2 living resource and no guardian outside T6, so a kit set to
+   * one of those and pointed at the wrong tier used to hand every caller a
+   * null - and the screen that ranked five ways out of a pile fell over on it
+   * rather than saying there was no pile. */
+  const critter2 = gatherRun('T2_WOOD', { qty: 10, settings: kit({ gather: { kind: 'critter' } }) });
+  assert.equal(critter2.impossible, true);
+  assert.equal(critter2.ungatherable, true);
+  assert.match(critter2.why, /no T2 living resource/);
+  assert.equal(critter2.swingSeconds, 0);
+  assert.deepEqual(critter2.byproducts, []);
+  // And nothing to rank, said by an empty list rather than by an exception.
+  const rows = resourceExits('T2_WOOD', {
+    recipeOf, priceOf: () => 100,
+    settings: kit({ gather: { kind: 'critter' } }), cityId: 'fortsterling',
+  }, { qty: 999 });
+  assert.deepEqual(rows, []);
+  // Something that is not a resource at all is still not this engine's business.
+  assert.equal(gatherRun('T4_MAIN_SWORD', { qty: 10, settings: kit({}) }), null);
+});
+
+test('what the run picked up is never priced at the Black Market', () => {
+  /* The Black Market buys equipment and nothing else - it makes no offer on a
+   * log at any price. Pricing the byproducts at whatever the run itself sells
+   * into meant a Black Market sale silently valued every enchanted log it dug
+   * up at zero. */
+  const market = (id) => ({
+    T5_WOOD: 260, T5_WOOD_LEVEL1: 900, T5_WOOD_LEVEL2: 3000, T5_WOOD_LEVEL3: 9000,
+    T4_PLANKS: 700, T5_PLANKS: 1100,
+  }[id] ?? 0);
+  const base = {
+    recipeOf, qty: 500, priceOf: market, costOf: market,
+    settings: kit({ gather: { toolTier: 8 } }), cityId: 'fortsterling',
+    gather: new Set(['T5_WOOD']),
+  };
+  const onMarket = craftPnL('T5_PLANKS', base);
+  // The Black Market quotes the planks and has never heard of a log.
+  const onBlack = craftPnL('T5_PLANKS', {
+    ...base, sellPriceOf: (id) => (id === 'T5_PLANKS' ? 1400 : 0), sellInstant: true,
+  });
+  assert.ok(onMarket.byproductValue > 0);
+  assert.equal(round(onBlack.byproductValue), round(onMarket.byproductValue));
+  assert.equal(onBlack.byproducts.length, 3);
+});
+
 test('what fell out of the gathering is counted, and counted separately', () => {
   const prices = {
     T5_WOOD: 260, T4_PLANKS: 700, T5_PLANKS: 1100,

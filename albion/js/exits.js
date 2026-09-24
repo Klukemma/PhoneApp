@@ -21,9 +21,8 @@ import { enchantUp, gatherRun, rawIdOf, refinedOf, tierUp } from './gather.js';
  * leaving them off only this row would make selling the logs look worse than
  * refining them for a reason that has nothing to do with refining.
  */
-function sellRaw(rawId, qty, ctx) {
+function sellRaw(rawId, qty, run, ctx) {
   const price = ctx.sellPriceOf || ctx.priceOf;
-  const run = gatherRun(rawId, { qty, settings: ctx.settings });
   const unit = price(rawId);
   const gross = qty * unit;
   const tax = taxRate(ctx.settings);
@@ -85,6 +84,14 @@ function rawsPerUnit(id, rawId, ctx, make) {
 export function resourceExits(rawId, ctx, { qty = 999 } = {}) {
   const at = rawIdOf(rawId);
   if (!at) return [];
+  /* The run every row is costed against. If the game will not let you gather
+   * this at all - your tool is two tiers under it, there is no node of that
+   * sort at that tier, or it is a grade the node never rolls - then there is
+   * no pile to have routes out of, and a screen that listed them anyway would
+   * be ranking five ways to spend an afternoon you cannot have. The caller
+   * asks gatherRun itself for the reason. */
+  const base = gatherRun(rawId, { qty, settings: ctx.settings });
+  if (!base || base.impossible) return [];
   const recipeOf = ctx.recipeOf;
   const up = enchantUp(rawId);
   const over = tierUp(rawId);
@@ -106,7 +113,7 @@ export function resourceExits(rawId, ctx, { qty = 999 } = {}) {
   for (const route of routes) {
     if (!route.id) continue;
     if (route.key === 'raw') {
-      rows.push({ ...route, pnl: sellRaw(rawId, qty, ctx) });
+      rows.push({ ...route, pnl: sellRaw(rawId, qty, base, ctx) });
       continue;
     }
     if (!recipeOf(route.id)) continue;

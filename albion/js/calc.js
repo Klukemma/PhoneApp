@@ -812,7 +812,11 @@ export function craftPnL(recipeId, {
            * worth a multiple of a plain one, so this is real silver rather
            * than a curiosity - it just is not silver from the recipe. */
           for (const row of run.byproducts) {
-            const unit = sellPriceOf(row.id);
+            /* priceOf and never sellPriceOf: what this run sells its output
+             * into is a choice about the output, and the Black Market makes
+             * no offer at all on a log. Pricing them at the sale would have
+             * silently zeroed every one of them on a Black Market run. */
+            const unit = priceOf(row.id);
             if (!unit) continue;
             byproducts[row.id] = {
               id: row.id,

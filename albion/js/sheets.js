@@ -2252,10 +2252,13 @@ export function openResourceExits(id, qty = 999) {
     recipeOf, priceOf, costOf, sellPriceOf: priceOf,
     settings: s, cityId: s.craftCity,
   };
+  /* The run the whole sheet stands on. Asked for directly rather than dug out
+   * of the first row, because when it is impossible there are no rows and the
+   * reason is the only thing worth showing. */
+  const blocked = gatherRun(id, { qty, settings: s });
   const rows = resourceExits(id, ctxNow, { qty });
   const ready = rows.filter((r) => !r.missing.length);
   const best = ready[0] || null;
-  const blocked = rows[0]?.pnl?.gathered?.[id];
   const city = cityFor(s);
 
   /* The same pile under one thing changed, so the screen can say what that

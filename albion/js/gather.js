@@ -247,7 +247,18 @@ export function gatherRun(itemId, { qty = 999, settings }) {
   const { family, tier, enchant } = at;
   const kit = kitOf(settings);
   const rate = gatherRate(family, tier, enchant, settings);
-  if (!rate) return null;
+  if (!rate) {
+    /* There is no node of that sort at that tier - no T2 living resource, no
+     * guardian outside T6. A refusal with a reason on it, not a null: every
+     * caller has to be able to say why, and a null is a crash waiting for the
+     * one person whose kit is set to critters on the day they look at T2. */
+    return {
+      kind: 'gather', itemId, qty, impossible: true, ungatherable: true, rate: null,
+      why: `there is no T${tier} ${kindLabel(settings, kit.kind)} to harvest`,
+      assumed: [], hours: null, swingSeconds: 0, mix: [], byproducts: [],
+      fame: 0, weight: 0, harvests: 0, swings: 0, nodes: 0,
+    };
+  }
   if (rate.impossible) {
     return {
       kind: 'gather', itemId, qty, impossible: true, rate,
