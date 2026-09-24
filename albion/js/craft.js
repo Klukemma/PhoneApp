@@ -8,8 +8,8 @@
 // Black Market at the end of it.
 
 import {
-  QUALITY_LEVELS, bestCityFor, craftPnL, cityBonus, cityFor, focusEfficiency,
-  mixFor, specFor,
+  bestCityFor, cityBonus, cityFor, craftPnL, focusEfficiency, mixFor,
+  outputOf, QUALITY_LEVELS, specFor,
 } from './calc.js';
 import {
   DATA, GEAR, bmPriceOf, costOf, loadEquipment, priceOf, qBmPriceOf, qPriceOf,
@@ -356,7 +356,7 @@ function qualityTable(run) {
     <div class="section-head"><h2>Quality</h2></div>
     <div class="card">
       ${rows.map((q) => {
-    const at = priceAt(run.recipe.id, q);
+    const at = priceAt(outputOf(run.recipe), q);
     return `
         <div class="bar-row">
           <span class="n">${esc(names[q] || `Quality ${q}`)} · ${pct(mix[q], 1)}</span>
@@ -436,7 +436,7 @@ function stepsSection(run) {
   const s = state.settings;
   const cityName = (id) => (s.cities || []).find((c) => c.id === id)?.name || id;
   const steps = run.steps.map((st) => {
-    const eff = specFor(s, st.recipe.id);
+    const eff = specFor(s, outputOf(st.recipe));
     const bonus = cityBonus(cityFor(s, st.cityId), st.recipe.category, s);
     /* Where this step actually happens, which with "best city per step" is
      * not the same place for all of them. When it is somewhere that does

@@ -257,6 +257,14 @@ def build_cities() -> list:
     and every island is bound to one. There is no such thing as a farm with no
     city behind it, so the island entry below is offered for crafting only.
 
+    Refining also happens outside the cities: 130 of the 140 craftinglocation
+    rows carry a <refiningbonus> and no <craftingbonus> at all - 100 at 0.10
+    (Roads of Avalon rests) and 30 at 0.15 (Outlands stations), keyed by biome
+    and cluster quality rather than by a city anybody can name. They are not
+    offered as places to craft here because the picker would grow from eleven
+    rows to a hundred and forty and each one would need a name the game does
+    not give it. The ten that ARE named carry their real refining figure.
+
     (The same file also holds 450 Outlands rows at value 2.0, islandvalue 0.0:
     the +200% guild territory farms. Those are keyed by biome and cluster
     quality rather than by city, and this app does not model them, so they are
@@ -268,11 +276,21 @@ def build_cities() -> list:
     craft = {}
     for loc in craft_root.findall("craftinglocation"):
         bonus = loc.find("craftingbonus")
-        if bonus is None:
-            continue                      # refining-only territory
+        # A refining bench and a crafting bench are two different numbers, and
+        # the file says so: every one of the 140 locations carries a
+        # <refiningbonus> while only 10 carry a <craftingbonus>. In the five
+        # royal cities, Caerleon and Brecilien the two agree at 18; in the
+        # three Rests they do NOT - crafting 18, refining 15 - so reading the
+        # crafting figure for a refine is simply wrong there.
+        refine = loc.find("refiningbonus")
+        if bonus is None and refine is None:
+            continue
         craft[loc.get("clusterid")] = {
-            "base": round(float(bonus.get("value")) * 100, 2),
-            "island": round(float(bonus.get("islandvalue", 0)) * 100, 2),
+            "base": round(float(bonus.get("value")) * 100, 2) if bonus is not None else None,
+            "refineBase": (round(float(refine.get("value")) * 100, 2)
+                           if refine is not None else None),
+            "island": round(float(bonus.get("islandvalue", 0)) * 100, 2)
+            if bonus is not None else 0,
             "specialties": {
                 m.get("name"): round(float(m.get("value")) * 100, 2)
                 for m in loc.findall("craftingmodifier")
@@ -293,7 +311,12 @@ def build_cities() -> list:
             "id": cid,
             "name": name,
             "cluster": cluster,
-            "craftBase": c.get("base", 0),
+            "craftBase": c.get("base") or 0,
+            # What a refining bench gives here, which is not always what a
+            # crafting bench gives. Read by cityBonus for any recipe flagged
+            # `refine`, and equal to craftBase everywhere but the Rests.
+            "refineBase": c.get("refineBase") if c.get("refineBase") is not None
+            else (c.get("base") or 0),
             "craftSpecialties": c.get("specialties", {}),
             "farmBonus": farm.get(cluster, {}),
         })
@@ -303,7 +326,9 @@ def build_cities() -> list:
     out.append({
         "id": "island", "name": "My island station", "cluster": None,
         "craftOnly": True,
-        "craftBase": 0, "craftSpecialties": {}, "farmBonus": {},
+        # islandvalue is 0 on every craftingbonus AND every refiningbonus, so
+        # refining at home earns the base rate and nothing else.
+        "craftBase": 0, "refineBase": 0, "craftSpecialties": {}, "farmBonus": {},
     })
     return out
 
@@ -426,15 +451,31 @@ def build_equipment(items, item_value, weights):
     recipes = []
     meta = {}
 
-    def register(unique, group):
-        if unique and unique not in meta:
+    def register(unique, group, name=None):
+        """Remember an item, and let a real group overwrite the fallback.
+
+        Inputs are registered before outputs, with "material" standing in for
+        "we do not know yet". Twelve refined items - T3..T8 planks and leather
+        - are first seen as the inputs of a tool or a piece of gathering gear
+        listed earlier in items.xml, so first-write-wins filed them as
+        material while the other 23 came out refined. The Market screen groups
+        by this field, which put Cedar Planks and Cedar Cloth in different
+        sections of the same list.
+        """
+        if not unique:
+            return
+        at = meta.get(unique)
+        if at is None:
             meta[unique] = {
-                "name": pretty(unique), "tier": tier_of(unique), "cat": group,
+                "name": name or pretty(unique), "tier": tier_of(unique), "cat": group,
                 **({"weight": weights[unique]} if unique in weights else {}),
             }
+        elif at.get("cat") == "material" and group != "material":
+            at["cat"] = group
 
     for el in items.iter():
-        req = el.find("craftingrequirements")
+        reqs = el.findall("craftingrequirements")
+        req = reqs[0] if reqs else None
         cat = el.get("craftingcategory")
         unique = el.get("uniquename")
         if req is None or not unique or "PROTOTYPE" in unique:
@@ -458,7 +499,7 @@ def build_equipment(items, item_value, weights):
         # the two a recipe belongs to.
         refine = req.get("craftbuttonlocaoverride") == REFINE_BUTTON
 
-        def add(rid, rreq, enchant):
+        def add(rid, rreq, enchant, out=None, label=None):
             inputs = []
             for c in rreq.findall("craftresource"):
                 item = {"id": c.get("uniquename"), "count": int(c.get("count"))}
@@ -473,7 +514,8 @@ def build_equipment(items, item_value, weights):
                 return
             for i in inputs:
                 register(i["id"], meta.get(i["id"], {}).get("cat", "material"))
-            register(rid, group)
+            register(rid, group, name=label
+                     or (meta.get(out, {}).get("name") if out else None))
             amount = int(rreq.get("amountcrafted", 1))
             silver = int(float(rreq.get("silver", 0)))
             # How good this can ever come out. 1,658 items can reach a
@@ -489,6 +531,9 @@ def build_equipment(items, item_value, weights):
             recipes.append({
                 "id": rid,
                 "category": cat,
+                # A second recipe for the same thing is a different recipe, so
+                # it gets an id of its own and says what it actually makes.
+                **({"out": out} if out else {}),
                 **({"enchant": enchant} if enchant else {}),
                 **({"refine": True} if refine else {}),
                 **({"amount": amount} if amount != 1 else {}),
@@ -501,7 +546,42 @@ def build_equipment(items, item_value, weights):
                 "inputs": inputs,
             })
 
-        add(unique, req, 0)
+        # A refined item carries its enchant on the element itself -
+        # <simpleitem uniquename="T5_PLANKS_LEVEL1" enchantmentlevel="1"> - and
+        # has no <enchantments> children at all, so hardcoding 0 here filed all
+        # five of T5_PLANKS..T5_PLANKS_LEVEL4 as "T5, plain" and left the .1
+        # and .2 slices of the Craft tab permanently empty.
+        own_enchant = int(el.get("enchantmentlevel") or 0)
+        add(unique, req, own_enchant)
+
+        # The rest of the <craftingrequirements> on this item. Two kinds exist,
+        # 100 in all, and the build used to read only the first:
+        #   - 85 faction variants, which swap raw material for a faction token.
+        #     Skipped: the token is faction standing rather than something a
+        #     market quotes, so a row costing it would be a made-up number, and
+        #     emitting them would list every refine twice.
+        #   - 15 enchanted-rock variants. There is no T*_STONEBLOCK_LEVEL*
+        #     item in the game, so enchanted rock instead pays 2, 4 or 8 plain
+        #     blocks for the same focus. Without these, enchanted rock has no
+        #     use in the app at all and T5_ROCK_LEVEL1 is not even a known id.
+        for n, vreq in enumerate(reqs[1:], 1):
+            vins = [c.get("uniquename") or "" for c in vreq.findall("craftresource")]
+            if any("TOKEN" in i for i in vins):
+                continue
+            # Name it after the enchant level it eats, which is what the row is
+            # really about, rather than after its position in the file.
+            levels = [int(i.rsplit("_LEVEL", 1)[1]) for i in vins if "_LEVEL" in i
+                      and i.rsplit("_LEVEL", 1)[1].isdigit()]
+            mark = max(levels) if levels else n
+            # Four rows all called "Travertine Block" would be four rows
+            # nobody can tell apart, so a variant is named after the thing
+            # that makes it different: the enchanted raw it eats.
+            eats = next((i for i in vins if "_LEVEL" in i), None)
+            label = None
+            if eats:
+                label = f"{pretty(unique)} from {pretty(eats)}"
+            add(f"{unique}#{mark}", vreq, own_enchant, out=unique, label=label)
+
         # Equipment enchants to .4, one level further than a potion, and each
         # level swaps every material for its own enchanted version rather
         # than adding an extract on top.

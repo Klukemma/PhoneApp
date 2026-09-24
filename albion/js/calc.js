@@ -362,11 +362,28 @@ export function farmBonus(city, farmableId) {
  * Brecilien, cooked food in Caerleon. Crafting a potion in Martlock gets the
  * base and nothing more.
  */
-export function cityBonus(city, category, settings) {
-  const base = Number(city?.craftBase ?? settings.cityBaseBonus ?? 0);
+export function cityBonus(city, category, settings, { refine = false } = {}) {
+  /* A refining bench and a crafting bench are two different numbers. The five
+   * royal cities, Caerleon and Brecilien give 18 either way, but the three
+   * Rests give 18 to a crafter and only 15 to a refiner, which is the whole
+   * reason the game keeps <refiningbonus> apart from <craftingbonus>. The
+   * specialty on top is the same table for both, and it is +40% for the city
+   * that specialises in a resource family against +15% for a weapon. */
+  const base = Number((refine ? city?.refineBase : city?.craftBase)
+    ?? city?.craftBase ?? settings.cityBaseBonus ?? 0);
   const specialty = Number(city?.craftSpecialties?.[category]) || 0;
   return { base, specialty, specialises: specialty > 0, total: base + specialty };
 }
+
+/**
+ * What a recipe actually makes.
+ *
+ * Almost always itself. The exception is a recipe that shares its output with
+ * another: enchanted rock refines into ordinary stone blocks, two, four or
+ * eight at a time, so those rows carry an id of their own and say here what
+ * comes off the bench. Price and mastery follow the output, never the id.
+ */
+export const outputOf = (recipe) => recipe?.out || recipe?.id;
 
 /**
  * Focus efficiency for a recipe. The destiny board is the real source; a flat
@@ -430,8 +447,9 @@ export function craftBatch(recipe, {
 }) {
   const useFocus = settings.useFocus;
   const city = cityFor(settings, cityId);
-  const bonus = cityBonus(city, recipe.category, settings);
-  const spec = Number.isFinite(specLevel) ? specLevel : specFor(settings, recipe.id);
+  const bonus = cityBonus(city, recipe.category, settings, { refine: !!recipe.refine });
+  const spec = Number.isFinite(specLevel)
+    ? specLevel : specFor(settings, outputOf(recipe));
   const bonusTotal = bonus.total + (useFocus ? settings.focusCraftBonus : 0);
   const rrr = returnRate(bonusTotal);
 
@@ -458,7 +476,7 @@ export function craftBatch(recipe, {
    * these six. The dumps carry the flag and not the number, so this reads it
    * as the same rate paid in product. */
   const made = recipe.amount * (recipe.returnProduct ? 1 + rrr : 1);
-  const revenue = made * priceOf(recipe.id) * (1 - taxRate(settings));
+  const revenue = made * priceOf(outputOf(recipe)) * (1 - taxRate(settings));
   const stationNutrition = craftNutrition(recipe, settings);
   const usageFee = usageFeeFor(recipe, settings, cityId);
   const fees = (recipe.silver || 0) + usageFee;
@@ -650,7 +668,7 @@ export function haulOf(lines, settings) {
  */
 function haulLegs(steps, bought, settings) {
   const madeIn = new Map();
-  for (const s of steps) madeIn.set(s.recipe.id, s.cityId);
+  for (const s of steps) madeIn.set(outputOf(s.recipe), s.cityId);
 
   const legs = new Map();
   const add = (from, to, id, qty) => {
@@ -825,11 +843,14 @@ export function craftPnL(recipeId, {
    * answer: a masterpiece sells for a multiple of a plain one, and pricing
    * the whole run as plain was leaving that on the table. */
   const priceAt = sellPriceAt || ((id) => sellPriceOf(id));
+  // What comes off the bench, which for an enchanted-rock row is plain stone
+  // blocks rather than the id the row is filed under.
+  const outId = outputOf(top);
   const blend = sellMix
-    ? blendedPrice(recipeId, sellMix, priceAt)
-    : { value: sellPriceOf(recipeId), guessed: [], plain: sellPriceOf(recipeId) };
+    ? blendedPrice(outId, sellMix, priceAt)
+    : { value: sellPriceOf(outId), guessed: [], plain: sellPriceOf(outId) };
   const unitPrice = blend.value;
-  if (!blend.plain) missing.add(recipeId);
+  if (!blend.plain) missing.add(outId);
   const tax = taxRate(settings, { instant: sellInstant });
   const gross = made * unitPrice;
   const revenue = gross * (1 - tax);
@@ -1595,14 +1616,14 @@ export function simulateCycle(plan, data, ctx) {
       consumed[i.id] = need;
     }
     const made = batch.made * crafts;
-    add(pool, recipe.id, made);
+    add(pool, outputOf(recipe), made);
     focusLeft -= batch.focus * crafts;
     // batch already knows the city this job crafts in, so its fee is the
     // right one for this station rather than one number for the whole plan.
     const fees = ((recipe.silver || 0) + batch.usageFee) * crafts;
     feeCost += fees;
     basisIn += fees;
-    cost0.put(recipe.id, basisIn);
+    cost0.put(outputOf(recipe), basisIn);
 
     craftLines.push({
       job, recipe, batch, crafts, limitedBy, byMaterial, byFocus,
@@ -1682,10 +1703,10 @@ export function simulateCycle(plan, data, ctx) {
   const soldValue = Object.fromEntries(sales.map((x) => [x.id, x.value]));
   for (const line of craftLines) {
     const feeds = craftLines.find(
-      (o) => o !== line && o.recipe.inputs.some((i) => i.id === line.recipe.id));
+      (o) => o !== line && o.recipe.inputs.some((i) => i.id === outputOf(line.recipe)));
     line.feeds = feeds ? feeds.recipe : null;
     line.terminal = !line.feeds;
-    line.revenue = soldValue[line.recipe.id] || 0;
+    line.revenue = soldValue[outputOf(line.recipe)] || 0;
     line.gain = line.terminal ? line.revenue - line.basisIn : null;
   }
 

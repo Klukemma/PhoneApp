@@ -7,8 +7,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
-  bestCityFor, craftPnL, haulOf, mixFor, qualityMix, qualityPoints, returnRate,
-  simulateCycle, taxRate,
+  bestCityFor, cityBonus, craftPnL, haulOf, mixFor, outputOf, qualityMix,
+  qualityPoints, returnRate, simulateCycle, taxRate,
 } from '../js/calc.js';
 
 const data = JSON.parse(
@@ -588,4 +588,141 @@ test('no city specialises in saddlery, so a mount pays the flat base everywhere'
   const leather = run.buys.find((b) => b.id === 'T5_LEATHER');
   assert.ok(leather.net < 200, 'while the leather comes back at the rate');
   assert.equal(Math.round(run.profit), Math.round(run.revenue - run.buyCost - run.fees));
+});
+
+/* =============================================== refining, in full ==== */
+
+test('a refined item carries the enchant level the game puts on it', () => {
+  // The enchant sits on the item element itself, not in an <enchantments>
+  // block, so reading only the block filed all five grades as "plain" and
+  // left the .1 and .2 slices of the Craft tab permanently empty.
+  assert.equal(recipeOf('T5_PLANKS').enchant, 0);
+  assert.equal(recipeOf('T5_PLANKS_LEVEL1').enchant, 1);
+  assert.equal(recipeOf('T5_PLANKS_LEVEL4').enchant, 4);
+  assert.deepEqual(recipeOf('T5_PLANKS_LEVEL1').inputs, [
+    { id: 'T5_WOOD_LEVEL1', count: 3 },
+    { id: 'T4_PLANKS_LEVEL1', count: 1 },
+  ]);
+  // Every enchanted grade of every family, and none missing.
+  const graded = gear.filter((r) => r.refine && r.enchant);
+  assert.equal(graded.length, 80, '4 families x T4-T8 x .1-.4');
+});
+
+test('the refining ladder is the same shape in every family', () => {
+  // Raw count is a function of tier and never of enchant, and the lower
+  // tier's refined output is always exactly one.
+  const RAW_BY_TIER = { 2: 1, 3: 2, 4: 2, 5: 3, 6: 4, 7: 5, 8: 5 };
+  const REFINED = { wood: 'PLANKS', ore: 'METALBAR', fiber: 'CLOTH', hide: 'LEATHER' };
+  for (const [family, word] of Object.entries(REFINED)) {
+    for (let tier = 2; tier <= 8; tier++) {
+      const r = recipeOf(`T${tier}_${word}`);
+      assert.ok(r, `T${tier}_${word} exists`);
+      assert.equal(r.category, family);
+      assert.equal(r.refine, true);
+      const raw = r.inputs.find((i) => !i.id.includes(word));
+      assert.equal(raw.count, RAW_BY_TIER[tier], `T${tier} ${family} raw count`);
+      if (tier > 2) {
+        const lower = r.inputs.find((i) => i.id.includes(word));
+        assert.equal(lower.count, 1, `T${tier} ${family} takes one of the tier below`);
+      }
+    }
+  }
+});
+
+test('enchanted rock pays in extra blocks, because enchanted blocks do not exist', () => {
+  // There is no T5_STONEBLOCK_LEVEL1 item anywhere in the game. Enchanted
+  // rock instead buys 2, 4 or 8 plain blocks for the same focus, and those
+  // rows share an output, so they carry an id of their own.
+  assert.equal(recipeOf('T5_STONEBLOCK_LEVEL1'), null);
+  const one = recipeOf('T5_STONEBLOCK#1');
+  const three = recipeOf('T5_STONEBLOCK#3');
+  assert.equal(one.out, 'T5_STONEBLOCK');
+  assert.equal(one.amount, 2);
+  assert.equal(three.amount, 8);
+  assert.equal(one.focus, recipeOf('T5_STONEBLOCK').focus, 'same focus as plain');
+  assert.ok(one.inputs.some((i) => i.id === 'T5_ROCK_LEVEL1'));
+  assert.ok(three.inputs.some((i) => i.id === 'T5_ROCK_LEVEL3'));
+  // And the enchanted rock is a known item now, which it was not before.
+  assert.equal(raw.items.T5_ROCK_LEVEL1.name, 'Uncommon Granite');
+  // Five tiers times three enchant levels, in rock and nowhere else.
+  const variants = gear.filter((r) => r.out);
+  assert.equal(variants.length, 15);
+  assert.ok(variants.every((r) => r.category === 'rock'));
+});
+
+test('a variant is priced and mastered by what it makes, not by its id', () => {
+  const run = craftPnL('T5_STONEBLOCK#1', {
+    ...ctx({ cityId: 'bridgewatch' }),
+    qty: 8,
+    priceOf: (id) => ({ T5_ROCK_LEVEL1: 900, T4_STONEBLOCK: 300, T5_STONEBLOCK: 700 })[id] ?? 0,
+  });
+  // Nothing is "missing": the output has a price under its real name.
+  assert.deepEqual(run.missing, []);
+  assert.ok(run.revenue > 0, 'it sells as T5_STONEBLOCK');
+  // Two blocks a craft, so eight of them is four crafts.
+  assert.equal(run.crafts, 4);
+});
+
+test('the market groups every refined material together', () => {
+  // Planks and leather used to come out "material" because a tool recipe
+  // listed them before the refining recipe did.
+  for (const id of ['T3_PLANKS', 'T5_PLANKS', 'T5_CLOTH', 'T5_LEATHER',
+    'T5_METALBAR', 'T5_STONEBLOCK', 'T8_LEATHER']) {
+    assert.equal(raw.items[id].cat, 'refined', id);
+  }
+  assert.equal(raw.items.T5_WOOD.cat, 'material');
+});
+
+/* ------------------------------------------------ where you refine --- */
+
+test('a refining bench reads the refining bonus, which is not the crafting one', () => {
+  const s = ctx().settings;
+  const city = (id) => s.cities.find((c) => c.id === id);
+  // Royal cities give the same either way, so nothing moves there.
+  for (const id of ['thetford', 'lymhurst', 'bridgewatch', 'martlock',
+    'fortsterling', 'caerleon', 'brecilien']) {
+    assert.equal(city(id).craftBase, 18);
+    assert.equal(city(id).refineBase, 18, id);
+  }
+  // The three Rests do not: 18 to a crafter, 15 to a refiner.
+  for (const id of ['arthurs', 'merlyns', 'morganas']) {
+    assert.equal(city(id).craftBase, 18);
+    assert.equal(city(id).refineBase, 15, id);
+  }
+  assert.equal(city('island').refineBase, 0, 'no bonus at home, either way');
+
+  assert.equal(cityBonus(city('arthurs'), 'wood', s, { refine: true }).base, 15);
+  assert.equal(cityBonus(city('arthurs'), 'wood', s).base, 18);
+  // The specialty table is shared, and it is +40 for a resource family.
+  assert.equal(cityBonus(city('fortsterling'), 'wood', s, { refine: true }).total, 58);
+  assert.equal(cityBonus(city('martlock'), 'wood', s, { refine: true }).total, 18);
+});
+
+test('the return rate a refiner actually gets, city by city', () => {
+  const s = { ...ctx().settings, useFocus: true };
+  const at = (id) => {
+    const city = s.cities.find((c) => c.id === id);
+    const b = cityBonus(city, 'wood', s, { refine: true });
+    return Math.round(returnRate(b.total + s.focusCraftBonus) * 10000) / 100;
+  };
+  assert.equal(at('fortsterling'), 53.92, '18 + 40 + 59');
+  assert.equal(at('martlock'), 43.5, '18 + 59');
+  assert.equal(at('arthurs'), 42.53, '15 + 59');
+  assert.equal(at('island'), 37.11, '0 + 59');
+});
+
+test('a stack of planks costs what the game charges for it', () => {
+  // The regression guard for the whole refining half: 999 crafts, the focus
+  // ladder, and a shopping list net of the return rate.
+  const run = craftPnL('T5_PLANKS', {
+    ...ctx({ cityId: 'fortsterling' }),
+    qty: 999,
+    priceOf: (id) => ({ T5_WOOD: 260, T4_PLANKS: 700, T5_PLANKS: 1100 })[id] ?? 0,
+  });
+  assert.equal(run.crafts, 999);
+  assert.equal(Math.round(run.focus), 93906, '94 focus a craft at zero mastery');
+  const wood = run.buys.find((b) => b.id === 'T5_WOOD');
+  const lower = run.buys.find((b) => b.id === 'T4_PLANKS');
+  assert.equal(Math.round(wood.net * 10) / 10, 1381.1, '2997 less 53.92% back');
+  assert.equal(Math.round(lower.net * 10) / 10, 460.4);
 });

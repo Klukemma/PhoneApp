@@ -1,6 +1,6 @@
 {
  "source": "ao-data/ao-bin-dumps (items.xml, loot.xml, gamedata.xml)",
- "generated": "2026-09-19",
+ "generated": "2026-09-24",
  "constants": {
   "focusCraftBonus": 59.0,
   "focusCostConstant": 1.00695555005672,
@@ -44,6 +44,7 @@
    "name": "Thetford",
    "cluster": "0000",
    "craftBase": 18.0,
+   "refineBase": 18.0,
    "craftSpecialties": {
     "ore": 40.0,
     "meat_pig": 10.0,
@@ -64,6 +65,7 @@
    "name": "Lymhurst",
    "cluster": "1000",
    "craftBase": 18.0,
+   "refineBase": 18.0,
    "craftSpecialties": {
     "fiber": 40.0,
     "meat_goose": 10.0,
@@ -85,6 +87,7 @@
    "name": "Bridgewatch",
    "cluster": "2000",
    "craftBase": 18.0,
+   "refineBase": 18.0,
    "craftSpecialties": {
     "rock": 40.0,
     "meat_goat": 10.0,
@@ -106,6 +109,7 @@
    "name": "Martlock",
    "cluster": "3004",
    "craftBase": 18.0,
+   "refineBase": 18.0,
    "craftSpecialties": {
     "hide": 40.0,
     "meat_cow": 10.0,
@@ -127,6 +131,7 @@
    "name": "Fort Sterling",
    "cluster": "4000",
    "craftBase": 18.0,
+   "refineBase": 18.0,
    "craftSpecialties": {
     "wood": 40.0,
     "meat_chicken": 10.0,
@@ -149,6 +154,7 @@
    "name": "Caerleon",
    "cluster": "3003",
    "craftBase": 18.0,
+   "refineBase": 18.0,
    "craftSpecialties": {
     "gatherergear": 15.0,
     "tools": 15.0,
@@ -167,6 +173,7 @@
    "name": "Brecilien",
    "cluster": "5000",
    "craftBase": 18.0,
+   "refineBase": 18.0,
    "craftSpecialties": {
     "cape": 15.0,
     "bag": 15.0,
@@ -188,6 +195,7 @@
    "name": "Arthur's Rest",
    "cluster": "4300",
    "craftBase": 18.0,
+   "refineBase": 15.0,
    "craftSpecialties": {
     "axe": 15.0,
     "crossbow": 15.0,
@@ -206,6 +214,7 @@
    "name": "Merlyn's Rest",
    "cluster": "1012",
    "craftBase": 18.0,
+   "refineBase": 15.0,
    "craftSpecialties": {
     "bow": 15.0,
     "dagger": 15.0,
@@ -224,6 +233,7 @@
    "name": "Morgana's Rest",
    "cluster": "0008",
    "craftBase": 18.0,
+   "refineBase": 15.0,
    "craftSpecialties": {
     "arcanestaff": 15.0,
     "cursestaff": 15.0,
@@ -242,6 +252,7 @@
    "cluster": null,
    "craftOnly": true,
    "craftBase": 0,
+   "refineBase": 0,
    "craftSpecialties": {},
    "farmBonus": {}
   }
