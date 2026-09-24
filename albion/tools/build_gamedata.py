@@ -14,6 +14,8 @@ Source: https://github.com/ao-data/ao-bin-dumps
   farmingmodifiers.xml   city farming bonuses
   localization.xml       the real in-game item names (large: ~76 MB, cached)
   achievements.xml       destiny board nodes and their focus cost reductions
+  harvestables.xml       what a node gives and how long a swing takes
+  spells.xml             the gathering bonuses gear, tools, pies and potions give
 Stdlib only - no packages to install.
 """
 
@@ -454,6 +456,342 @@ for _c in GEAR_CATEGORIES:
 for _c in REFINE_CATEGORIES:
     GROUP_OF[_c] = "refined"
 GROUP_OF[MOUNT_CATEGORY] = "mount"
+
+
+# =========================================================== gathering ====
+
+# The five families you can gather, as the game spells them.
+FAMILIES = ("WOOD", "ORE", "FIBER", "HIDE", "ROCK")
+
+# Which node types are worth offering as a place to gather, and what to call
+# them. The dumps carry 89 harvestables; the rest are silver piles, loot
+# chests and a dead rat. WOOD_DYNAMIC is left out on purpose: every number on
+# it is identical to the static node, so it would be a choice that changes
+# nothing.
+NODE_KINDS = [
+    ("static", "", "Static node"),
+    ("critter", "_CRITTER", "Living resource"),
+    ("roads", "_CRITTER_ROADS", "Roads critter"),
+    ("roadsVeteran", "_CRITTER_ROADS_VETERAN", "Roads critter, veteran"),
+    ("roadsElite", "_CRITTER_ROADS_ELITE", "Roads critter, elite"),
+    ("treasure", "_TREASURE", "Resource treasure"),
+    ("guardian", "_GUARDIAN", "Guardian"),
+    ("miniguardian", "_MINIGUARDIAN", "Mini guardian"),
+    ("giant", "_GIANTTREE", "Giant tree"),
+]
+
+
+def _tier_rows(harv, name):
+    """One harvestable's tiers, as plain numbers."""
+    for h in harv.findall("Harvestable"):
+        if h.get("name") != name:
+            continue
+        out = {}
+        for t in h.findall("Tier"):
+            charges = [c for c in t.findall("Charge") if c.get("yield")]
+            if not charges:
+                continue
+            level = (charges[0].get("level") or "0").split("-")[-1]
+            row = {
+                "seconds": float(t.get("harvesttimeseconds")),
+                "yield": int(charges[0].get("yield")),
+                "charges": int(level),
+                "perHarvest": int(t.get("maxchargesperharvest", 1)),
+            }
+            respawn = int(float(t.get("respawntimeseconds") or 0))
+            if respawn:
+                row["respawn"] = respawn
+            rare = sorted(int(c.get("state")) for c in t.findall("RareState"))
+            if rare:
+                row["rare"] = rare
+            if t.get("requirestool") == "false":
+                row["noTool"] = True
+            out[t.get("tier")] = row
+        return out
+    return {}
+
+
+def build_harvestables():
+    """What one swing at a node gives, and how long the swing takes.
+
+    This is the half of "how long does a stack take" that the game does
+    publish: seconds per charge, resources per charge, how many charges a
+    node holds, how long it takes to come back, and which enchanted grades it
+    can roll. What is NOT here, anywhere in any dump, is how many nodes there
+    are per map or how far apart they sit - so the app asks you to time a run
+    rather than inventing a number.
+
+    Shape is family then kind then tier, all the way down, even though most
+    kinds are the same in every family. The exceptions are real - hide is
+    quicker to skin at the low tiers, and a rock treasure cannot roll a
+    pristine node because pristine rock does not exist - and a table that is
+    uniform is a table nothing has to special-case.
+    """
+    harv = parse("harvestables.xml")
+    nodes = {}
+    for family in FAMILIES:
+        kinds = {}
+        for key, suffix, _label in NODE_KINDS:
+            rows = _tier_rows(harv, family + suffix)
+            if rows:
+                kinds[key] = rows
+        nodes[family] = kinds
+
+    # How much a tool above the resource's own tier cuts the swing. The same
+    # table on every family, and below -1 the game refuses to harvest at all.
+    factors = {}
+    for h in harv.findall("Harvestable"):
+        mod = h.find("ToolModifier")
+        if mod is None:
+            continue
+        for m in mod.findall("Modifier"):
+            factors[m.get("tierdifference")] = float(m.get("timefactor"))
+        break
+    labels = {key: label for key, _suffix, label in NODE_KINDS}
+    return nodes, labels, factors
+
+
+def _spell_index(root):
+    """Every spell by name, so a passive can be followed to its effect."""
+    return {el.get("uniquename"): el for el in root.iter()
+            if el.get("uniquename")}
+
+
+def build_gather_buffs(spells):
+    """The gathering bonus stack, from the spells the items point at.
+
+    Every source writes into one engine number, GatheringYield, and each
+    declares a plain value, so they add. Three of them are not what a player
+    expects and the numbers say so plainly:
+
+      - a plain gathering tool gives no yield at all (it has no passive
+        slot); only the Avalonian ones carry one,
+      - gatherer gear is a charge-accumulating buff, a little every 30
+        seconds up to ten stacks, so the figure on the tooltip only exists
+        after five minutes of wearing it,
+      - and every one of them is tier-gated, so a T5 set on a T6 node is
+        worth exactly nothing.
+    """
+    idx = _spell_index(spells)
+
+    def buff_over_time(name):
+        el = idx.get(name)
+        if el is None:
+            return None
+        b = el.find("resourcegatheringbuffovertime")
+        if b is None:
+            return None
+        return {
+            "perCharge": float(b.get("value")),
+            "minTier": int(b.get("mintier", 2)),
+            "maxTier": int(b.get("maxtier", 8)),
+            "maxCharges": int(el.get("maxcharges", 1)),
+        }
+
+    # head and shoes are named for their slot; the chest piece is not.
+    SLOTS = {"head": "PASSIVE_HEAD_YIELD_{f}_EFFECT_T{t}",
+             "armor": "PASSIVE_YIELD_{f}_EFFECT_T{t}",
+             "shoes": "PASSIVE_SHOES_YIELD_{f}_EFFECT_T{t}"}
+    gear = {}
+    interval = None
+    for slot, pattern in SLOTS.items():
+        per_tier = {}
+        for tier in range(4, 9):
+            rows = {f: buff_over_time(pattern.format(f=f, t=tier)) for f in FAMILIES}
+            have = [r for r in rows.values() if r]
+            if not have:
+                continue
+            if len({json.dumps(r, sort_keys=True) for r in have}) > 1:
+                raise SystemExit(f"gatherer {slot} T{tier} differs between families")
+            per_tier[str(tier)] = have[0]
+        gear[slot] = per_tier
+    for f in FAMILIES:
+        el = idx.get(f"PASSIVE_HEAD_YIELD_{f}_T5")
+        pulse = el.find("pulsingspellpassive") if el is not None else None
+        if pulse is not None:
+            interval = float(pulse.get("interval"))
+            break
+
+    # The Avalonian tool's flat yield, which a plain tool does not have.
+    tool = {}
+    for tier in range(4, 9):
+        rows = {}
+        for f in FAMILIES:
+            el = idx.get(f"PASSIVE_AVALON_YIELD_{f}_T{tier}")
+            if el is None:
+                continue
+            for b in el.findall("resourcegatheringbuff"):
+                if b.get("bufftype") == "gatheringyield" and b.get("tier") == str(tier):
+                    rows[f] = float(b.get("value"))
+        if rows:
+            if len(set(rows.values())) > 1:
+                raise SystemExit(f"avalon tool T{tier} differs between families")
+            tool[str(tier)] = next(iter(rows.values()))
+
+    def consumable(spell_name):
+        el = idx.get(spell_name)
+        if el is None:
+            return None
+        out = {"seconds": 0}
+        for b in el.findall("buffovertime"):
+            kind = b.get("type")
+            if kind in ("gatheringyield", "maxloadbonus", "gatheringspeed"):
+                out[kind] = float(b.get("value"))
+                out["seconds"] = max(out["seconds"], float(b.get("time") or 0))
+        return out if len(out) > 1 else None
+
+    return gear, interval, tool, consumable
+
+
+def build_gather_food(items, consumable):
+    """The pies, and what each grade of them is worth.
+
+    A pie is the one source with no resource filter on it at all, so it
+    applies to every family and to enchanted raws as well. The omelette is
+    deliberately absent: it is a cast-speed food and does nothing here.
+    """
+    out = {}
+    for el in items.iter("consumableitem"):
+        unique = el.get("uniquename") or ""
+        base = el.get("consumespell") or ""
+        if not base.startswith(("FOOD_LOAD_GATHER", "FOOD_FISH_LOAD_GATHER")):
+            continue
+        ladder = {}
+        row = consumable(base)
+        if row:
+            ladder["0"] = row
+        for ench in el.findall("./enchantments/enchantment"):
+            spell = ench.get("consumespell")
+            row = consumable(spell) if spell else None
+            if row:
+                ladder[ench.get("enchantmentlevel")] = row
+        if ladder:
+            out[unique] = {"name": pretty(unique), "tier": tier_of(unique),
+                           "grades": ladder}
+    return out
+
+
+def build_gather_potions(items, consumable):
+    """The gathering potion: a lot of speed and a little yield, for a minute."""
+    out = {}
+    for el in items.iter("consumableitem"):
+        unique = el.get("uniquename") or ""
+        base = el.get("consumespell") or ""
+        if not base.startswith("POTION_GATHER"):
+            continue
+        ladder = {}
+        row = consumable(base)
+        if row:
+            ladder["0"] = row
+        for ench in el.findall("./enchantments/enchantment"):
+            spell = ench.get("consumespell")
+            row = consumable(spell) if spell else None
+            if row:
+                ladder[ench.get("enchantmentlevel")] = row
+        if ladder:
+            out[unique] = {"name": pretty(unique), "tier": tier_of(unique),
+                           "grades": ladder}
+    return out
+
+
+def build_gather_board():
+    """The gathering half of the destiny board.
+
+    Deliberately not merged into focusNodes. Those nodes answer "what does a
+    craft cost in focus"; these answer "how much does a swing give", they are
+    matched by resource family rather than by item id, and mixing the two
+    would have a gatherer's levels quietly cheapening a potion.
+    """
+    root = parse("achievements.xml")
+    out = []
+    for el in root.iter():
+        nid = el.get("id") or ""
+        if not re.fullmatch(r"GATHER_(%s)_T\d" % "|".join(FAMILIES), nid):
+            continue
+        family = nid.split("_")[1]
+        tier = int(nid[-1])
+        yield_per = speed_per = 0.0
+        for b in el.iter("bonus"):
+            if b.get("type") != "resourcegatherbonus":
+                continue
+            if not any(p.get("pattern", "").startswith(family)
+                       for p in b.findall("resourcepattern")):
+                continue
+            if b.get("bufftype") == "gatheringyield":
+                yield_per = max(yield_per, float(b.get("bonus")))
+            elif b.get("bufftype") == "gatheringspeed":
+                speed_per = max(speed_per, float(b.get("bonus")))
+        if not yield_per and not speed_per:
+            continue
+        title = el.find("title")
+        key = title.get("tag") if title is not None else None
+        out.append({
+            "id": nid,
+            "name": NAMES_BY_ID.get(key, f"{family.title()} Gatherer T{tier}"),
+            "family": family,
+            "tier": tier,
+            "yieldPerLevel": yield_per,
+            "speedPerLevel": speed_per,
+            "maxLevel": 100,
+        })
+    out.sort(key=lambda x: (x["family"], x["tier"]))
+    return out
+
+
+def build_gathering(gd, items, spells):
+    """Everything the app needs to cost an hour in the open world."""
+    nodes, kind_labels, factors = build_harvestables()
+    gear, interval, tool, consumable = build_gather_buffs(spells)
+
+    # How often a node is enchanted, as weights out of the cluster's total.
+    # The axis is the Outlands cluster quality, and the whole royal continent
+    # falls through to the default row - so a royal zone and the worst
+    # Outlands zone roll the same odds.
+    rare = {}
+    block = gd.find(".//RareResources")
+    for cluster in (block.findall("cluster") if block is not None else []):
+        key = (f"outlands{cluster.get('ClusterQuality')}"
+               if cluster.get("ContinentType") == "Outlands" else "royal")
+        weights = {int(r.get("state")): float(r.get("weight"))
+                   for r in cluster.findall("RareState")}
+        total = sum(weights.values()) or 1
+        rare[key] = [round(weights.get(i, 0) / total, 6) for i in range(5)]
+
+    # Gathering speed is capped by the attribute table; yield has no row at
+    # all there, which is the file saying it is uncapped.
+    cap = 0.4
+    for a in gd.iter("attribute"):
+        if a.get("name") == "GatheringSpeed" and a.get("max") not in (None, "unrestricted"):
+            cap = float(a.get("max"))
+
+    fame = {}
+    for b in gd.iter("ClusterDangerBonus"):
+        factor = float(b.get("gatheringfamefactor") or 1)
+        if factor != 1 or b.get("type") in ("safe", "yellow", "orange", "red", "black"):
+            fame[b.get("type")] = factor
+
+    return {
+        "families": list(FAMILIES),
+        "nodes": nodes,
+        "kindLabels": kind_labels,
+        "toolTimeFactor": factors,
+        "gear": gear,
+        "gearInterval": interval,
+        "toolYield": tool,
+        "food": build_gather_food(items, consumable),
+        "potions": build_gather_potions(items, consumable),
+        "board": build_gather_board(),
+        "rareOdds": rare,
+        "speedCap": cap,
+        "fameFactor": fame,
+        # The one number here that is not from a table. The client's own
+        # store copy says "50% higher yield and Fame while gathering"; no
+        # spell and no row in gamedata.xml implements it, so whether it adds
+        # into the pool or multiplies the finished figure is not knowable
+        # from the files, and the app says so where it shows it.
+        "premiumYield": 0.5,
+        "premiumYieldSource": "localization",
+    }
 
 
 def build_equipment(items, item_value, weights):
@@ -956,6 +1294,7 @@ def main() -> None:
     # raws and refined materials it knows about are listed in that file too.
     equip_recipes, equip_items = build_equipment(items, item_value, weights)
     resource_ids, resource_items = resource_meta(equip_recipes, equip_items)
+    gathering = build_gathering(gd, items, parse("spells.xml"))
     # A resource the farming tables already describe keeps their row; the
     # refining tables only fill the gaps.
     for rid, row in resource_items.items():
@@ -1043,6 +1382,12 @@ def main() -> None:
         # It is 240-odd short rows against a two-megabyte download, so the
         # duplication is cheaper than the wait.
         "resources": resource_ids,
+        # Everything about going out and gathering the raws above: what a
+        # node gives, how long a swing takes, and every bonus that changes
+        # either. Small enough to ride in the file that loads at boot,
+        # because the gathering setup screen needs it before anybody opens
+        # the Craft tab.
+        "gathering": gathering,
     }
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
@@ -1078,6 +1423,12 @@ def main() -> None:
     print(f"  {len(cities)} crafting/farming locations (from craftingmodifiers.xml "
           f"+ farmingmodifiers.xml)")
     print(f"  {len(focus_nodes)} destiny board focus nodes (from achievements.xml)")
+    g = data["gathering"]
+    print(f"  gathering: "
+          f"{sum(len(t) for f in g['nodes'].values() for t in f.values())} node rows, "
+          f"{len(g['kindLabels'])} node kinds, {len(g['board'])} board nodes, "
+          f"{len(g['food'])} foods, {len(g['potions'])} potions "
+          f"(from harvestables.xml + spells.xml)")
     kb = OUT_EQUIP.stat().st_size / 1024
     print(f"  {len(equip_recipes)} weapon/armour/refining recipes, "
           f"{len(equip_items)} items, {len(equip_nodes)} craft board nodes "

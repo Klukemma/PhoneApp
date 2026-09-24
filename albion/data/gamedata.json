@@ -19171,5 +19171,2749 @@
   "T8_WOOD_LEVEL2",
   "T8_WOOD_LEVEL3",
   "T8_WOOD_LEVEL4"
- ]
+ ],
+ "gathering": {
+  "families": [
+   "WOOD",
+   "ORE",
+   "FIBER",
+   "HIDE",
+   "ROCK"
+  ],
+  "nodes": {
+   "WOOD": {
+    "static": {
+     "1": {
+      "seconds": 1.0,
+      "yield": 1,
+      "charges": 2,
+      "perHarvest": 2,
+      "respawn": 120,
+      "noTool": true
+     },
+     "2": {
+      "seconds": 2.0,
+      "yield": 3,
+      "charges": 3,
+      "perHarvest": 1,
+      "respawn": 60
+     },
+     "3": {
+      "seconds": 3.0,
+      "yield": 3,
+      "charges": 3,
+      "perHarvest": 1,
+      "respawn": 120
+     },
+     "4": {
+      "seconds": 4.0,
+      "yield": 2,
+      "charges": 3,
+      "perHarvest": 1,
+      "respawn": 240,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "5": {
+      "seconds": 6.0,
+      "yield": 1,
+      "charges": 5,
+      "perHarvest": 1,
+      "respawn": 720,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "6": {
+      "seconds": 8.0,
+      "yield": 1,
+      "charges": 5,
+      "perHarvest": 1,
+      "respawn": 900,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "7": {
+      "seconds": 10.0,
+      "yield": 1,
+      "charges": 9,
+      "perHarvest": 1,
+      "respawn": 900,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "8": {
+      "seconds": 15.0,
+      "yield": 1,
+      "charges": 11,
+      "perHarvest": 1,
+      "respawn": 900,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     }
+    },
+    "critter": {
+     "3": {
+      "seconds": 1.5,
+      "yield": 3,
+      "charges": 3,
+      "perHarvest": 1
+     },
+     "4": {
+      "seconds": 3.0,
+      "yield": 2,
+      "charges": 3,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "5": {
+      "seconds": 3.0,
+      "yield": 1,
+      "charges": 5,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "6": {
+      "seconds": 3.0,
+      "yield": 1,
+      "charges": 5,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "7": {
+      "seconds": 5.0,
+      "yield": 1,
+      "charges": 9,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "8": {
+      "seconds": 5.0,
+      "yield": 1,
+      "charges": 11,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     }
+    },
+    "roads": {
+     "4": {
+      "seconds": 3.0,
+      "yield": 2,
+      "charges": 3,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "5": {
+      "seconds": 3.0,
+      "yield": 1,
+      "charges": 5,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "6": {
+      "seconds": 3.0,
+      "yield": 1,
+      "charges": 5,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "7": {
+      "seconds": 5.0,
+      "yield": 1,
+      "charges": 9,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "8": {
+      "seconds": 5.0,
+      "yield": 1,
+      "charges": 11,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     }
+    },
+    "roadsVeteran": {
+     "4": {
+      "seconds": 3.0,
+      "yield": 2,
+      "charges": 156,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "5": {
+      "seconds": 3.0,
+      "yield": 1,
+      "charges": 104,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "6": {
+      "seconds": 3.0,
+      "yield": 1,
+      "charges": 19,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "7": {
+      "seconds": 5.0,
+      "yield": 1,
+      "charges": 20,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "8": {
+      "seconds": 5.0,
+      "yield": 1,
+      "charges": 19,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     }
+    },
+    "roadsElite": {
+     "4": {
+      "seconds": 3.0,
+      "yield": 2,
+      "charges": 391,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "5": {
+      "seconds": 3.0,
+      "yield": 1,
+      "charges": 261,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "6": {
+      "seconds": 3.0,
+      "yield": 1,
+      "charges": 48,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "7": {
+      "seconds": 5.0,
+      "yield": 1,
+      "charges": 50,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "8": {
+      "seconds": 5.0,
+      "yield": 1,
+      "charges": 48,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     }
+    },
+    "treasure": {
+     "4": {
+      "seconds": 6.0,
+      "yield": 1,
+      "charges": 30,
+      "perHarvest": 1,
+      "respawn": 1500,
+      "rare": [
+       1,
+       2,
+       3,
+       4
+      ]
+     },
+     "5": {
+      "seconds": 6.0,
+      "yield": 1,
+      "charges": 30,
+      "perHarvest": 1,
+      "respawn": 1500,
+      "rare": [
+       1,
+       2,
+       3,
+       4
+      ]
+     },
+     "6": {
+      "seconds": 8.0,
+      "yield": 1,
+      "charges": 30,
+      "perHarvest": 1,
+      "respawn": 10000,
+      "rare": [
+       1,
+       2,
+       3,
+       4
+      ]
+     },
+     "7": {
+      "seconds": 10.0,
+      "yield": 1,
+      "charges": 30,
+      "perHarvest": 1,
+      "respawn": 40000,
+      "rare": [
+       1,
+       2,
+       3,
+       4
+      ]
+     },
+     "8": {
+      "seconds": 15.0,
+      "yield": 1,
+      "charges": 30,
+      "perHarvest": 1,
+      "respawn": 48000,
+      "rare": [
+       1,
+       2,
+       3,
+       4
+      ]
+     }
+    },
+    "guardian": {
+     "6": {
+      "seconds": 8.0,
+      "yield": 1,
+      "charges": 2560,
+      "perHarvest": 10
+     }
+    },
+    "miniguardian": {
+     "6": {
+      "seconds": 8.0,
+      "yield": 1,
+      "charges": 500,
+      "perHarvest": 5,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     }
+    },
+    "giant": {
+     "1": {
+      "seconds": 10.0,
+      "yield": 10,
+      "charges": 5,
+      "perHarvest": 1,
+      "respawn": 120,
+      "noTool": true
+     },
+     "2": {
+      "seconds": 20.0,
+      "yield": 3,
+      "charges": 1,
+      "perHarvest": 3,
+      "respawn": 900
+     },
+     "3": {
+      "seconds": 30.0,
+      "yield": 3,
+      "charges": 1,
+      "perHarvest": 3,
+      "respawn": 900
+     },
+     "4": {
+      "seconds": 40.0,
+      "yield": 2,
+      "charges": 1,
+      "perHarvest": 3,
+      "respawn": 900,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "5": {
+      "seconds": 60.0,
+      "yield": 2,
+      "charges": 1,
+      "perHarvest": 3,
+      "respawn": 900,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "6": {
+      "seconds": 120.0,
+      "yield": 1,
+      "charges": 1,
+      "perHarvest": 2,
+      "respawn": 900,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "7": {
+      "seconds": 240.0,
+      "yield": 1,
+      "charges": 1,
+      "perHarvest": 1,
+      "respawn": 900,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "8": {
+      "seconds": 480.0,
+      "yield": 1,
+      "charges": 1,
+      "perHarvest": 1,
+      "respawn": 900,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     }
+    }
+   },
+   "ORE": {
+    "static": {
+     "2": {
+      "seconds": 2.0,
+      "yield": 3,
+      "charges": 3,
+      "perHarvest": 1,
+      "respawn": 60
+     },
+     "3": {
+      "seconds": 3.0,
+      "yield": 3,
+      "charges": 3,
+      "perHarvest": 1,
+      "respawn": 120
+     },
+     "4": {
+      "seconds": 4.0,
+      "yield": 2,
+      "charges": 3,
+      "perHarvest": 1,
+      "respawn": 240,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "5": {
+      "seconds": 6.0,
+      "yield": 1,
+      "charges": 5,
+      "perHarvest": 1,
+      "respawn": 720,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "6": {
+      "seconds": 8.0,
+      "yield": 1,
+      "charges": 5,
+      "perHarvest": 1,
+      "respawn": 900,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "7": {
+      "seconds": 10.0,
+      "yield": 1,
+      "charges": 9,
+      "perHarvest": 1,
+      "respawn": 900,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "8": {
+      "seconds": 15.0,
+      "yield": 1,
+      "charges": 11,
+      "perHarvest": 1,
+      "respawn": 900,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     }
+    },
+    "critter": {
+     "3": {
+      "seconds": 1.5,
+      "yield": 3,
+      "charges": 3,
+      "perHarvest": 1
+     },
+     "4": {
+      "seconds": 3.0,
+      "yield": 2,
+      "charges": 3,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "5": {
+      "seconds": 3.0,
+      "yield": 1,
+      "charges": 5,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "6": {
+      "seconds": 3.0,
+      "yield": 1,
+      "charges": 5,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "7": {
+      "seconds": 5.0,
+      "yield": 1,
+      "charges": 9,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "8": {
+      "seconds": 5.0,
+      "yield": 1,
+      "charges": 11,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     }
+    },
+    "roads": {
+     "4": {
+      "seconds": 3.0,
+      "yield": 2,
+      "charges": 3,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "5": {
+      "seconds": 3.0,
+      "yield": 1,
+      "charges": 5,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "6": {
+      "seconds": 3.0,
+      "yield": 1,
+      "charges": 5,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "7": {
+      "seconds": 5.0,
+      "yield": 1,
+      "charges": 9,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "8": {
+      "seconds": 5.0,
+      "yield": 1,
+      "charges": 11,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     }
+    },
+    "roadsVeteran": {
+     "4": {
+      "seconds": 3.0,
+      "yield": 2,
+      "charges": 156,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "5": {
+      "seconds": 3.0,
+      "yield": 1,
+      "charges": 104,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "6": {
+      "seconds": 3.0,
+      "yield": 1,
+      "charges": 19,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "7": {
+      "seconds": 5.0,
+      "yield": 1,
+      "charges": 20,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "8": {
+      "seconds": 5.0,
+      "yield": 1,
+      "charges": 19,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     }
+    },
+    "roadsElite": {
+     "4": {
+      "seconds": 3.0,
+      "yield": 2,
+      "charges": 391,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "5": {
+      "seconds": 3.0,
+      "yield": 1,
+      "charges": 261,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "6": {
+      "seconds": 3.0,
+      "yield": 1,
+      "charges": 48,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "7": {
+      "seconds": 5.0,
+      "yield": 1,
+      "charges": 50,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "8": {
+      "seconds": 5.0,
+      "yield": 1,
+      "charges": 48,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     }
+    },
+    "treasure": {
+     "4": {
+      "seconds": 6.0,
+      "yield": 1,
+      "charges": 30,
+      "perHarvest": 1,
+      "respawn": 1500,
+      "rare": [
+       1,
+       2,
+       3,
+       4
+      ]
+     },
+     "5": {
+      "seconds": 6.0,
+      "yield": 1,
+      "charges": 30,
+      "perHarvest": 1,
+      "respawn": 1500,
+      "rare": [
+       1,
+       2,
+       3,
+       4
+      ]
+     },
+     "6": {
+      "seconds": 8.0,
+      "yield": 1,
+      "charges": 30,
+      "perHarvest": 1,
+      "respawn": 10000,
+      "rare": [
+       1,
+       2,
+       3,
+       4
+      ]
+     },
+     "7": {
+      "seconds": 10.0,
+      "yield": 1,
+      "charges": 30,
+      "perHarvest": 1,
+      "respawn": 40000,
+      "rare": [
+       1,
+       2,
+       3,
+       4
+      ]
+     },
+     "8": {
+      "seconds": 15.0,
+      "yield": 1,
+      "charges": 30,
+      "perHarvest": 1,
+      "respawn": 48000,
+      "rare": [
+       1,
+       2,
+       3,
+       4
+      ]
+     }
+    },
+    "guardian": {
+     "6": {
+      "seconds": 8.0,
+      "yield": 1,
+      "charges": 2560,
+      "perHarvest": 10
+     }
+    },
+    "miniguardian": {
+     "6": {
+      "seconds": 8.0,
+      "yield": 1,
+      "charges": 500,
+      "perHarvest": 5,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     }
+    }
+   },
+   "FIBER": {
+    "static": {
+     "2": {
+      "seconds": 2.0,
+      "yield": 3,
+      "charges": 3,
+      "perHarvest": 1,
+      "respawn": 60
+     },
+     "3": {
+      "seconds": 3.0,
+      "yield": 3,
+      "charges": 3,
+      "perHarvest": 1,
+      "respawn": 120
+     },
+     "4": {
+      "seconds": 4.0,
+      "yield": 2,
+      "charges": 3,
+      "perHarvest": 1,
+      "respawn": 240,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "5": {
+      "seconds": 6.0,
+      "yield": 1,
+      "charges": 5,
+      "perHarvest": 1,
+      "respawn": 720,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "6": {
+      "seconds": 8.0,
+      "yield": 1,
+      "charges": 5,
+      "perHarvest": 1,
+      "respawn": 900,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "7": {
+      "seconds": 10.0,
+      "yield": 1,
+      "charges": 9,
+      "perHarvest": 1,
+      "respawn": 900,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "8": {
+      "seconds": 15.0,
+      "yield": 1,
+      "charges": 11,
+      "perHarvest": 1,
+      "respawn": 900,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     }
+    },
+    "critter": {
+     "3": {
+      "seconds": 1.5,
+      "yield": 3,
+      "charges": 3,
+      "perHarvest": 1
+     },
+     "4": {
+      "seconds": 3.0,
+      "yield": 2,
+      "charges": 3,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "5": {
+      "seconds": 3.0,
+      "yield": 1,
+      "charges": 5,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "6": {
+      "seconds": 3.0,
+      "yield": 1,
+      "charges": 5,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "7": {
+      "seconds": 5.0,
+      "yield": 1,
+      "charges": 9,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "8": {
+      "seconds": 5.0,
+      "yield": 1,
+      "charges": 11,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     }
+    },
+    "roads": {
+     "4": {
+      "seconds": 3.0,
+      "yield": 2,
+      "charges": 3,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "5": {
+      "seconds": 3.0,
+      "yield": 1,
+      "charges": 5,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "6": {
+      "seconds": 3.0,
+      "yield": 1,
+      "charges": 5,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "7": {
+      "seconds": 5.0,
+      "yield": 1,
+      "charges": 9,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "8": {
+      "seconds": 5.0,
+      "yield": 1,
+      "charges": 11,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     }
+    },
+    "roadsVeteran": {
+     "4": {
+      "seconds": 3.0,
+      "yield": 2,
+      "charges": 156,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "5": {
+      "seconds": 3.0,
+      "yield": 1,
+      "charges": 104,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "6": {
+      "seconds": 3.0,
+      "yield": 1,
+      "charges": 19,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "7": {
+      "seconds": 5.0,
+      "yield": 1,
+      "charges": 20,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "8": {
+      "seconds": 5.0,
+      "yield": 1,
+      "charges": 19,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     }
+    },
+    "roadsElite": {
+     "4": {
+      "seconds": 3.0,
+      "yield": 2,
+      "charges": 391,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "5": {
+      "seconds": 3.0,
+      "yield": 1,
+      "charges": 261,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "6": {
+      "seconds": 3.0,
+      "yield": 1,
+      "charges": 48,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "7": {
+      "seconds": 5.0,
+      "yield": 1,
+      "charges": 50,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "8": {
+      "seconds": 5.0,
+      "yield": 1,
+      "charges": 48,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     }
+    },
+    "treasure": {
+     "4": {
+      "seconds": 6.0,
+      "yield": 1,
+      "charges": 30,
+      "perHarvest": 1,
+      "respawn": 86400,
+      "rare": [
+       1,
+       2,
+       3,
+       4
+      ]
+     },
+     "5": {
+      "seconds": 6.0,
+      "yield": 1,
+      "charges": 30,
+      "perHarvest": 1,
+      "respawn": 86400,
+      "rare": [
+       1,
+       2,
+       3,
+       4
+      ]
+     },
+     "6": {
+      "seconds": 8.0,
+      "yield": 1,
+      "charges": 30,
+      "perHarvest": 1,
+      "respawn": 86400,
+      "rare": [
+       1,
+       2,
+       3,
+       4
+      ]
+     },
+     "7": {
+      "seconds": 10.0,
+      "yield": 1,
+      "charges": 30,
+      "perHarvest": 1,
+      "respawn": 86400,
+      "rare": [
+       1,
+       2,
+       3,
+       4
+      ]
+     },
+     "8": {
+      "seconds": 15.0,
+      "yield": 1,
+      "charges": 30,
+      "perHarvest": 1,
+      "respawn": 86400,
+      "rare": [
+       1,
+       2,
+       3,
+       4
+      ]
+     }
+    },
+    "guardian": {
+     "6": {
+      "seconds": 8.0,
+      "yield": 1,
+      "charges": 2560,
+      "perHarvest": 10
+     }
+    },
+    "miniguardian": {
+     "6": {
+      "seconds": 8.0,
+      "yield": 1,
+      "charges": 500,
+      "perHarvest": 5,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     }
+    }
+   },
+   "HIDE": {
+    "static": {
+     "1": {
+      "seconds": 1.0,
+      "yield": 1,
+      "charges": 2,
+      "perHarvest": 2
+     },
+     "2": {
+      "seconds": 1.0,
+      "yield": 3,
+      "charges": 3,
+      "perHarvest": 1,
+      "respawn": 60
+     },
+     "3": {
+      "seconds": 2.25,
+      "yield": 3,
+      "charges": 3,
+      "perHarvest": 1,
+      "respawn": 180
+     },
+     "4": {
+      "seconds": 3.6,
+      "yield": 2,
+      "charges": 3,
+      "perHarvest": 1,
+      "respawn": 500,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "5": {
+      "seconds": 6.0,
+      "yield": 1,
+      "charges": 5,
+      "perHarvest": 1,
+      "respawn": 1500,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "6": {
+      "seconds": 8.0,
+      "yield": 1,
+      "charges": 5,
+      "perHarvest": 1,
+      "respawn": 10000,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "7": {
+      "seconds": 10.0,
+      "yield": 1,
+      "charges": 9,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "8": {
+      "seconds": 15.0,
+      "yield": 1,
+      "charges": 11,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     }
+    },
+    "critter": {
+     "3": {
+      "seconds": 1.5,
+      "yield": 3,
+      "charges": 3,
+      "perHarvest": 1
+     },
+     "4": {
+      "seconds": 3.0,
+      "yield": 2,
+      "charges": 3,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "5": {
+      "seconds": 3.0,
+      "yield": 1,
+      "charges": 5,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "6": {
+      "seconds": 3.0,
+      "yield": 1,
+      "charges": 5,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "7": {
+      "seconds": 5.0,
+      "yield": 1,
+      "charges": 9,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "8": {
+      "seconds": 5.0,
+      "yield": 1,
+      "charges": 11,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     }
+    },
+    "roads": {
+     "4": {
+      "seconds": 3.0,
+      "yield": 2,
+      "charges": 3,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "5": {
+      "seconds": 3.0,
+      "yield": 1,
+      "charges": 5,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "6": {
+      "seconds": 3.0,
+      "yield": 1,
+      "charges": 5,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "7": {
+      "seconds": 5.0,
+      "yield": 1,
+      "charges": 9,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "8": {
+      "seconds": 5.0,
+      "yield": 1,
+      "charges": 11,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     }
+    },
+    "roadsVeteran": {
+     "4": {
+      "seconds": 3.0,
+      "yield": 2,
+      "charges": 156,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "5": {
+      "seconds": 3.0,
+      "yield": 1,
+      "charges": 104,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "6": {
+      "seconds": 3.0,
+      "yield": 1,
+      "charges": 19,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "7": {
+      "seconds": 5.0,
+      "yield": 1,
+      "charges": 20,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "8": {
+      "seconds": 5.0,
+      "yield": 1,
+      "charges": 19,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     }
+    },
+    "roadsElite": {
+     "4": {
+      "seconds": 3.0,
+      "yield": 2,
+      "charges": 391,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "5": {
+      "seconds": 3.0,
+      "yield": 1,
+      "charges": 261,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "6": {
+      "seconds": 3.0,
+      "yield": 1,
+      "charges": 48,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "7": {
+      "seconds": 5.0,
+      "yield": 1,
+      "charges": 50,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "8": {
+      "seconds": 5.0,
+      "yield": 1,
+      "charges": 48,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     }
+    },
+    "treasure": {
+     "4": {
+      "seconds": 6.0,
+      "yield": 1,
+      "charges": 30,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3,
+       4
+      ]
+     },
+     "5": {
+      "seconds": 6.0,
+      "yield": 1,
+      "charges": 30,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3,
+       4
+      ]
+     },
+     "6": {
+      "seconds": 8.0,
+      "yield": 1,
+      "charges": 30,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3,
+       4
+      ]
+     },
+     "7": {
+      "seconds": 10.0,
+      "yield": 1,
+      "charges": 30,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3,
+       4
+      ]
+     },
+     "8": {
+      "seconds": 15.0,
+      "yield": 1,
+      "charges": 30,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3,
+       4
+      ]
+     }
+    },
+    "guardian": {
+     "6": {
+      "seconds": 8.0,
+      "yield": 1,
+      "charges": 2560,
+      "perHarvest": 10
+     }
+    },
+    "miniguardian": {
+     "6": {
+      "seconds": 8.0,
+      "yield": 1,
+      "charges": 500,
+      "perHarvest": 5,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     }
+    }
+   },
+   "ROCK": {
+    "static": {
+     "1": {
+      "seconds": 1.0,
+      "yield": 1,
+      "charges": 2,
+      "perHarvest": 2,
+      "respawn": 60,
+      "noTool": true
+     },
+     "2": {
+      "seconds": 2.0,
+      "yield": 3,
+      "charges": 3,
+      "perHarvest": 1,
+      "respawn": 60
+     },
+     "3": {
+      "seconds": 3.0,
+      "yield": 3,
+      "charges": 3,
+      "perHarvest": 1,
+      "respawn": 120
+     },
+     "4": {
+      "seconds": 4.0,
+      "yield": 2,
+      "charges": 3,
+      "perHarvest": 1,
+      "respawn": 240,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "5": {
+      "seconds": 6.0,
+      "yield": 1,
+      "charges": 5,
+      "perHarvest": 1,
+      "respawn": 720,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "6": {
+      "seconds": 8.0,
+      "yield": 1,
+      "charges": 5,
+      "perHarvest": 1,
+      "respawn": 900,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "7": {
+      "seconds": 10.0,
+      "yield": 1,
+      "charges": 9,
+      "perHarvest": 1,
+      "respawn": 900,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "8": {
+      "seconds": 15.0,
+      "yield": 1,
+      "charges": 11,
+      "perHarvest": 1,
+      "respawn": 900,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     }
+    },
+    "critter": {
+     "3": {
+      "seconds": 1.5,
+      "yield": 3,
+      "charges": 3,
+      "perHarvest": 1
+     },
+     "4": {
+      "seconds": 3.0,
+      "yield": 2,
+      "charges": 3,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "5": {
+      "seconds": 3.0,
+      "yield": 1,
+      "charges": 5,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "6": {
+      "seconds": 3.0,
+      "yield": 1,
+      "charges": 5,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "7": {
+      "seconds": 5.0,
+      "yield": 1,
+      "charges": 9,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "8": {
+      "seconds": 5.0,
+      "yield": 1,
+      "charges": 11,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     }
+    },
+    "roads": {
+     "4": {
+      "seconds": 3.0,
+      "yield": 2,
+      "charges": 3,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "5": {
+      "seconds": 3.0,
+      "yield": 1,
+      "charges": 5,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "6": {
+      "seconds": 3.0,
+      "yield": 1,
+      "charges": 5,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "7": {
+      "seconds": 5.0,
+      "yield": 1,
+      "charges": 9,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "8": {
+      "seconds": 5.0,
+      "yield": 1,
+      "charges": 11,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     }
+    },
+    "roadsVeteran": {
+     "4": {
+      "seconds": 3.0,
+      "yield": 2,
+      "charges": 156,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "5": {
+      "seconds": 3.0,
+      "yield": 1,
+      "charges": 104,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "6": {
+      "seconds": 3.0,
+      "yield": 1,
+      "charges": 19,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "7": {
+      "seconds": 5.0,
+      "yield": 1,
+      "charges": 20,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "8": {
+      "seconds": 5.0,
+      "yield": 1,
+      "charges": 19,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     }
+    },
+    "roadsElite": {
+     "4": {
+      "seconds": 3.0,
+      "yield": 2,
+      "charges": 391,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "5": {
+      "seconds": 3.0,
+      "yield": 1,
+      "charges": 261,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "6": {
+      "seconds": 3.0,
+      "yield": 1,
+      "charges": 48,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "7": {
+      "seconds": 5.0,
+      "yield": 1,
+      "charges": 50,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "8": {
+      "seconds": 5.0,
+      "yield": 1,
+      "charges": 48,
+      "perHarvest": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     }
+    },
+    "treasure": {
+     "4": {
+      "seconds": 6.0,
+      "yield": 1,
+      "charges": 30,
+      "perHarvest": 1,
+      "respawn": 1500,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "5": {
+      "seconds": 6.0,
+      "yield": 1,
+      "charges": 30,
+      "perHarvest": 1,
+      "respawn": 1500,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "6": {
+      "seconds": 8.0,
+      "yield": 1,
+      "charges": 30,
+      "perHarvest": 1,
+      "respawn": 10000,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "7": {
+      "seconds": 10.0,
+      "yield": 1,
+      "charges": 30,
+      "perHarvest": 1,
+      "respawn": 40000,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "8": {
+      "seconds": 15.0,
+      "yield": 1,
+      "charges": 30,
+      "perHarvest": 1,
+      "respawn": 48000,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     }
+    },
+    "guardian": {
+     "6": {
+      "seconds": 8.0,
+      "yield": 1,
+      "charges": 2560,
+      "perHarvest": 10
+     }
+    },
+    "miniguardian": {
+     "6": {
+      "seconds": 8.0,
+      "yield": 1,
+      "charges": 500,
+      "perHarvest": 5,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     }
+    }
+   }
+  },
+  "kindLabels": {
+   "static": "Static node",
+   "critter": "Living resource",
+   "roads": "Roads critter",
+   "roadsVeteran": "Roads critter, veteran",
+   "roadsElite": "Roads critter, elite",
+   "treasure": "Resource treasure",
+   "guardian": "Guardian",
+   "miniguardian": "Mini guardian",
+   "giant": "Giant tree"
+  },
+  "toolTimeFactor": {
+   "-1": 1.5,
+   "0": 1.0,
+   "1": 0.7,
+   "2": 0.5,
+   "3": 0.35,
+   "4": 0.25,
+   "5": 0.15,
+   "6": 0.15,
+   "7": 0.15
+  },
+  "gear": {
+   "head": {
+    "4": {
+     "perCharge": 0.0025,
+     "minTier": 2,
+     "maxTier": 4,
+     "maxCharges": 10
+    },
+    "5": {
+     "perCharge": 0.005,
+     "minTier": 2,
+     "maxTier": 5,
+     "maxCharges": 10
+    },
+    "6": {
+     "perCharge": 0.0075,
+     "minTier": 2,
+     "maxTier": 6,
+     "maxCharges": 10
+    },
+    "7": {
+     "perCharge": 0.0125,
+     "minTier": 2,
+     "maxTier": 7,
+     "maxCharges": 10
+    },
+    "8": {
+     "perCharge": 0.0175,
+     "minTier": 2,
+     "maxTier": 8,
+     "maxCharges": 10
+    }
+   },
+   "armor": {
+    "4": {
+     "perCharge": 0.005,
+     "minTier": 2,
+     "maxTier": 4,
+     "maxCharges": 10
+    },
+    "5": {
+     "perCharge": 0.01,
+     "minTier": 2,
+     "maxTier": 5,
+     "maxCharges": 10
+    },
+    "6": {
+     "perCharge": 0.015,
+     "minTier": 2,
+     "maxTier": 6,
+     "maxCharges": 10
+    },
+    "7": {
+     "perCharge": 0.025,
+     "minTier": 2,
+     "maxTier": 7,
+     "maxCharges": 10
+    },
+    "8": {
+     "perCharge": 0.035,
+     "minTier": 2,
+     "maxTier": 8,
+     "maxCharges": 10
+    }
+   },
+   "shoes": {
+    "4": {
+     "perCharge": 0.0025,
+     "minTier": 2,
+     "maxTier": 4,
+     "maxCharges": 10
+    },
+    "5": {
+     "perCharge": 0.005,
+     "minTier": 2,
+     "maxTier": 5,
+     "maxCharges": 10
+    },
+    "6": {
+     "perCharge": 0.0075,
+     "minTier": 2,
+     "maxTier": 6,
+     "maxCharges": 10
+    },
+    "7": {
+     "perCharge": 0.0125,
+     "minTier": 2,
+     "maxTier": 7,
+     "maxCharges": 10
+    },
+    "8": {
+     "perCharge": 0.0175,
+     "minTier": 2,
+     "maxTier": 8,
+     "maxCharges": 10
+    }
+   }
+  },
+  "gearInterval": 30.0,
+  "toolYield": {
+   "4": 0.1,
+   "5": 0.125,
+   "6": 0.15,
+   "7": 0.175,
+   "8": 0.2
+  },
+  "food": {
+   "T3_MEAL_PIE": {
+    "name": "Chicken Pie",
+    "tier": 3,
+    "grades": {
+     "0": {
+      "seconds": 1800.0,
+      "maxloadbonus": 0.1,
+      "gatheringyield": 0.05
+     },
+     "1": {
+      "seconds": 1800.0,
+      "maxloadbonus": 0.15,
+      "gatheringyield": 0.075
+     },
+     "2": {
+      "seconds": 1800.0,
+      "maxloadbonus": 0.2,
+      "gatheringyield": 0.1
+     },
+     "3": {
+      "seconds": 1800.0,
+      "maxloadbonus": 0.25,
+      "gatheringyield": 0.125
+     }
+    }
+   },
+   "T5_MEAL_PIE": {
+    "name": "Goose Pie",
+    "tier": 5,
+    "grades": {
+     "0": {
+      "seconds": 1800.0,
+      "maxloadbonus": 0.2,
+      "gatheringyield": 0.1
+     },
+     "1": {
+      "seconds": 1800.0,
+      "maxloadbonus": 0.25,
+      "gatheringyield": 0.125
+     },
+     "2": {
+      "seconds": 1800.0,
+      "maxloadbonus": 0.3,
+      "gatheringyield": 0.15
+     },
+     "3": {
+      "seconds": 1800.0,
+      "maxloadbonus": 0.35,
+      "gatheringyield": 0.175
+     }
+    }
+   },
+   "T7_MEAL_PIE": {
+    "name": "Pork Pie",
+    "tier": 7,
+    "grades": {
+     "0": {
+      "seconds": 1800.0,
+      "maxloadbonus": 0.3,
+      "gatheringyield": 0.15
+     },
+     "1": {
+      "seconds": 1800.0,
+      "maxloadbonus": 0.35,
+      "gatheringyield": 0.175
+     },
+     "2": {
+      "seconds": 1800.0,
+      "maxloadbonus": 0.4,
+      "gatheringyield": 0.2
+     },
+     "3": {
+      "seconds": 1800.0,
+      "maxloadbonus": 0.45,
+      "gatheringyield": 0.225
+     }
+    }
+   },
+   "T3_MEAL_PIE_FISH": {
+    "name": "Upland Coldeye Pie",
+    "tier": 3,
+    "grades": {
+     "0": {
+      "seconds": 1800.0,
+      "maxloadbonus": 0.075,
+      "gatheringyield": 0.05
+     },
+     "1": {
+      "seconds": 1800.0,
+      "maxloadbonus": 0.113,
+      "gatheringyield": 0.075
+     },
+     "2": {
+      "seconds": 1800.0,
+      "maxloadbonus": 0.15,
+      "gatheringyield": 0.1
+     },
+     "3": {
+      "seconds": 1800.0,
+      "maxloadbonus": 0.188,
+      "gatheringyield": 0.125
+     }
+    }
+   },
+   "T5_MEAL_PIE_FISH": {
+    "name": "Mountain Blindeye Pie",
+    "tier": 5,
+    "grades": {
+     "0": {
+      "seconds": 1800.0,
+      "maxloadbonus": 0.15,
+      "gatheringyield": 0.1
+     },
+     "1": {
+      "seconds": 1800.0,
+      "maxloadbonus": 0.188,
+      "gatheringyield": 0.125
+     },
+     "2": {
+      "seconds": 1800.0,
+      "maxloadbonus": 0.225,
+      "gatheringyield": 0.15
+     },
+     "3": {
+      "seconds": 1800.0,
+      "maxloadbonus": 0.263,
+      "gatheringyield": 0.175
+     }
+    }
+   },
+   "T7_MEAL_PIE_FISH": {
+    "name": "Frostpeak Deadeye Pie",
+    "tier": 7,
+    "grades": {
+     "0": {
+      "seconds": 1800.0,
+      "maxloadbonus": 0.225,
+      "gatheringyield": 0.15
+     },
+     "1": {
+      "seconds": 1800.0,
+      "maxloadbonus": 0.263,
+      "gatheringyield": 0.175
+     },
+     "2": {
+      "seconds": 1800.0,
+      "maxloadbonus": 0.3,
+      "gatheringyield": 0.2
+     },
+     "3": {
+      "seconds": 1800.0,
+      "maxloadbonus": 0.338,
+      "gatheringyield": 0.225
+     }
+    }
+   }
+  },
+  "potions": {
+   "T4_POTION_GATHER": {
+    "name": "Minor Gathering Potion",
+    "tier": 4,
+    "grades": {
+     "0": {
+      "seconds": 15.0,
+      "gatheringspeed": 0.15,
+      "gatheringyield": 0.05
+     },
+     "1": {
+      "seconds": 24.0,
+      "gatheringspeed": 0.21,
+      "gatheringyield": 0.063
+     },
+     "2": {
+      "seconds": 31.0,
+      "gatheringspeed": 0.25,
+      "gatheringyield": 0.072
+     },
+     "3": {
+      "seconds": 38.0,
+      "gatheringspeed": 0.29,
+      "gatheringyield": 0.079
+     }
+    }
+   },
+   "T6_POTION_GATHER": {
+    "name": "Gathering Potion",
+    "tier": 6,
+    "grades": {
+     "0": {
+      "seconds": 31.0,
+      "gatheringspeed": 0.25,
+      "gatheringyield": 0.072
+     },
+     "1": {
+      "seconds": 38.0,
+      "gatheringspeed": 0.29,
+      "gatheringyield": 0.079
+     },
+     "2": {
+      "seconds": 44.0,
+      "gatheringspeed": 0.32,
+      "gatheringyield": 0.085
+     },
+     "3": {
+      "seconds": 49.0,
+      "gatheringspeed": 0.35,
+      "gatheringyield": 0.091
+     }
+    }
+   },
+   "T8_POTION_GATHER": {
+    "name": "Major Gathering Potion",
+    "tier": 8,
+    "grades": {
+     "0": {
+      "seconds": 44.0,
+      "gatheringspeed": 0.32,
+      "gatheringyield": 0.085
+     },
+     "1": {
+      "seconds": 49.0,
+      "gatheringspeed": 0.35,
+      "gatheringyield": 0.091
+     },
+     "2": {
+      "seconds": 55.0,
+      "gatheringspeed": 0.37,
+      "gatheringyield": 0.096
+     },
+     "3": {
+      "seconds": 60.0,
+      "gatheringspeed": 0.4,
+      "gatheringyield": 0.1
+     }
+    }
+   }
+  },
+  "board": [
+   {
+    "id": "GATHER_FIBER_T4",
+    "name": "Adept Fiber Harvester",
+    "family": "FIBER",
+    "tier": 4,
+    "yieldPerLevel": 0.005,
+    "speedPerLevel": 0.005,
+    "maxLevel": 100
+   },
+   {
+    "id": "GATHER_FIBER_T5",
+    "name": "Expert Fiber Harvester",
+    "family": "FIBER",
+    "tier": 5,
+    "yieldPerLevel": 0.005,
+    "speedPerLevel": 0.005,
+    "maxLevel": 100
+   },
+   {
+    "id": "GATHER_FIBER_T6",
+    "name": "Master Fiber Harvester",
+    "family": "FIBER",
+    "tier": 6,
+    "yieldPerLevel": 0.005,
+    "speedPerLevel": 0.005,
+    "maxLevel": 100
+   },
+   {
+    "id": "GATHER_FIBER_T7",
+    "name": "Grandmaster Fiber Harvester",
+    "family": "FIBER",
+    "tier": 7,
+    "yieldPerLevel": 0.005,
+    "speedPerLevel": 0.005,
+    "maxLevel": 100
+   },
+   {
+    "id": "GATHER_FIBER_T8",
+    "name": "Elder Fiber Harvester",
+    "family": "FIBER",
+    "tier": 8,
+    "yieldPerLevel": 0.005,
+    "speedPerLevel": 0.005,
+    "maxLevel": 100
+   },
+   {
+    "id": "GATHER_HIDE_T4",
+    "name": "Adept Animal Skinner",
+    "family": "HIDE",
+    "tier": 4,
+    "yieldPerLevel": 0.005,
+    "speedPerLevel": 0.005,
+    "maxLevel": 100
+   },
+   {
+    "id": "GATHER_HIDE_T5",
+    "name": "Expert Animal Skinner",
+    "family": "HIDE",
+    "tier": 5,
+    "yieldPerLevel": 0.005,
+    "speedPerLevel": 0.005,
+    "maxLevel": 100
+   },
+   {
+    "id": "GATHER_HIDE_T6",
+    "name": "Master Animal Skinner",
+    "family": "HIDE",
+    "tier": 6,
+    "yieldPerLevel": 0.005,
+    "speedPerLevel": 0.005,
+    "maxLevel": 100
+   },
+   {
+    "id": "GATHER_HIDE_T7",
+    "name": "Grandmaster Animal Skinner",
+    "family": "HIDE",
+    "tier": 7,
+    "yieldPerLevel": 0.005,
+    "speedPerLevel": 0.005,
+    "maxLevel": 100
+   },
+   {
+    "id": "GATHER_HIDE_T8",
+    "name": "Elder Animal Skinner",
+    "family": "HIDE",
+    "tier": 8,
+    "yieldPerLevel": 0.005,
+    "speedPerLevel": 0.005,
+    "maxLevel": 100
+   },
+   {
+    "id": "GATHER_ORE_T4",
+    "name": "Adept Ore Miner",
+    "family": "ORE",
+    "tier": 4,
+    "yieldPerLevel": 0.005,
+    "speedPerLevel": 0.005,
+    "maxLevel": 100
+   },
+   {
+    "id": "GATHER_ORE_T5",
+    "name": "Expert Ore Miner",
+    "family": "ORE",
+    "tier": 5,
+    "yieldPerLevel": 0.005,
+    "speedPerLevel": 0.005,
+    "maxLevel": 100
+   },
+   {
+    "id": "GATHER_ORE_T6",
+    "name": "Master Ore Miner",
+    "family": "ORE",
+    "tier": 6,
+    "yieldPerLevel": 0.005,
+    "speedPerLevel": 0.005,
+    "maxLevel": 100
+   },
+   {
+    "id": "GATHER_ORE_T7",
+    "name": "Grandmaster Ore Miner",
+    "family": "ORE",
+    "tier": 7,
+    "yieldPerLevel": 0.005,
+    "speedPerLevel": 0.005,
+    "maxLevel": 100
+   },
+   {
+    "id": "GATHER_ORE_T8",
+    "name": "Elder Ore Miner",
+    "family": "ORE",
+    "tier": 8,
+    "yieldPerLevel": 0.005,
+    "speedPerLevel": 0.005,
+    "maxLevel": 100
+   },
+   {
+    "id": "GATHER_ROCK_T4",
+    "name": "Adept Quarrier",
+    "family": "ROCK",
+    "tier": 4,
+    "yieldPerLevel": 0.005,
+    "speedPerLevel": 0.005,
+    "maxLevel": 100
+   },
+   {
+    "id": "GATHER_ROCK_T5",
+    "name": "Expert Quarrier",
+    "family": "ROCK",
+    "tier": 5,
+    "yieldPerLevel": 0.005,
+    "speedPerLevel": 0.005,
+    "maxLevel": 100
+   },
+   {
+    "id": "GATHER_ROCK_T6",
+    "name": "Master Quarrier",
+    "family": "ROCK",
+    "tier": 6,
+    "yieldPerLevel": 0.005,
+    "speedPerLevel": 0.005,
+    "maxLevel": 100
+   },
+   {
+    "id": "GATHER_ROCK_T7",
+    "name": "Grandmaster Quarrier",
+    "family": "ROCK",
+    "tier": 7,
+    "yieldPerLevel": 0.005,
+    "speedPerLevel": 0.005,
+    "maxLevel": 100
+   },
+   {
+    "id": "GATHER_ROCK_T8",
+    "name": "Elder Quarrier",
+    "family": "ROCK",
+    "tier": 8,
+    "yieldPerLevel": 0.005,
+    "speedPerLevel": 0.005,
+    "maxLevel": 100
+   },
+   {
+    "id": "GATHER_WOOD_T4",
+    "name": "Adept Lumberjack",
+    "family": "WOOD",
+    "tier": 4,
+    "yieldPerLevel": 0.005,
+    "speedPerLevel": 0.005,
+    "maxLevel": 100
+   },
+   {
+    "id": "GATHER_WOOD_T5",
+    "name": "Expert Lumberjack",
+    "family": "WOOD",
+    "tier": 5,
+    "yieldPerLevel": 0.005,
+    "speedPerLevel": 0.005,
+    "maxLevel": 100
+   },
+   {
+    "id": "GATHER_WOOD_T6",
+    "name": "Master Lumberjack",
+    "family": "WOOD",
+    "tier": 6,
+    "yieldPerLevel": 0.005,
+    "speedPerLevel": 0.005,
+    "maxLevel": 100
+   },
+   {
+    "id": "GATHER_WOOD_T7",
+    "name": "Grandmaster Lumberjack",
+    "family": "WOOD",
+    "tier": 7,
+    "yieldPerLevel": 0.005,
+    "speedPerLevel": 0.005,
+    "maxLevel": 100
+   },
+   {
+    "id": "GATHER_WOOD_T8",
+    "name": "Elder Lumberjack",
+    "family": "WOOD",
+    "tier": 8,
+    "yieldPerLevel": 0.005,
+    "speedPerLevel": 0.005,
+    "maxLevel": 100
+   }
+  ],
+  "rareOdds": {
+   "outlandsHigh": [
+    0.778,
+    0.2,
+    0.02,
+    0.002,
+    0.0
+   ],
+   "outlandsMedium": [
+    0.889,
+    0.1,
+    0.01,
+    0.001,
+    0.0
+   ],
+   "outlandsLow": [
+    0.9445,
+    0.05,
+    0.005,
+    0.0005,
+    0.0
+   ],
+   "royal": [
+    0.9445,
+    0.05,
+    0.005,
+    0.0005,
+    0.0
+   ]
+  },
+  "speedCap": 0.4,
+  "fameFactor": {
+   "safe": 1.0,
+   "yellow": 1.0,
+   "orange": 1.0,
+   "red": 1.0,
+   "black": 1.0,
+   "black1": 1.25,
+   "black2": 1.3,
+   "black3": 1.35,
+   "black4": 1.4,
+   "black5": 1.45,
+   "black6": 1.5
+  },
+  "premiumYield": 0.5,
+  "premiumYieldSource": "localization"
+ }
 }

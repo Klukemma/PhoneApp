@@ -1,7 +1,7 @@
 // Cache-first shell so the app opens instantly and works with no signal.
 // Bump CACHE when the shell or the game data changes.
 
-const CACHE = 'albionfarm-v35';  // v35: review fixes on the new flow
+const CACHE = 'albionfarm-v36';  // v36: resources, transmutes and the gathering tables
 const SHELL = [
   './', './index.html', './manifest.webmanifest',
   './css/app.css',
