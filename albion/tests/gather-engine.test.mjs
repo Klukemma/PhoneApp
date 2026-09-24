@@ -518,6 +518,38 @@ test('gathering a material costs no silver and does cost time', () => {
   assert.ok(gathered.assumed.length > 0);
 });
 
+test('two gathered materials: hours only once every one of them is timed', () => {
+  /* Half a run is not a run. A rate is filed per family, tier, node kind and
+   * zone, so having timed T5 wood and not T4 wood is the ordinary state of
+   * things - and reporting the T5 hours as if they covered the whole trip
+   * would be worse than reporting nothing, because it looks like an answer. */
+  const prices = { T5_WOOD: 260, T4_WOOD: 200, T4_PLANKS: 700, T5_PLANKS: 1100 };
+  const at = (measured) => craftPnL('T5_PLANKS', {
+    recipeOf, qty: 999, priceOf: (id) => prices[id] ?? 0,
+    settings: kit({ premium: true, gather: { toolTier: 8, measured } }),
+    cityId: 'fortsterling',
+    make: new Set(['T4_PLANKS']),
+    gather: new Set(['T5_WOOD', 'T4_WOOD']),
+  });
+  const five = { 'WOOD:5:static:royal': { per10min: 90 } };
+  const four = { 'WOOD:4:static:royal': { per10min: 90 } };
+
+  const half = at(five);
+  assert.equal(Object.keys(half.gathered).length, 2);
+  assert.ok(half.gathered.T5_WOOD.hours > 0);
+  assert.equal(half.gathered.T4_WOOD.hours, null);
+  assert.equal(half.gatherHours, null, 'one wood timed is not the run timed');
+  // And the other way round, so the answer cannot turn on which ran last.
+  assert.equal(at(four).gatherHours, null);
+
+  const both = at({ ...five, ...four });
+  assert.equal(round(both.gatherHours, 6),
+    round(both.gathered.T5_WOOD.hours + both.gathered.T4_WOOD.hours, 6));
+  // The swing floor never latches: it is exact for both whatever you timed.
+  assert.ok(half.gatherSwingSeconds > 0);
+  assert.equal(round(half.gatherSwingSeconds), round(both.gatherSwingSeconds));
+});
+
 test('a run with nothing gathered is byte for byte what it always was', () => {
   const prices = { T5_WOOD: 260, T4_PLANKS: 700, T5_PLANKS: 1100 };
   const run = craftPnL('T5_PLANKS', {
@@ -570,6 +602,15 @@ test('every way out of a pile of logs, costed the same way', () => {
   assert.equal(by.enchant.focus, 0);
   assert.equal(by.raw.focus, 0);
   assert.equal(by.raw.silverPerFocus, null);
+  /* The enchanted logs the run dug up are credited to this row too. It is the
+   * one route whose byproducts are worked out in exits.js rather than by
+   * craftPnL, and dropping them would make selling the logs look worse than
+   * refining them for a reason that has nothing to do with refining - which
+   * is exactly what the function's own header promises not to do. */
+  const bare = 999 * prices.T5_WOOD * (1 - by.raw.pnl.tax);
+  assert.ok(by.raw.byproductRevenue > 0);
+  assert.equal(round(by.raw.profit), round(bare + by.raw.byproductRevenue));
+  assert.ok(by.raw.byproductRevenue / by.raw.profit > 0.2, 'and it is not a rounding error');
   // Sorted best first, on a figure that exists without a measured rate.
   assert.ok(rows[0].silverPerSwingSecond >= rows[rows.length - 1].silverPerSwingSecond);
   for (const row of rows) {
