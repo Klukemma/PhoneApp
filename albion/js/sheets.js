@@ -1,7 +1,7 @@
 // Bottom sheets: pickers, editors, settings.
 
 import {
-  cityBonus, cityFor, craftBatch, farmBonus, farmCityFor, feedFor,
+  bestCityFor, cityBonus, cityFor, craftBatch, farmBonus, farmCityFor, feedFor,
   focusCostAt, focusEfficiency, mixFor, perPeriod, QUALITY_LEVELS,
   qualityMix, qualityPoints, simulateCycle, specFor, TILES_PER_PLOT,
 } from './calc.js';
@@ -19,7 +19,8 @@ import {
   setStock, state, updateCraft, updatePlot, wipe,
 } from './store.js';
 import {
-  enchantUp, gatherRun, gatherSpeed, gatherYield, kitOf, rateKey, rawId, rawIdOf,
+  enchantUp, gatherRun, gatherSpeed, gatherYield, kitOf, rateKey, rawId,
+  rawIdOf, refinedOf,
 } from './gather.js';
 import { resourceExits } from './exits.js';
 import { solve } from './solve.js';
@@ -2245,6 +2246,33 @@ export function openResourceExits(id, qty = 999) {
   const blocked = rows[0]?.pnl?.gathered?.[id];
   const city = cityFor(s);
 
+  /* The same pile under one thing changed, so the screen can say what that
+   * thing is worth rather than making you go and change it to find out. Both
+   * levers are real money on a refining route and neither is visible from the
+   * numbers above: focus roughly halves what the materials cost, and the city
+   * that specialises in this resource is worth forty points of return rate. */
+  const bestUnder = (over) => {
+    const rows2 = resourceExits(id, { ...ctxNow, ...over }, { qty });
+    return rows2.filter((r) => !r.missing.length)[0] || null;
+  };
+  const refineCat = recipeOf(refinedOf(id))?.category;
+  const better = refineCat ? bestCityFor(refineCat, s) : null;
+  const elsewhere = better && better.id !== s.craftCity
+    ? bestUnder({ cityId: better.id }) : null;
+  const noFocus = s.useFocus
+    ? bestUnder({ settings: { ...s, useFocus: false } }) : null;
+  const withFocus = s.useFocus
+    ? null : bestUnder({ settings: { ...s, useFocus: true } });
+
+  /** A lever, and what pulling it is worth on the best route. */
+  const lever = (act, icon, title, meta, other) => {
+    const gap = best && other ? other.profit - best.profit : 0;
+    return rowHTML({
+      act, icon, title, meta, cls: 'wrap',
+      right: Math.abs(gap) > 0.5 ? amt(gap, { sign: true }) : go(),
+    });
+  };
+
   const routeRow = (r, i) => {
     const gap = best && r !== best && r.silverPerSwingSecond != null
       ? r.silverPerSwingSecond - best.silverPerSwingSecond : 0;
@@ -2292,6 +2320,21 @@ export function openResourceExits(id, qty = 999) {
     <div class="section-head" style="margin-top:14px"><h2>Every way out</h2></div>
     ${rows.map(routeRow).join('') || '<div class="hint">Nothing this can become.</div>'}
 
+    ${best ? `
+      <div class="section-head" style="margin-top:14px"><h2>What would change it</h2></div>
+      ${lever('exits-city', ICON.city,
+    `Refine in ${esc(city?.name || 'your city')}`,
+    esc(elsewhere
+      ? `${better.name} specialises in ${refineCat}: +${cityBonus(better, refineCat, s, { refine: true }).specialty}% return rate`
+      : better && better.id === s.craftCity
+        ? `which specialises in ${refineCat} — nowhere pays more`
+        : 'tap to craft somewhere else'), elsewhere)}
+      ${lever('exits-focus', ICON.spark,
+    s.useFocus ? 'Refining with focus' : 'Refining without focus',
+    esc(s.useFocus
+      ? `${short(best.focus)} focus for the pile · tap to turn it off`
+      : 'tap to turn it on and see what it is worth'), noFocus || withFocus)}` : ''}
+
     ${(blocked?.assumed || []).length ? note(`Yours rather than the game's: ${
       esc(blocked.assumed.join('; '))}.`) : ''}
     ${note('Tap a route to open it in Craft, where you can change the city, the'
@@ -2317,6 +2360,17 @@ export function openResourceExits(id, qty = 999) {
           navigate('craft');
         };
       }
+      const on = (act, fn) => {
+        const el = $(`[data-act="${act}"]`, root);
+        if (el) el.onclick = fn;
+      };
+      on('exits-city', () => openCraftCity());
+      /* Toggling focus reopens this sheet rather than closing it: the number
+       * you came to see is the one that just changed. */
+      on('exits-focus', () => {
+        setSettings({ useFocus: !state.settings.useFocus });
+        openResourceExits(id, qty);
+      });
       $('#kit', root).onclick = () => openGatherSetup(id);
       $('#done', root).onclick = closeSheet;
     },
