@@ -871,6 +871,13 @@ export function openPrice(id, market = null, busy = false, err = null) {
     <div class="hint centered">Live from the Albion Online Data Project ·
       ${esc(server)} · <button class="linkish" data-src>change server</button></div>
 
+    ${rawIdOf(id) ? rowHTML({
+    act: 'price-exits', icon: ICON.raw,
+    title: `What 999 of these are worth`,
+    meta: 'Sell, refine, transmute — and what the swings cost',
+    right: go(),
+  }) : ''}
+
     ${err ? `<div class="warn-note" style="margin-top:12px">${esc(err)}</div>` : ''}
 
     ${market && !market.length ? `<div class="warn-note" style="margin-top:12px">
@@ -901,6 +908,14 @@ export function openPrice(id, market = null, busy = false, err = null) {
   `, {
     onMount(root) {
       $('[data-src]', root)?.addEventListener('click', () => openPriceSource());
+      /* A gathered resource has a second question behind the price: what to
+       * do with a pile of them. Saving first, so the number just typed is the
+       * one the routes are costed against. */
+      $('[data-act="price-exits"]', root)?.addEventListener('click', () => {
+        setPrice(id, $('#sell', root).value);
+        setBuyPrice(id, $('#buy', root).value);
+        openResourceExits(id);
+      });
 
       const sellIn = $('#sell', root);
       const buyIn = $('#buy', root);
@@ -2018,7 +2033,7 @@ export function openGatherSetup(forId = null) {
       tool's own bonus, the pie, the board, premium — decides how much a swing
       gives, which means needing fewer swings rather than swinging faster.</p>
 
-    <div class="section-head"><h2>What it comes to</h2>
+    <div class="section-head" style="margin-top:14px"><h2>What it comes to</h2>
       <span class="right num">${esc(FAMILY_LABEL[family])} T${tier}</span></div>
     <div class="seg small" style="margin-bottom:8px">
       ${(G.families || []).map((f) => `
@@ -2213,6 +2228,11 @@ const kitToggle = (key, title, desc, on) => `
  * the same tax. Which one wins moves with the market week to week, which is why
  * it is a screen and not a rule of thumb.
  */
+const ROUTE_ICON = {
+  raw: '\u{1FA99}', refine: '\u{1F9F1}', enchant: '\u2728',
+  tier: '\u2B06\uFE0F', enchantRefine: '\u{1F52E}',
+};
+
 export function openResourceExits(id, qty = 999) {
   const s = state.settings;
   const ctxNow = {
@@ -2231,8 +2251,8 @@ export function openResourceExits(id, qty = 999) {
     return rowHTML({
       attrs: r.pnl.recipe ? `data-route="${esc(r.pnl.recipe.id)}" data-route-key="${esc(r.key)}"` : '',
       tagName: r.pnl.recipe ? 'button' : 'div',
-      icon: i === 0 && r === best ? '\u{1F947}' : ICON.raw,
-      cls: r.missing.length ? 'warn' : '',
+      icon: i === 0 && r === best ? '\u{1F947}' : ROUTE_ICON[r.key] || ICON.raw,
+      cls: `wrap ${r.missing.length ? 'warn' : ''}`,
       title: `${esc(r.label)} → ${short(r.made)} ${esc(nameOf(r.pnl.recipe
         ? (r.pnl.recipe.out || r.pnl.recipe.id) : id))}`,
       meta: esc(r.missing.length
