@@ -436,6 +436,8 @@ test('keeping the bonuses up costs consumables, once you have timed a run', () =
    * a hundred and sixty of them. It is why a permanent speed buff is not a
    * thing anyone actually runs. */
   assert.equal(run.potions, 161);
+  // And the run says out loud that it assumed the potion never lapsed.
+  assert.ok(run.assumed.some((a) => a.includes('potion is up the whole run')));
   // Both are about wall-clock, so neither is quoted before a run is timed.
   const untimed = gatherRun('T5_WOOD', {
     qty: 999, settings: kit({ gather: { ...on, measured: {} } }),

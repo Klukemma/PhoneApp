@@ -380,6 +380,13 @@ export function gatherRun(itemId, { qty = 999, settings }) {
   if (kit.wornSeconds != null && !rate.yield.ramped) {
     assumed.push('the set has not reached full charges yet');
   }
+  if (potionRow?.gatheringspeed || potionRow?.gatheringyield) {
+    /* The one bonus in the kit you cannot simply have on. It runs out in
+     * under a minute, so the run only gets it by drinking one a minute all
+     * the way through - which is what the count above is for. */
+    assumed.push(`the gathering potion is up the whole run, which is `
+      + `${potions ? `${potions} of them` : 'one a minute'}`);
+  }
   if (kit.kind === 'treasure') {
     assumed.push('a resource treasure can roll a pristine node, and how often '
       + 'is not published — the grades below use the ordinary node odds');
