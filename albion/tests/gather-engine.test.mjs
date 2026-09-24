@@ -371,6 +371,105 @@ test('a gather the game would refuse is bought instead of being free', () => {
   assert.equal(round(run.profit), round(bought.profit));
 });
 
+test('a node is counted twice over: full, and as you find it', () => {
+  /* A static tree sits at one charge of five and fills up over time, so the
+   * same 1,058 harvests are 212 trees if every one is full and 1,058 if every
+   * one is fresh. Quoting only the first number said a stack of logs was two
+   * hundred trees when it can be a thousand. */
+  const run = gatherRun('T5_WOOD', { qty: 999, settings: kit({}) });
+  assert.equal(Math.ceil(run.nodes), 212);
+  assert.equal(Math.ceil(run.nodeVisits), 1058);
+  // A critter carries all its charges, so for it the two are the same number.
+  const crit = gatherRun('T5_WOOD', { qty: 999, settings: kit({ gather: { kind: 'critter' } }) });
+  assert.equal(Math.ceil(crit.nodes), Math.ceil(crit.nodeVisits));
+});
+
+test('a giant tree and a guardian are not ordinary nodes', () => {
+  // Twelve logs over four swings, three at a time, twenty seconds a swing.
+  const giant = gatherRun('T2_WOOD', { qty: 120, settings: kit({ gather: { kind: 'giant' } }) });
+  assert.equal(giant.rate.unitsPerSwing, 3);
+  assert.equal(giant.rate.unitsPerNode, 12);
+  assert.equal(giant.rate.unitsPerFreshNode, 3, 'and it starts on one charge of ten');
+  // A guardian is two and a half thousand resources standing in one place.
+  const guard = gatherRun('T6_WOOD', {
+    qty: 999, settings: kit({ gather: { toolTier: 8, kind: 'guardian' } }),
+  });
+  assert.equal(guard.rate.unitsPerSwing, 10);
+  assert.equal(guard.rate.unitsPerNode, 2560);
+  assert.ok(guard.nodes < 1, 'one of them is more than a stack');
+});
+
+test('the tiers the game lets you take bare-handed', () => {
+  // T1 needs no tool; it is simply twice as slow without one.
+  const bare = gatherRun('T1_WOOD', { qty: 100, settings: kit({ gather: { toolTier: 0 } }) });
+  assert.equal(bare.impossible, undefined);
+  assert.equal(bare.rate.bare, true);
+  assert.equal(bare.rate.secondsPerSwing, 2, 'one second, doubled');
+  assert.equal(bare.rate.unitsPerSwing, 2, 'and it hands over both charges at once');
+  // T2 does need one, and says so rather than quoting a doubled time.
+  assert.equal(gatherRun('T2_WOOD', { qty: 100, settings: kit({ gather: { toolTier: 0 } }) })
+    .impossible, true);
+  // With a tool in hand, T1 is the tool's time like anything else: four tiers
+  // over the node is a quarter of the swing.
+  assert.equal(gatherRun('T1_WOOD', { qty: 100, settings: kit({ gather: { toolTier: 5 } }) })
+    .rate.secondsPerSwing, 0.25);
+});
+
+test('the Avalonian tool has a floor of its own', () => {
+  // Its buff names every tier it pays on and T1 is not among them, however
+  // good the tool is. The gear already had a minimum tier; this did not.
+  const avalon = { toolTier: 8, toolAvalon: true };
+  assert.equal(gatherYield('WOOD', 1, 0, kit({ gather: avalon })).tool, 0);
+  assert.equal(round(gatherYield('WOOD', 2, 0, kit({ gather: avalon })).tool), 0.2);
+  assert.equal(round(gatherYield('WOOD', 8, 0, kit({ gather: avalon })).tool), 0.2);
+});
+
+test('keeping the bonuses up costs consumables, once you have timed a run', () => {
+  const on = {
+    toolTier: 8, food: 'T7_MEAL_PIE', potion: 'T8_POTION_GATHER',
+    measured: { 'WOOD:5:static:royal': { per10min: 90 } },
+  };
+  const run = gatherRun('T5_WOOD', { qty: 999, settings: kit({ gather: on }) });
+  assert.equal(run.pies, 4, 'a pie lasts half an hour');
+  /* And the answer nobody expects: a gathering potion lasts under a minute
+   * and comes off cooldown exactly as it ends, so holding it for two hours is
+   * a hundred and sixty of them. It is why a permanent speed buff is not a
+   * thing anyone actually runs. */
+  assert.equal(run.potions, 161);
+  // Both are about wall-clock, so neither is quoted before a run is timed.
+  const untimed = gatherRun('T5_WOOD', {
+    qty: 999, settings: kit({ gather: { ...on, measured: {} } }),
+  });
+  assert.equal(untimed.pies, 0);
+  assert.equal(untimed.potions, 0);
+});
+
+test('one trip for the lot, however many branches wanted it', () => {
+  /* A log wanted by two branches of the same run is one trip, not two. It was
+   * two, and the second overwrote the first - so the Gather section reported
+   * whichever branch happened to be walked last and the totals beside it did
+   * not match. The grade odds are per harvest, so this is arithmetic and not
+   * only tidiness. */
+  const prices = { T5_WOOD: 260, T4_PLANKS: 700, T5_PLANKS: 1100, T4_WOOD: 90 };
+  const run = craftPnL('T5_PLANKS', {
+    recipeOf, qty: 300, priceOf: (id) => prices[id] ?? 0,
+    make: new Set(['T4_PLANKS']),
+    gather: new Set(['T5_WOOD', 'T4_WOOD']),
+    settings: kit({ gather: { toolTier: 8 } }), cityId: 'fortsterling',
+  });
+  // Both leaves gathered, each as one run, and the totals are their sum.
+  assert.deepEqual(Object.keys(run.gathered).sort(), ['T4_WOOD', 'T5_WOOD']);
+  assert.equal(round(run.gatherSwingSeconds),
+    round(run.gathered.T4_WOOD.swingSeconds + run.gathered.T5_WOOD.swingSeconds));
+  assert.equal(round(run.gatherFame),
+    round(run.gathered.T4_WOOD.fame + run.gathered.T5_WOOD.fame));
+  // And what the run says it needs is what it billed itself for.
+  for (const id of ['T4_WOOD', 'T5_WOOD']) {
+    assert.equal(round(run.gathered[id].qty),
+      round(run.buys.find((b) => b.id === id).qty));
+  }
+});
+
 /* --------------------------------------------------------- the exits -- */
 
 test('what a raw can become', () => {

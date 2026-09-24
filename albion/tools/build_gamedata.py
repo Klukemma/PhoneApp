@@ -21,6 +21,7 @@ Stdlib only - no packages to install.
 
 import html
 import json
+import math
 import re
 import sys
 import urllib.request
@@ -482,7 +483,22 @@ NODE_KINDS = [
 
 
 def _tier_rows(harv, name):
-    """One harvestable's tiers, as plain numbers."""
+    """One harvestable's tiers, as plain numbers.
+
+    A node is a stack of charges. Each Charge row covers a range of charge
+    levels and says what one of them gives, a harvest takes
+    maxchargesperharvest of them at once, and the node starts life at
+    startcharges and slowly charges up towards the top.
+
+    Nearly every node in the game has one yielding Charge row and so is
+    described by a single number. The giant tree is not: its first charge
+    gives three logs and the nine above it give one each, which reading only
+    the first row turned into "one charge worth three". So the rows are summed
+    rather than sampled, and what comes out is the two figures the engine
+    actually wants - what one swing gives, and how many swings a full node
+    holds - which reproduce the simple case exactly and get the giant tree
+    right as well.
+    """
     for h in harv.findall("Harvestable"):
         if h.get("name") != name:
             continue
@@ -491,12 +507,28 @@ def _tier_rows(harv, name):
             charges = [c for c in t.findall("Charge") if c.get("yield")]
             if not charges:
                 continue
-            level = (charges[0].get("level") or "0").split("-")[-1]
+            top = 0
+            total = 0
+            for c in charges:
+                lo, _, hi = (c.get("level") or "0").partition("-")
+                lo = int(lo)
+                hi = int(hi or lo)
+                top = max(top, hi)
+                total += (hi - lo + 1) * int(c.get("yield"))
+            per_harvest = int(t.get("maxchargesperharvest", 1))
+            swings = max(1, math.ceil(top / per_harvest))
             row = {
                 "seconds": float(t.get("harvesttimeseconds")),
-                "yield": int(charges[0].get("yield")),
-                "charges": int(level),
-                "perHarvest": int(t.get("maxchargesperharvest", 1)),
+                # What one swing gives at the bare node, before any bonus.
+                "yield": round(total / swings, 4),
+                # How many swings a full node holds, and what it holds in all.
+                "charges": swings,
+                "perNode": total,
+                "perHarvest": per_harvest,
+                # What a node holds when you walk up to it. A static tree sits
+                # at one charge and charges up slowly; a critter carries the
+                # lot. The difference is how many nodes a stack really takes.
+                "startCharges": int(t.get("startcharges") or 1),
             }
             respawn = int(float(t.get("respawntimeseconds") or 0))
             if respawn:
@@ -506,6 +538,7 @@ def _tier_rows(harv, name):
                 row["rare"] = rare
             if t.get("requirestool") == "false":
                 row["noTool"] = True
+                row["noToolFactor"] = float(t.get("notooltimefactor") or 1)
             out[t.get("tier")] = row
         return out
     return {}
@@ -614,12 +647,19 @@ def build_gather_buffs(spells):
 
     # The Avalonian tool's flat yield, which a plain tool does not have.
     tool = {}
+    tool_min = None
     for tier in range(4, 9):
         rows = {}
         for f in FAMILIES:
             el = idx.get(f"PASSIVE_AVALON_YIELD_{f}_T{tier}")
             if el is None:
                 continue
+            covers = [int(b.get("tier")) for b in el.findall("resourcegatheringbuff")
+                      if b.get("bufftype") == "gatheringyield"]
+            if covers:
+                # It names every tier it pays on, one row each, and the floor
+                # is the same everywhere: a T1 node gets nothing from any tool.
+                tool_min = min(covers) if tool_min is None else min(tool_min, min(covers))
             for b in el.findall("resourcegatheringbuff"):
                 if b.get("bufftype") == "gatheringyield" and b.get("tier") == str(tier):
                     rows[f] = float(b.get("value"))
@@ -640,7 +680,7 @@ def build_gather_buffs(spells):
                 out["seconds"] = max(out["seconds"], float(b.get("time") or 0))
         return out if len(out) > 1 else None
 
-    return gear, interval, tool, consumable
+    return gear, interval, tool, tool_min or 2, consumable
 
 
 def build_gather_food(items, consumable):
@@ -762,7 +802,7 @@ def build_gather_raws(items):
 def build_gathering(gd, items, spells):
     """Everything the app needs to cost an hour in the open world."""
     nodes, kind_labels, factors = build_harvestables()
-    gear, interval, tool, consumable = build_gather_buffs(spells)
+    gear, interval, tool, tool_min, consumable = build_gather_buffs(spells)
 
     # How often a node is enchanted, as weights out of the cluster's total.
     # The axis is the Outlands cluster quality, and the whole royal continent
@@ -800,6 +840,7 @@ def build_gathering(gd, items, spells):
         "gear": gear,
         "gearInterval": interval,
         "toolYield": tool,
+        "toolYieldMinTier": tool_min,
         "food": build_gather_food(items, consumable),
         "potions": build_gather_potions(items, consumable),
         "board": build_gather_board(),

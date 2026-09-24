@@ -17,10 +17,18 @@ const G = data.gathering;
 /* ------------------------------------------------------- the nodes --- */
 
 test('a node gives what the game says it gives', () => {
-  // The user's own question: T5 wood.
+  // The user's own question: T5 wood. Six seconds a swing, one log a swing,
+  // five swings to empty a full tree, and twelve minutes for it to come back.
   assert.deepEqual(G.nodes.WOOD.static['5'], {
-    seconds: 6, yield: 1, charges: 5, perHarvest: 1, respawn: 720, rare: [1, 2, 3],
+    seconds: 6, yield: 1, charges: 5, perNode: 5, perHarvest: 1,
+    startCharges: 1, respawn: 720, rare: [1, 2, 3],
   });
+  /* And the tree you actually walk up to holds one charge, not five: a static
+   * node starts at one and charges up over time, slowly at the high tiers.
+   * The difference is the whole gap between "212 trees" and "1,058 trees". */
+  assert.equal(G.nodes.WOOD.static['5'].startCharges, 1);
+  assert.equal(G.nodes.WOOD.critter['5'].startCharges, 5, 'a critter carries the lot');
+  assert.equal(G.nodes.WOOD.treasure['5'].startCharges, 30);
   // Every family, every tier it exists at.
   for (const family of G.families) {
     for (let tier = 2; tier <= 8; tier++) {
@@ -39,6 +47,40 @@ test('a node gives what the game says it gives', () => {
   assert.equal(G.nodes.HIDE.static['3'].seconds, 2.25);
   assert.equal(G.nodes.WOOD.static['3'].seconds, 3);
   assert.equal(G.nodes.HIDE.static['5'].seconds, G.nodes.WOOD.static['5'].seconds);
+});
+
+test('a giant tree is not one charge worth three', () => {
+  /* The one node in the game with more than one yielding charge row: the
+   * first gives three logs and the nine above it give one each. Reading only
+   * the first row said "one charge, worth three", which was a twelve-log tree
+   * described as a three-log one. The rows are summed now, and the simple
+   * case - every other node in the game - comes out exactly as before. */
+  const g2 = G.nodes.WOOD.giant['2'];
+  assert.equal(g2.perNode, 12, 'three off the first charge and one off each of nine');
+  assert.equal(g2.perHarvest, 3, 'and a swing takes three charges at once');
+  assert.equal(g2.charges, 4, 'so four swings empty it');
+  assert.equal(g2.yield, 3, 'twelve logs over four swings');
+  // A guardian is the other extreme: ten a swing, two hundred and fifty six
+  // swings, two and a half thousand resources standing in one place.
+  const guard = G.nodes.WOOD.guardian['6'];
+  assert.equal(guard.perNode, 2560);
+  assert.equal(guard.perHarvest, 10);
+  assert.equal(guard.yield, 10);
+  // And the ordinary node is still a plain multiplication.
+  for (const family of G.families) {
+    for (const [tier, n] of Object.entries(G.nodes[family].static)) {
+      assert.equal(n.perNode, n.yield * n.charges, `${family} T${tier}`);
+    }
+  }
+});
+
+test('the tiers you can take bare-handed say so, and say how much slower', () => {
+  assert.equal(G.nodes.WOOD.static['1'].noTool, true);
+  assert.equal(G.nodes.WOOD.static['1'].noToolFactor, 2);
+  assert.equal(G.nodes.WOOD.static['2'].noTool, undefined, 'and T2 needs one');
+  // The Avalonian tool has a floor of its own: it pays from T2 up and gives
+  // nothing at all on a T1 node, whatever tool you are holding.
+  assert.equal(G.toolYieldMinTier, 2);
 });
 
 test('the other kinds of node, and what is different about them', () => {

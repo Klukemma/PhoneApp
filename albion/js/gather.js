@@ -106,23 +106,28 @@ export function gatherYield(family, tier, enchant, settings) {
   // The set. A little every 30 seconds up to ten stacks, so the figure a
   // tooltip quotes is what you have after five minutes, not what you start
   // with. And every piece is capped at its own tier.
-  const charges = kit.wornSeconds == null ? 1
-    : Math.min(1, Math.floor(kit.wornSeconds / (G.gearInterval || 30))
-      / (G.gear.head['4']?.maxCharges || 10));
+  const stacks = kit.wornSeconds == null
+    ? null : Math.floor(kit.wornSeconds / (G.gearInterval || 30));
   let gear = 0;
+  let charges = 1;
   for (const slot of ['head', 'armor', 'shoes']) {
     const worn = kit.gear[slot];
     const row = worn && G.gear[slot]?.[String(worn)];
     if (!row) continue;
     if (tier > row.maxTier || tier < row.minTier) continue;
     if (!covers) continue;
-    gear += row.perCharge * row.maxCharges * charges;
+    // Each piece counts its own stacks up to its own cap, which is what the
+    // spell says; reading one piece's cap for all three was a coincidence.
+    const at = stacks == null ? row.maxCharges : Math.min(row.maxCharges, stacks);
+    charges = Math.min(charges, at / row.maxCharges);
+    gear += row.perCharge * at;
   }
   if (gear) parts.push({ what: 'Gatherer set', value: gear });
 
   // The Avalonian tool. A plain tool has no passive slot and gives nothing.
   let tool = 0;
-  if (kit.toolAvalon && covers && tier <= kit.toolTier) {
+  const toolFloor = G.toolYieldMinTier ?? 2;
+  if (kit.toolAvalon && covers && tier <= kit.toolTier && tier >= toolFloor) {
     tool = G.toolYield[String(kit.toolTier)] || 0;
     if (tool) parts.push({ what: 'Avalonian tool', value: tool });
   }
@@ -200,7 +205,11 @@ export function gatherRate(family, tier, enchant, settings) {
   if (!node) return null;
 
   const diff = kit.toolTier - tier;
-  const factor = G.toolTimeFactor[String(Math.min(7, diff))];
+  /* A node the game lets you take bare-handed - T1, and the T1 giant tree -
+   * is not a tool problem at all, it is just slower without one. */
+  const bare = !kit.toolTier && node.noTool;
+  const factor = bare
+    ? (node.noToolFactor || 1) : G.toolTimeFactor[String(Math.min(7, diff))];
   if (factor == null) {
     return { impossible: true, node, diff, needTool: tier - 1 };
   }
@@ -208,16 +217,23 @@ export function gatherRate(family, tier, enchant, settings) {
   const speed = gatherSpeed(family, tier, settings);
   const yld = gatherYield(family, tier, enchant, settings);
   const secondsPerSwing = node.seconds * factor / (1 + speed.total);
-  const perSwing = node.yield * node.perHarvest * yld.multiplier;
+  const perSwing = node.yield * yld.multiplier;
 
   return {
-    node, diff, factor, speed, yield: yld,
+    node, diff, factor, bare, speed, yield: yld,
     secondsPerSwing,
     unitsPerSwing: perSwing,
     secondsPerUnit: secondsPerSwing / perSwing,
-    // How many whole nodes a stack works out at, which is the figure that
-    // tells you whether a zone can even hold the run.
-    unitsPerNode: node.charges * node.yield * yld.multiplier,
+    // A full node, which is what you get off a critter or a treasure.
+    unitsPerNode: node.perNode * yld.multiplier,
+    /* And a node as you normally find it. A static tree sits at one charge
+     * and charges up slowly - a T8 tree at five percent a go - so walking up
+     * to one gets you a log and not eleven. The two figures together are the
+     * honest range for how many trees a stack really means. */
+    unitsPerFreshNode: Math.min(
+      node.perNode,
+      Math.ceil((node.startCharges || 1) / node.perHarvest) * node.yield,
+    ) * yld.multiplier,
   };
 }
 
@@ -256,7 +272,8 @@ export function gatherRun(itemId, { qty = 999, settings }) {
       kind: 'gather', itemId, qty, impossible: true, ungatherable: true, rate: null,
       why: `there is no T${tier} ${kindLabel(settings, kit.kind)} to harvest`,
       assumed: [], hours: null, swingSeconds: 0, mix: [], byproducts: [],
-      fame: 0, weight: 0, harvests: 0, swings: 0, nodes: 0,
+      fame: 0, weight: 0, harvests: 0, swings: 0, nodes: 0, nodeVisits: 0,
+      pies: 0, potions: 0,
     };
   }
   if (rate.impossible) {
@@ -266,7 +283,8 @@ export function gatherRun(itemId, { qty = 999, settings }) {
         ? `your T${kit.toolTier} tool is too small for a T${tier} node — it takes a T${rate.needTool}`
         : 'no tool set yet',
       assumed: [], hours: null, swingSeconds: 0, mix: [], byproducts: [],
-      fame: 0, weight: 0, harvests: 0, swings: 0, nodes: 0,
+      fame: 0, weight: 0, harvests: 0, swings: 0, nodes: 0, nodeVisits: 0,
+      pies: 0, potions: 0,
     };
   }
 
@@ -299,7 +317,8 @@ export function gatherRun(itemId, { qty = 999, settings }) {
         ? `a ${kindLabel(settings, kit.kind)} never rolls grade .${enchant}`
         : 'this node gives nothing plain',
       assumed: [], hours: null, swingSeconds: 0, mix: [], byproducts: [],
-      fame: 0, weight: 0, harvests: 0, swings: 0, nodes: 0,
+      fame: 0, weight: 0, harvests: 0, swings: 0, nodes: 0, nodeVisits: 0,
+      pies: 0, potions: 0,
     };
   }
 
@@ -308,6 +327,8 @@ export function gatherRun(itemId, { qty = 999, settings }) {
   const swings = harvests / rate.unitsPerSwing;
   const swingSeconds = swings * rate.secondsPerSwing;
   const nodes = harvests / rate.unitsPerNode;
+  // The same run counted in nodes you would actually have to walk up to.
+  const nodeVisits = harvests / rate.unitsPerFreshNode;
 
   const perHour = measuredPerHour(family, tier, settings);
   const hours = perHour > 0 ? harvests / perHour : null;
@@ -334,9 +355,18 @@ export function gatherRun(itemId, { qty = 999, settings }) {
   const fame = mix.reduce((t, row) => t + row.qty * (raws[row.id]?.fame || 0), 0)
     * fameFactor * (settings.premium ? 1.5 : 1);
 
+  /* What you have to keep drinking and eating to hold the bonuses this run
+   * assumed. A pie lasts half an hour; a gathering potion lasts under a
+   * minute and comes off cooldown exactly when it runs out, so it can be held
+   * up all run - at the price of one potion a minute. Counted against real
+   * hours, so it is blank until you have timed a run. */
   const foodRow = settings.gathering?.food?.[kit.food]?.grades?.[String(kit.foodEnchant || 0)];
   const pies = hours && foodRow?.seconds
     ? Math.ceil((hours * 3600) / foodRow.seconds) : 0;
+  const potionRow = settings.gathering?.potions?.[kit.potion]
+    ?.grades?.[String(kit.potionEnchant || 0)];
+  const potions = hours && potionRow?.seconds
+    ? Math.ceil((hours * 3600) / potionRow.seconds) : 0;
 
   const assumed = [...rate.yield.assumed];
   if (hours === null) {
@@ -356,9 +386,9 @@ export function gatherRun(itemId, { qty = 999, settings }) {
 
   return {
     kind: 'gather', itemId, qty, family, tier, enchant,
-    rate, harvests, share, swings, swingSeconds, nodes,
+    rate, harvests, share, swings, swingSeconds, nodes, nodeVisits,
     hours, uptime, perHour,
-    mix, byproducts, fame, pies,
+    mix, byproducts, fame, pies, potions,
     weight: mix.reduce((t, row) => t + row.qty * (raws[row.id]?.weight || 0), 0),
     assumed,
   };

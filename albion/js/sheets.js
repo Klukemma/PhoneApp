@@ -2017,8 +2017,14 @@ export function openGatherSetup(forId = null) {
         <span class="v num ${measured ? '' : 'flat'}">${run.hours
   ? hours(run.hours) : 'not until you time a run'}</span></div>
       <div class="bar-row"><span class="n">Off</span>
-        <span class="v num">${short(Math.ceil(run.nodes))} nodes${
+        <span class="v num">${short(Math.ceil(run.nodes))}${
+  run.nodeVisits > run.nodes * 1.05 ? `–${short(Math.ceil(run.nodeVisits))}` : ''} nodes${
   run.rate.node.respawn ? ` <small>${Math.round(run.rate.node.respawn / 60)} min respawn</small>` : ''}</span></div>
+      ${run.nodeVisits > run.nodes * 1.05 ? note(`A ${esc(FAMILY_LABEL[family].toLowerCase())}
+        node starts at ${run.rate.node.startCharges} charge${run.rate.node.startCharges === 1 ? '' : 's'}
+        of ${run.rate.node.charges} and fills up over time, so the low number is
+        every node found full and the high one is every node found fresh. The
+        truth is somewhere between and depends on how picked-over the zone is.`) : ''}
     </div>` : '<div class="hint">No node of that sort at that tier.</div>';
 
   const measuredRows = Object.entries(kit.measured).map(([k, v]) => {
@@ -2322,8 +2328,13 @@ export function openResourceExits(id, qty = 999) {
       <div class="card">
         <div class="bar-row"><span class="n">Swinging, at the game's own floor</span>
           <span class="v num">${gMin(blocked?.swingSeconds || 0)}</span></div>
-        <div class="bar-row"><span class="n">Harvests, off ${short(Math.ceil(blocked?.nodes || 0))} nodes</span>
+        <div class="bar-row"><span class="n">Harvests</span>
           <span class="v num">${short(blocked?.harvests || 0)}</span></div>
+        <div class="bar-row"><span class="n">Nodes${blocked?.nodeVisits > blocked?.nodes * 1.05
+  ? ' <small>full, to as you find them</small>' : ''}</span>
+          <span class="v num">${short(Math.ceil(blocked?.nodes || 0))}${
+  blocked?.nodeVisits > blocked?.nodes * 1.05
+    ? `–${short(Math.ceil(blocked.nodeVisits))}` : ''}</span></div>
         ${blocked?.hours ? `
           <div class="bar-row"><span class="n">At your measured pace</span>
             <span class="v num">${hours(blocked.hours)}</span></div>` : ''}

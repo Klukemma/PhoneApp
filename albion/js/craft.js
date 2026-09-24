@@ -495,7 +495,10 @@ function gatherSection(run) {
       tagName: 'div', icon: ICON.raw, cls: 'wrap',
       title: `${short(g.qty)} × ${esc(nameOf(id))}`,
       meta: esc([
-        `${short(g.harvests)} harvests off ${short(Math.ceil(g.nodes))} nodes`,
+        `${short(g.harvests)} harvests`,
+        g.nodeVisits > g.nodes * 1.05
+          ? `${short(Math.ceil(g.nodes))}–${short(Math.ceil(g.nodeVisits))} nodes, by how charged you find them`
+          : `${short(Math.ceil(g.nodes))} nodes`,
         `${g.rate.secondsPerSwing.toFixed(1)}s a swing`,
         y.multiplier > 1.005 ? `+${pct((y.multiplier - 1), 0)} yield` : 'no yield bonus',
         speed.total > 0 ? `+${pct(speed.total, 0)} speed${speed.capped ? ' (capped)' : ''}` : '',
@@ -535,15 +538,32 @@ function gatherSection(run) {
     right: '',
   }) : '';
 
-  const pies = runs.reduce((t, [, g]) => t + (g.pies || 0), 0);
   const weight = run.gatherWeight > 0 ? rowHTML({
     act: 'craft-city', icon: ICON.carry, cls: 'wrap',
     title: `${short(run.gatherWeight)} kg to carry home`,
     meta: s.carryWeight > 0
-      ? `${Math.ceil(run.gatherWeight / s.carryWeight)} trips at ${short(s.carryWeight)} kg${
-        pies ? ` · ${pies} ${pies === 1 ? 'pie' : 'pies'} to keep the bonus up` : ''}`
-      : `set what you can carry on Me to count trips${pies ? ` · ${pies} ${pies === 1 ? 'pie' : 'pies'}` : ''}`,
+      ? `${Math.ceil(run.gatherWeight / s.carryWeight)} trips at ${short(s.carryWeight)} kg`
+      : 'set what you can carry on Me to count trips',
     right: go(),
+  }) : '';
+
+  /* What holding the bonuses costs in consumables. Only knowable once a run
+   * has been timed, because it is a question about wall-clock and not about
+   * swings - and the potion answer is usually a surprise: it lasts under a
+   * minute, so an afternoon of it is a stack and a half. */
+  const pies = runs.reduce((t, [, g]) => t + (g.pies || 0), 0);
+  const potions = runs.reduce((t, [, g]) => t + (g.potions || 0), 0);
+  const upkeep = pies || potions ? rowHTML({
+    tagName: 'div', icon: ICON.potion, cls: 'wrap',
+    title: `Keeping it up: ${[
+      pies ? `${short(pies)} ${pies === 1 ? 'pie' : 'pies'}` : '',
+      potions ? `${short(potions)} ${potions === 1 ? 'potion' : 'potions'}` : '',
+    ].filter(Boolean).join(' and ')}`,
+    meta: potions
+      ? 'a gathering potion lasts under a minute and comes off cooldown as it '
+        + 'ends, so holding it all run is one a minute'
+      : 'over the hours you measured, not over the swings',
+    right: '',
   }) : '';
 
   const assumed = (run.assumed || []).length ? rowHTML({
@@ -558,7 +578,7 @@ function gatherSection(run) {
       <div class="section-head"><h2>Gather · what to go and get</h2>
         <span class="right num">${run.gatherSwingSeconds > 0
       ? `${timeText(run.gatherSwingSeconds)} swinging` : ''}</span></div>
-      ${rows.join('')}${extra}${fame}${weight}${assumed}
+      ${rows.join('')}${extra}${fame}${weight}${upkeep}${assumed}
     </section>`;
 }
 
@@ -573,11 +593,11 @@ function moneyHTML(run) {
     ? `${short(run.qty)} sold at ${silver(run.unitPrice)} average`
     : `${short(run.qty)} sold at ${silver(run.unitPrice)}`, short(run.gross), 'good')}
       ${line(run.sellInstant
-    ? `Tax (${pct(run.tax)}, no setup fee)`
+    ? `Tax (${pct(run.tax)}, no setup fee)${run.byproductValue > 0.5 ? ', and on what you gathered' : ''}`
     : `Market tax (${pct(run.tax)})`, short(-run.taxPaid), 'bad')}
-      ${run.byproductRevenue > 0.5 ? line(
+      ${run.byproductValue > 0.5 ? line(
     `Enchanted ${run.byproducts.length === 1 ? 'resource' : 'resources'} that fell out of the gathering`,
-    short(run.byproductRevenue), 'good') : ''}
+    short(run.byproductValue), 'good') : ''}
       ${line('Materials bought', short(-run.buyCost), 'bad')}
       ${run.fees > 0.5 ? line('Station fees', short(-run.fees), 'bad') : ''}
       <div class="bar-row total"><span class="n">Profit</span>

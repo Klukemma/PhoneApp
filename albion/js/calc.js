@@ -747,6 +747,7 @@ export function craftPnL(recipeId, {
   const missing = new Set();
   // What was gathered rather than bought, and what that cost in time.
   const gathered = {};
+  const gatherWant = {};
   const byproducts = {};
   const assumed = new Set();
   let gatherSwingSeconds = 0;
@@ -794,38 +795,21 @@ export function craftPnL(recipeId, {
          * that goes to zero, and the time that does not. A run with a
          * gathered leaf and no measured rate is honest about costing unknown
          * hours in exactly the way a run with no price is honest about
-         * costing unknown silver. */
-        const run = gatherRun(itemId, { qty: units, settings });
+         * costing unknown silver.
+         *
+         * Only the amount is tallied here. The same log can be wanted by two
+         * branches of the same run, and gathering for one branch and then
+         * again for the other is not what you would do - you would go out
+         * once for the lot. So the runs are worked out after the whole tree
+         * is walked, from the totals. */
+        const can = gatherRun(itemId, { qty: 1, settings });
         /* A run the game would refuse - your tool is two tiers under the node,
          * or you asked for a grade that node never rolls - is recorded so the
          * screen can say why, and then priced as bought. Billing it at zero
          * because it was impossible would be a free lunch. */
-        if (run) gathered[itemId] = run;
-        if (run && !run.impossible) {
-          gatherSwingSeconds += run.swingSeconds;
-          gatherHours = run.hours === null ? null
-            : (gatherHours === null ? null : gatherHours + run.hours);
-          gatherFame += run.fame;
-          gatherWeight += run.weight;
-          /* What the node handed you that you were not after. A twentieth of
-           * every plain harvest comes up enchanted, and an enchanted log is
-           * worth a multiple of a plain one, so this is real silver rather
-           * than a curiosity - it just is not silver from the recipe. */
-          for (const row of run.byproducts) {
-            /* priceOf and never sellPriceOf: what this run sells its output
-             * into is a choice about the output, and the Black Market makes
-             * no offer at all on a log. Pricing them at the sale would have
-             * silently zeroed every one of them on a Black Market run. */
-            const unit = priceOf(row.id);
-            if (!unit) continue;
-            byproducts[row.id] = {
-              id: row.id,
-              qty: (byproducts[row.id]?.qty || 0) + row.qty,
-              unit,
-              value: (byproducts[row.id]?.value || 0) + row.qty * unit,
-            };
-          }
-          for (const a of run.assumed) assumed.add(a);
+        if (can && can.impossible) gathered[itemId] = can;
+        if (can && !can.impossible) {
+          gatherWant[itemId] = (gatherWant[itemId] || 0) + units;
           buy(itemId, units, perCraft, 0);
           return null;
         }
@@ -893,6 +877,40 @@ export function craftPnL(recipeId, {
   steps.push(topStep);
   for (const i of topBatch.inputs) {
     need(i.id, i.net * crafts, i.count, 1, new Set([top.id]));
+  }
+
+  /* One trip per resource, for everything the run wanted of it. Working it
+   * out from the total rather than branch by branch matters for more than
+   * tidiness: the grade odds are per harvest, so two runs of five hundred and
+   * one run of a thousand do not round to the same pile of enchanted logs. */
+  for (const [itemId, want] of Object.entries(gatherWant)) {
+    const run = gatherRun(itemId, { qty: want, settings });
+    if (!run || run.impossible) continue;
+    gathered[itemId] = run;
+    gatherSwingSeconds += run.swingSeconds;
+    gatherHours = run.hours === null ? null
+      : (gatherHours === null ? null : gatherHours + run.hours);
+    gatherFame += run.fame;
+    gatherWeight += run.weight;
+    /* What the node handed you that you were not after. A twentieth of every
+     * plain harvest comes up enchanted, and an enchanted log is worth a
+     * multiple of a plain one, so this is real silver rather than a curiosity
+     * - it just is not silver from the recipe. */
+    for (const row of run.byproducts) {
+      /* priceOf and never sellPriceOf: what this run sells its output into is
+       * a choice about the output, and the Black Market makes no offer at all
+       * on a log. Pricing them at the sale would have silently zeroed every
+       * one of them on a Black Market run. */
+      const unit = priceOf(row.id);
+      if (!unit) continue;
+      byproducts[row.id] = {
+        id: row.id,
+        qty: (byproducts[row.id]?.qty || 0) + row.qty,
+        unit,
+        value: (byproducts[row.id]?.value || 0) + row.qty * unit,
+      };
+    }
+    for (const a of run.assumed) assumed.add(a);
   }
 
   /* What one is worth. With a quality mix that is the average across the
@@ -963,8 +981,13 @@ export function craftPnL(recipeId, {
     taxPaid: (gross + byproductValue) - revenue,
     revenue,
     profit,
+    /* Margin is the whole activity's: profit over everything that came in,
+     * byproducts included, because they came in. Per item is the recipe's
+     * own, and deliberately not - a plank is not worth more because an
+     * enchanted log turned up on the way to it, and quoting it as if it were
+     * would flatter the recipe to anyone comparing two of them. */
     margin: revenue > 0 ? profit / revenue : 0,
-    perItem: made > 0 ? profit / made : 0,
+    perItem: made > 0 ? (profit - byproductRevenue) / made : 0,
     silverPerFocus: focus > 0 ? profit / focus : null,
     // A missing price reads as free on the way in and worthless on the way
     // out, so a run with any of these is not a number, it is a gap.
