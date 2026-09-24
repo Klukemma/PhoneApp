@@ -246,13 +246,17 @@ function normalizeKit(rawKit = {}) {
     gear: { ...base.gear, ...(rawKit.gear || {}) },
     measured: {},
   };
-  // Tier 0 means "nothing set", and there is no gathering gear below T2.
-  const tier = (v) => {
+  /* Tier 0 means "nothing set". Tools run T1 to T8; gatherer gear starts at
+   * T4, and a T3 cap in a save is a piece the game does not sell - it would
+   * sit on the screen looking like a bonus and be worth nothing. */
+  const tier = (v, lo) => {
     const n = Math.round(Number(v) || 0);
-    return n >= 2 && n <= 8 ? n : 0;
+    return n >= lo && n <= 8 ? n : 0;
   };
-  kit.toolTier = tier(kit.toolTier);
-  for (const slot of ['head', 'armor', 'shoes']) kit.gear[slot] = tier(kit.gear[slot]);
+  kit.toolTier = tier(kit.toolTier, 1);
+  for (const slot of ['head', 'armor', 'shoes']) kit.gear[slot] = tier(kit.gear[slot], 4);
+  // And an Avalonian tool is a T4-and-up thing, so the flag goes with it.
+  if (kit.toolTier < 4) kit.toolAvalon = false;
   kit.gear.backpack = !!kit.gear.backpack;
   kit.toolAvalon = !!kit.toolAvalon;
   kit.gearCoversEnchanted = !!kit.gearCoversEnchanted;

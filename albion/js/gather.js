@@ -142,7 +142,8 @@ export function gatherYield(family, tier, enchant, settings) {
   const potion = potionRow?.gatheringyield || 0;
   if (potion) parts.push({ what: G.potions[kit.potion].name, value: potion });
 
-  // The destiny board, which is the largest single source at 100.
+  /* The destiny board. Half again per swing at 100, which is second only to a
+   * full T8 set at +70% - and unlike the set it pays in swing speed too. */
   const node = G.board.find((n) => n.family === family && n.tier === tier);
   const level = Math.min(Number(kit.specLevels?.[node?.id] || 0), node?.maxLevel || 0);
   const spec = node ? level * node.yieldPerLevel : 0;

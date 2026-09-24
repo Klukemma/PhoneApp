@@ -455,9 +455,9 @@ function qualityTable(run) {
 const GRADE_WORD = { 1: 'uncommon', 2: 'rare', 3: 'exceptional', 4: 'pristine' };
 const gradeWord = (id) => GRADE_WORD[enchantOf(id)] || 'plain';
 
-/* Seconds, as a person would say them. Minutes for anything under an hour,
- * because "1.4h of swinging" reads as a working afternoon and 84 minutes
- * reads as what it is. */
+/* Seconds, as a person would say them. Minutes right up to an hour and a
+ * half, because "1.4h of swinging" reads as a working afternoon and 84
+ * minutes reads as what it is. */
 function timeText(seconds) {
   const s = Number(seconds) || 0;
   if (s < 90) return `${Math.round(s)}s`;
@@ -519,7 +519,8 @@ function gatherSection(run) {
   const total = (run.byproducts || []).reduce((t, b) => t + b.qty, 0);
   const extra = (run.byproducts || []).length ? rowHTML({
     tagName: 'div', icon: ICON.spark, cls: 'wrap',
-    title: `Also came back with ${short(Math.round(total)) || 'under one'} enchanted`,
+    title: `Also came back with ${total >= 0.5
+      ? short(Math.round(total)) : 'less than one'} enchanted`,
     meta: esc([
       [...some.map((b) => `${Math.round(b.qty)} ${gradeWord(b.id)}`),
         trace.length ? `a trace of ${trace.map((b) => gradeWord(b.id)).join(' and ')}` : '']
@@ -539,7 +540,7 @@ function gatherSection(run) {
   }) : '';
 
   const weight = run.gatherWeight > 0 ? rowHTML({
-    act: 'craft-city', icon: ICON.carry, cls: 'wrap',
+    act: 'me', icon: ICON.carry, cls: 'wrap',
     title: `${short(run.gatherWeight)} kg to carry home`,
     meta: s.carryWeight > 0
       ? `${Math.ceil(run.gatherWeight / s.carryWeight)} trips at ${short(s.carryWeight)} kg`
@@ -614,8 +615,8 @@ function moneyHTML(run) {
  * splits the row apart. The tap still lands on the tag first. */
 const SOURCE_LABEL = { buy: 'buy', make: 'make', gather: 'gather' };
 const sourceTag = (id, at) =>
-  `<span class="tag ${at === 'buy' ? '' : 'on'}" role="button" data-source="${esc(id)}"
-    aria-label="Coming from: ${SOURCE_LABEL[at]}. Tap to change.">${SOURCE_LABEL[at]}</span>`;
+  `<span class="tag ${at === 'buy' ? '' : 'on'}" data-source="${esc(id)}"
+    title="Coming from: ${SOURCE_LABEL[at]}. Tap to change.">${SOURCE_LABEL[at]}</span>`;
 
 function buysHTML(run, recipe) {
   const make = new Set(q().make || []);

@@ -1870,8 +1870,8 @@ export function openBoard(branch = null) {
     ${gathering ? note(`Every level is +${pct(0.005, 1)} to how much a swing gives AND +${
       pct(0.005, 1)} to how fast you swing, and the speed half is capped at +${
       pct(s.gathering.speedCap, 0)} across everything. At 100 that is half again as
-      much per swing, which is the largest single bonus in gathering — bigger than
-      a full set, an Avalonian tool and a pork pie together.`) : ''}
+      much per swing — second only to a full T8 set at +70% — and it is the
+      only thing besides a gathering potion that makes you swing any faster.`) : ''}
 
     ${gathering ? '' : mine.filter((n) => n.kind === 'mastery').map(nodeRow).join('')}
     ${!gathering && mine.some((n) => n.kind === 'spec')
@@ -1952,12 +1952,15 @@ let gatherPeek = { family: 'WOOD', tier: 5 };
  * most of a second run's worth of resources, so assuming them would double
  * every answer on the screen for someone who owns neither.
  */
-export function openGatherSetup(forId = null) {
+export function openGatherSetup(forId = null, keepPeek = false) {
   const s = state.settings;
   const G = s.gathering;
   const kit = kitOf(s);
   const at = forId ? rawIdOf(forId) : null;
-  if (at) gatherPeek = { family: at.family, tier: at.tier };
+  /* Opening the sheet for a particular resource points the preview at it.
+   * Re-opening it to redraw after a tap must not, or the family and tier
+   * buttons would snap back on every press and read as dead. */
+  if (at && !keepPeek) gatherPeek = { family: at.family, tier: at.tier };
   const { family, tier } = gatherPeek;
   const peekId = rawId(family, tier, at?.enchant || 0);
 
@@ -2058,11 +2061,12 @@ export function openGatherSetup(forId = null) {
     ${preview}
 
     <div class="section-head" style="margin-top:16px"><h2>Tool</h2></div>
-    ${tiers('tool-tier', kit.toolTier)}
-    <div class="card tight" style="margin-top:8px">
+    ${tiers('tool-tier', kit.toolTier, { min: 1 })}
+    ${kit.toolTier >= 4 ? `<div class="card tight" style="margin-top:8px">
       ${kitToggle('toolAvalon', 'Avalonian tool',
-    'Only an Avalonian tool carries a gathering bonus of its own.', kit.toolAvalon)}
-    </div>
+    `+${pct(G.toolYield[String(kit.toolTier)] || 0, 1)} yield, on T${
+      G.toolYieldMinTier ?? 2} nodes and up. A plain tool carries none.`, kit.toolAvalon)}
+    </div>` : ''}
     <div class="hint">A plain tool has no passive slot and gives no yield at all,
       however good it is — it only decides the swing. A tool two tiers under the
       node and the game will not let you harvest it.</div>
@@ -2072,7 +2076,7 @@ export function openGatherSetup(forId = null) {
       ${GATHER_SLOTS.map(([slot, label]) => `
         <div class="field" style="margin-bottom:10px">
           <label>${esc(label)}</label>
-          ${tiers(`gear-${slot}`, kit.gear[slot])}
+          ${tiers(`gear-${slot}`, kit.gear[slot], { min: 4 })}
         </div>`).join('')}
     </div>
     <div class="hint">Every piece is hard tier-gated: a T5 set on a T6 node is
@@ -2085,9 +2089,8 @@ export function openGatherSetup(forId = null) {
     <div class="field">
       <label for="gatherKind">Sort of node</label>
       <select id="gatherKind">${Object.entries(G.kindLabels)
-    .filter(([k]) => G.nodes[family]?.[k])
     .map(([k, label]) => `<option value="${esc(k)}" ${k === kit.kind ? 'selected' : ''}>${
-  esc(label)}</option>`).join('')}</select>
+  esc(label)}${G.nodes[family]?.[k] ? '' : ` — none for ${FAMILY_LABEL[family].toLowerCase()}`}</option>`).join('')}</select>
     </div>
     <div class="field">
       <label>Cluster quality — this is what sets the grade odds</label>
@@ -2122,9 +2125,11 @@ export function openGatherSetup(forId = null) {
       ${kit.potion ? seg('potion-enchant', GRADES, kit.potionEnchant, 'potion-enchant') : ''}
     </div>
     <div class="hint">A pie has no resource filter of any kind — it covers every
-      family and every grade. A gathering potion lasts half a minute and is the
-      only thing besides the board that makes you swing faster; the two together
-      are capped at +${pct(G.speedCap, 0)}.</div>
+      family and every grade, and lasts half an hour. A gathering potion runs
+      from fifteen seconds to a minute depending on which one and how enchanted,
+      and is the only thing besides the board that makes you swing faster; the
+      two together are capped at +${pct(G.speedCap, 0)}. It comes off cooldown
+      exactly as it ends, so it can be held all run — at about one a minute.</div>
 
     <div class="section-head" style="margin-top:16px"><h2>Destiny board</h2></div>
     ${rowHTML({
@@ -2176,7 +2181,7 @@ export function openGatherSetup(forId = null) {
     </div>
   `, {
     onMount(root) {
-      const again = () => openGatherSetup(forId);
+      const again = () => openGatherSetup(forId, true);
       const wireSeg = (attr, fn) => {
         for (const b of $$(`[data-${attr}]`, root)) {
           b.onclick = () => { fn(b.dataset[camel(attr)]); again(); };
@@ -2294,13 +2299,13 @@ export function openResourceExits(id, qty = 999) {
     });
   };
 
-  const routeRow = (r, i) => {
+  const routeRow = (r) => {
     const gap = best && r !== best && r.silverPerSwingSecond != null
       ? r.silverPerSwingSecond - best.silverPerSwingSecond : 0;
     return rowHTML({
       attrs: r.pnl.recipe ? `data-route="${esc(r.pnl.recipe.id)}" data-route-key="${esc(r.key)}"` : '',
       tagName: r.pnl.recipe ? 'button' : 'div',
-      icon: i === 0 && r === best ? '\u{1F947}' : ROUTE_ICON[r.key] || ICON.raw,
+      icon: best && r === best ? '\u{1F947}' : ROUTE_ICON[r.key] || ICON.raw,
       cls: `wrap ${r.missing.length ? 'warn' : ''}`,
       title: `${esc(r.label)} → ${short(r.made)} ${esc(nameOf(r.pnl.recipe
         ? (r.pnl.recipe.out || r.pnl.recipe.id) : id))}`,

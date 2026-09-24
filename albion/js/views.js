@@ -1250,7 +1250,7 @@ function gatherRankHTML() {
     ${note(`Profit on a 999 pile, every route costed off the same swings, best
       first. Silver a swing-second is the game's own floor and is exact; silver
       an hour appears once you have timed a run, because travel and respawn are
-      in no game file. Tap a row to open it in Craft.`, 'centered')}`;
+      in no game file. Tap a row to see every route side by side.`, 'centered')}`;
 }
 
 /** Every id the Farm or Brew ranking is missing a price for, for one scoped fetch. */

@@ -118,6 +118,21 @@ test('a hand-edited backup cannot smuggle nonsense into the yield engine', () =>
   assert.equal(kit.gear.head, 0);
   assert.equal(kit.gear.armor, 0);
   assert.equal(kit.gear.shoes, 8, 'and a real one is kept');
+  /* Gatherer gear starts at T4 - the game sells no T3 cap - so a save with
+   * one in it is not a small bonus, it is a piece that does not exist, and
+   * keeping it would put a row on the screen worth nothing. */
+  const low = reopen({
+    schema: 2,
+    settings: { gather: { toolTier: 3, toolAvalon: true, gear: { head: 3, armor: 4 } } },
+  }).settings.gather;
+  assert.equal(low.gear.head, 0);
+  assert.equal(low.gear.armor, 4);
+  // A T3 tool is real and decides the swing; an Avalonian one at T3 is not.
+  assert.equal(low.toolTier, 3);
+  assert.equal(low.toolAvalon, false);
+  // And T1, which is a real tool for the tiers you can take bare-handed.
+  assert.equal(reopen({ schema: 2, settings: { gather: { toolTier: 1 } } })
+    .settings.gather.toolTier, 1);
   assert.equal(kit.gear.backpack, true);
   assert.equal(kit.foodEnchant, 3, 'clamped to the grades that exist');
   assert.equal(kit.potionEnchant, 0);

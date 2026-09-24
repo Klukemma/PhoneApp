@@ -80,8 +80,12 @@ function kitWords() {
     Object.keys(kit.measured).length
       ? `${Object.keys(kit.measured).length} timed` : 'nothing timed',
   ].filter(Boolean);
-  return kit.toolTier || set.length
-    ? bits.join(' · ')
+  /* Anything at all counts as having said something. Saying "nothing set"
+   * over a saved pork pie and two timed runs is the app calling the user a
+   * liar about their own numbers. */
+  const said = kit.toolTier || set.length || kit.food || kit.potion
+    || Object.keys(kit.measured).length;
+  return said ? bits.join(' · ')
     : 'Nothing set — every gathering figure would be a bare node';
 }
 
@@ -152,7 +156,7 @@ export function me() {
         ${row('gather-setup', '\u26CF\uFE0F', 'Kit, node and where you swing', esc(kitWords()))}
         ${row('gather-board', '\u{1F31F}', 'Gathering nodes on the board',
     `${(s.gathering?.board || []).filter((n) => state.nodeLevels[n.id]).length} of ${
-      (s.gathering?.board || []).length} set · the largest bonus in gathering`)}
+      (s.gathering?.board || []).length} set · yield and swing speed, both`)}
       </section>
 
       <section>

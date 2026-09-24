@@ -130,6 +130,9 @@ function act(el) {
     openAddCraft();
   } else if (d.act === 'prices') {
     go('prices');
+  } else if (d.act === 'me') {
+    // A row that points at a setting whose home is the Me screen.
+    go('me');
   } else if (d.act === 'quality') {
     openQuality();
   } else if (d.act === 'advanced') {
