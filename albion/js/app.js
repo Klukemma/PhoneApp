@@ -2,20 +2,21 @@
 
 import { loadGameData, hydrate, state, subscribe } from './store.js';
 import {
-  acceptSpare, carryLeftoversIn, chainIds, openAddCraft, openAddPlot,
-  openAdvanced, openAssumptions, openBoard, openCraft, openCraftCity,
-  openCraftPick, openCycle, openData, openFarm, openFarmCity, openGoal,
-  openMastery, openPlot, openPrice, openPriceSource, openQuality,
-  openScanFilter, openStock, runCraftPriceFetch, runPriceFetch,
-  runScanPriceFetch, runSolve, solveWithPrices,
+  acceptSpare, carryLeftoversIn, chainIds, GATHER_BRANCH, openAddCraft,
+  openAddPlot, openAdvanced, openAssumptions, openBoard, openCraft,
+  openCraftCity, openCraftPick, openCycle, openData, openFarm, openFarmCity,
+  openGatherSetup, openGoal, openMastery, openPlot, openPrice, openPriceSource,
+  openQuality, openResourceExits, openScanFilter, openStock, runCraftPriceFetch,
+  runPriceFetch, runScanPriceFetch, runSolve, setNavigate, solveWithPrices,
 } from './sheets.js';
 import {
-  craftTarget, ensureGear, setCraftQty, setCraftRerender, setCraftSellTo,
-  setCraftTarget, toggleMake,
+  craftTarget, cycleSource, ensureGear, setCraftQty, setCraftRerender,
+  setCraftSellTo, setCraftTarget,
 } from './craft.js';
 import { $, $$, closeSheet, sheetIsOpen } from './ui.js';
 import {
-  missingPrices, rankMissingIds, rankTab, setPriceFilter, setRankTab, views,
+  gatherMissingIds, missingPrices, rankMissingIds, rankTab, setGatherTier,
+  setPriceFilter, setRankTab, views,
 } from './views.js';
 import { openDetails } from './html.js';
 import { addPlot, addCraft, setGoal, setSettings } from './store.js';
@@ -59,17 +60,22 @@ function go(name) {
 
 const SEL = '[data-act],[data-plot],[data-craft],[data-price],[data-rank],'
   + '[data-price-filter],[data-toggle],[data-add-plot],[data-add-craft],'
-  + '[data-add-step],[data-add-spare],[data-craft-sell],[data-make],[data-craft-rank]';
+  + '[data-add-step],[data-add-spare],[data-craft-sell],[data-source],'
+  + '[data-craft-rank],[data-gather-row],[data-gather-tier]';
 
 /** One tap, wherever it landed. Shared by the screen and the top-bar button. */
 function act(el) {
   const d = el.dataset;
 
   if (d.craftSell) { setCraftSellTo(d.craftSell); return; }
-  // A make/buy tag sits inside a price row: the tag wins, the row does not open.
-  if (d.make) { toggleMake(d.make); return; }
+  /* The buy/make/gather tag sits inside a price row: the tag wins, and the row
+   * underneath does not open. */
+  if (d.source) { cycleSource(d.source); return; }
   // A ranked row is a shortcut into the tab that can actually answer it.
   if (d.craftRank) { setCraftTarget(d.craftRank); go('craft'); return; }
+  // A ranked resource opens every way out of it, rather than one of them.
+  if (d.gatherRow) { openResourceExits(d.gatherRow); return; }
+  if (d.gatherTier) { setGatherTier(d.gatherTier); render(); return; }
 
   if (d.plot) {
     const row = state.plan.plots.find((p) => p.id === d.plot);
@@ -148,6 +154,12 @@ function act(el) {
     openMastery();
   } else if (d.act === 'board') {
     openBoard();
+  } else if (d.act === 'gather-setup') {
+    openGatherSetup();
+  } else if (d.act === 'gather-board') {
+    openBoard(GATHER_BRANCH);
+  } else if (d.act === 'gather-prices') {
+    runPriceFetch(gatherMissingIds());
   } else if (d.act === 'craft-pick') {
     openCraftPick();
   } else if (d.act === 'craft-prices') {
@@ -221,6 +233,8 @@ async function boot() {
   // The Craft tab finishes loading its data after the first paint, so it
   // needs a way to ask for a redraw once it has.
   setCraftRerender(() => { if (current === 'craft' || current === 'rank') render(); });
+  // A sheet that ranks a route has to be able to open the tab that works on it.
+  setNavigate(go);
   wire();
   go('plan');
 }

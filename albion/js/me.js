@@ -10,9 +10,10 @@ import { cityFor, farmCityFor, mixFor } from './calc.js';
 import {
   DATA, landSummary, plotsOwned, scheduleDays, state,
 } from './store.js';
+import { kitOf } from './gather.js';
 import { serverName } from './prices.js';
 import { esc } from './ui.js';
-import { pct } from './util.js';
+import { pct, short } from './util.js';
 
 /* A row that opens a sheet. The whole screen is made of these, because every
  * one of them is a question with a real answer rather than a field. */
@@ -62,6 +63,26 @@ export function setupGaps() {
     gaps.push({ act: 'prices', what: 'some prices' });
   }
   return gaps;
+}
+
+/** What you have on, in a phrase, or an invitation if you have said nothing. */
+function kitWords() {
+  const s = state.settings;
+  const kit = kitOf(s);
+  const G = s.gathering;
+  const set = ['head', 'armor', 'shoes'].filter((slot) => kit.gear[slot] > 0);
+  const bits = [
+    kit.toolTier ? `T${kit.toolTier}${kit.toolAvalon ? ' Avalonian' : ''} tool` : '',
+    set.length === 3 ? `T${Math.min(...set.map((x) => kit.gear[x]))} set`
+      : set.length ? `${set.length} of 3 gear` : '',
+    G?.food?.[kit.food]?.name || '',
+    G?.food?.[kit.food] ? '' : 'no pie',
+    Object.keys(kit.measured).length
+      ? `${Object.keys(kit.measured).length} timed` : 'nothing timed',
+  ].filter(Boolean);
+  return kit.toolTier || set.length
+    ? bits.join(' · ')
+    : 'Nothing set — every gathering figure would be a bare node';
 }
 
 export function me() {
@@ -124,6 +145,14 @@ export function me() {
       : `Worked out: ${pct(mix[1], 0)} plain, ${pct(1 - mix[1], 0)} better`)}
         ${row('mastery', '\u{1F4DA}', 'Per-recipe overrides',
     `${Object.keys(state.spec || {}).length || 'None'} set`)}
+      </section>
+
+      <section>
+        <div class="section-head"><h2>Your gathering</h2></div>
+        ${row('gather-setup', '\u26CF\uFE0F', 'Kit, node and where you swing', esc(kitWords()))}
+        ${row('gather-board', '\u{1F31F}', 'Gathering nodes on the board',
+    `${(s.gathering?.board || []).filter((n) => state.nodeLevels[n.id]).length} of ${
+      (s.gathering?.board || []).length} set · the largest bonus in gathering`)}
       </section>
 
       <section>

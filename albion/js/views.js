@@ -11,8 +11,10 @@ import {
 } from './store.js';
 import { serverName } from './prices.js';
 import {
-  craft, craftRankHTML, groupLabel, scan,
+  craft, craftRankHTML, groupLabel, recipeOf, scan,
 } from './craft.js';
+import { kitOf, rawId } from './gather.js';
+import { resourceExits } from './exits.js';
 import { me } from './me.js';
 import {
   ICON, addRow, amt, askLine, askStrip, craftIcon, go, heroHTML, iconFor, moreHTML,
@@ -1092,23 +1094,154 @@ export function rank() {
         s.premium ? 'premium' : 'no premium'}${s.hideMounts ? ' · mounts hidden' : ''}`
       : `In ${cityFor(s)?.name || '—'} · ${s.useFocus ? 'with focus' : 'no focus'} · ${
         s.ownInputsAtCost ? 'my own inputs at cost' : 'inputs at market'}`;
-  const missing = rankTab === 'gear' ? [] : rankMissingIds();
+  const missing = ['gear', 'gather'].includes(rankTab) ? [] : rankMissingIds();
+  const kit = kitOf(s);
+  const gatherWords = `${kit.toolTier ? `T${kit.toolTier} tool` : 'no tool set'} · ${
+    (s.gathering?.kindLabels?.[kit.kind] || kit.kind).toLowerCase()} · ${
+    kit.zone === 'royal' ? 'royal cluster' : 'Outlands cluster'} · ${
+    cityFor(s)?.name || '—'}`;
   return {
     title: 'Best',
     action: rankTab === 'gear' ? { label: '↓ Prices', act: 'scan-prices' }
-      : missing.length ? { label: '↓ Prices', act: 'rank-prices' } : null,
+      : rankTab === 'gather' ? { label: '↓ Prices', act: 'gather-prices' }
+        : missing.length ? { label: '↓ Prices', act: 'rank-prices' } : null,
     html: `
       <div class="tabs">
         <button data-rank="farm" aria-pressed="${rankTab === 'farm'}">Farm</button>
         <button data-rank="craft" aria-pressed="${rankTab === 'craft'}">Brew</button>
         <button data-rank="gear" aria-pressed="${rankTab === 'gear'}">Gear</button>
+        <button data-rank="gather" aria-pressed="${rankTab === 'gather'}">Gather</button>
       </div>
       <section>
-        ${slimRow({ act: 'assumptions', icon: ICON.assume, title: esc(assumptions) })}
+        ${slimRow({
+    act: rankTab === 'gather' ? 'gather-setup' : 'assumptions',
+    icon: rankTab === 'gather' ? ICON.raw : ICON.assume,
+    title: esc(rankTab === 'gather' ? gatherWords : assumptions),
+  })}
         ${rankTab === 'gear' ? craftRankHTML()
-    : rankTab === 'farm' ? farmRank(c, missing) : craftRank(c, missing)}
+    : rankTab === 'gather' ? gatherRankHTML()
+      : rankTab === 'farm' ? farmRank(c, missing) : craftRank(c, missing)}
       </section>`,
   };
+}
+
+/* ------------------------------------------------------------- gather -- */
+
+/** Which tier the gathering ranking is looking at. A question, not a plan. */
+export let gatherTier = 0;
+export const setGatherTier = (t) => { gatherTier = Number(t) || 0; };
+
+/* The tier to rank if you have not said. Your tool's own tier: a node above it
+ * is half again as long a swing and a node two above it the game refuses, so
+ * the tier the tool was made for is the one to open on. */
+const defaultGatherTier = () => kitOf(state.settings).toolTier || 4;
+
+const gatherCtx = () => ({
+  recipeOf,
+  priceOf,
+  costOf,
+  sellPriceOf: priceOf,
+  settings: state.settings,
+  cityId: state.settings.craftCity,
+});
+
+/**
+ * Every resource at one tier, and the best thing to do with each.
+ *
+ * Ranked on silver per second of actual swinging, because that is the one
+ * measure available whether or not you have ever timed a run: the swing floor
+ * comes straight out of the game's tables. Silver an hour is shown too, and
+ * only once you have measured, since travel and respawn are in no dump.
+ *
+ * The comparison is the point. Selling logs, refining them into planks and
+ * transmuting them a grade up are three completely different businesses off
+ * the same tree, and which of them wins moves with the market week to week.
+ */
+export function gatherRank() {
+  const tier = gatherTier || defaultGatherTier();
+  const ctxNow = gatherCtx();
+  const rows = [];
+  for (const family of state.settings.gathering?.families || []) {
+    const id = rawId(family, tier, 0);
+    const exits = resourceExits(id, ctxNow, { qty: 999 });
+    if (!exits.length) continue;
+    const ready = exits.filter((e) => !e.missing.length);
+    rows.push({
+      family, id, tier, exits,
+      best: ready[0] || null,
+      blocked: exits[0]?.pnl?.gathered?.[id]?.impossible ? exits[0].pnl.gathered[id] : null,
+      missing: [...new Set(exits.flatMap((e) => e.missing))],
+    });
+  }
+  rows.sort((a, b) => (b.best?.silverPerSwingSecond ?? -Infinity)
+    - (a.best?.silverPerSwingSecond ?? -Infinity));
+  return { tier, rows };
+}
+
+/** Every id the gathering ranking needs priced, for one scoped fetch. */
+export function gatherMissingIds() {
+  return [...new Set(gatherRank().rows.flatMap((r) => r.missing))];
+}
+
+function gatherRankHTML() {
+  const { tier, rows } = gatherRank();
+  const ready = rows.filter((r) => r.best);
+  const top = Math.max(...ready.map((r) => Math.abs(r.best.silverPerSwingSecond)), 0.01);
+  const blocked = rows.find((r) => r.blocked);
+  /* With no tool set every row is blocked, and five identical refusals is a
+   * screen that looks broken rather than a screen asking a question. */
+  const noTool = !kitOf(state.settings).toolTier;
+
+  const row = (r) => {
+    const b = r.best;
+    if (!b) {
+      return rowHTML({
+        act: 'gather-setup', icon: ICON.raw, cls: 'warn',
+        title: `${esc(nameOf(r.id))}`,
+        meta: r.blocked ? esc(r.blocked.why)
+          : `needs a price for ${r.missing.slice(0, 2).map(nameOf).map(esc).join(', ')}${
+            r.missing.length > 2 ? ` and ${r.missing.length - 2} more` : ''}`,
+        right: amt('—', { tone: 'flat' }),
+      });
+    }
+    const w = (Math.abs(b.silverPerSwingSecond) / top) * 100;
+    return `
+      <button class="row rank" data-gather-row="${esc(r.id)}">
+        <span class="ico">${ICON.raw}</span>
+        <span class="body">
+          <span class="title">${esc(nameOf(r.id))} → ${esc(b.label.toLowerCase())}</span>
+          <span class="meta">${esc([
+    `${short(b.profit)} off 999`,
+    b.hours ? `${short(b.profit / b.hours)} an hour` : `${hours(b.swingSeconds / 3600)} swinging`,
+    b.focus > 0 ? `${short(b.focus)} focus` : 'no focus',
+    r.exits.length > 1 && r.exits[1].silverPerSwingSecond != null
+      ? `next best ${esc(r.exits[1].label.toLowerCase())}` : '',
+  ].filter(Boolean).join(' · '))}</span>
+          <span class="bar"><i class="${toneOf(b.profit)}" style="width:${w.toFixed(1)}%"></i></span>
+        </span>
+        ${amt(b.silverPerSwingSecond, { unit: '/swing-s' })}
+      </button>`;
+  };
+
+  return `
+    <div class="seg small" style="margin-bottom:10px">
+      ${[2, 3, 4, 5, 6, 7, 8].map((t) => `
+        <button data-gather-tier="${t}" aria-pressed="${t === tier}">T${t}</button>`).join('')}
+    </div>
+    ${noTool ? slimRow({
+    act: 'gather-setup', icon: ICON.raw, cls: 'suggest',
+    title: 'Say which tool you swing and this whole screen comes alive',
+  }) : ''}
+    ${!noTool && rows.some((r) => r.missing.length) ? `<button class="btn primary fetch" data-act="gather-prices">
+      ↓ Fetch the prices these need</button>` : ''}
+    ${rows.length ? rows.map(row).join('') : empty('\u26CF\uFE0F', 'No node of that sort at this tier.')}
+    ${blocked && !noTool ? `<div class="warn-note">${esc(blocked.why)}. A tool one tier
+      under the node is half again as long a swing, and two under and the game
+      refuses. <b>Me → Your gathering</b> sets it.</div>` : ''}
+    ${note(`Profit on a 999 pile, every route costed off the same swings, best
+      first. Silver a swing-second is the game's own floor and is exact; silver
+      an hour appears once you have timed a run, because travel and respawn are
+      in no game file. Tap a row to open it in Craft.`, 'centered')}`;
 }
 
 /** Every id the Farm or Brew ranking is missing a price for, for one scoped fetch. */

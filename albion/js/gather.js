@@ -251,7 +251,9 @@ export function gatherRun(itemId, { qty = 999, settings }) {
   if (rate.impossible) {
     return {
       kind: 'gather', itemId, qty, impossible: true, rate,
-      why: `a T${tier} node needs at least a T${rate.needTool} tool`,
+      why: kit.toolTier
+        ? `your T${kit.toolTier} tool is too small for a T${tier} node — it takes a T${rate.needTool}`
+        : 'no tool set yet',
       assumed: [], hours: null, swingSeconds: 0, mix: [], byproducts: [],
       fame: 0, weight: 0, harvests: 0, swings: 0, nodes: 0,
     };

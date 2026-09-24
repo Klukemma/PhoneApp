@@ -19,8 +19,9 @@ import { esc } from './ui.js';
 import {
   ICON, amt, askLine, askStrip, go, heroHTML, moreHTML, note, rowHTML, slimRow, tag, tick,
 } from './html.js';
+import { isRaw, kitOf, rateKey } from './gather.js';
 import {
-  enchantOf, pct, short, silver, tierText, toneOf,
+  enchantOf, hours as hoursText, pct, short, silver, tierText, toneOf,
 } from './util.js';
 
 /* ------------------------------------------------------------- state --- */
@@ -49,21 +50,64 @@ export const craftTarget = () => q().recipeId || state.goal.recipeId || '';
  * the fallback stays a fallback.
  */
 export function resetMakeIfFollowing() {
-  if (!q().recipeId && (q().make || []).length) setQ({ make: [] });
+  if (!q().recipeId && ((q().make || []).length || (q().gather || []).length)) {
+    setQ({ make: [], gather: [] });
+  }
 }
 export function setCraftTarget(id) {
   // A new target invalidates which intermediates you said you would make:
   // "refine my own bars" means nothing once you are brewing a potion.
-  setQ({ recipeId: id, make: [] });
+  setQ({ recipeId: id, make: [], gather: [] });
 }
+
+/**
+ * A whole run in one go: what to make, what to refine on the way, and what to
+ * go and gather. What a ranked route hands over, so the Craft tab opens on
+ * exactly the run that was ranked rather than on its first step.
+ */
+export const setCraftRoute = (recipeId, { make = [], gather = [], qty = 0 } = {}) =>
+  setQ({
+    recipeId,
+    make: [...make],
+    gather: [...gather],
+    // The route was ranked on a whole pile, so open on the pile and not on the
+    // hundred the tab happened to be showing before.
+    ...(qty > 0 ? { qty: Math.min(999999, Math.max(1, Math.round(qty))) } : {}),
+  });
 export const setCraftQty = (n) => setQ({ qty: Math.min(999999, Math.max(1, Math.round(Number(n) || 1))) });
 export const setCraftSellTo = (where) => setQ({ sellTo: where });
 
-export function toggleMake(itemId) {
-  const make = new Set(q().make || []);
-  if (make.has(itemId)) make.delete(itemId); else make.add(itemId);
-  setQ({ make: [...make] });
+/** Which of the three a material is coming from right now. */
+export function sourceOf(itemId) {
+  if ((q().make || []).includes(itemId)) return 'make';
+  if ((q().gather || []).includes(itemId)) return 'gather';
+  return 'buy';
 }
+
+/**
+ * The three places a material can come from, and one tap moves between them.
+ *
+ * Buy it, make it, or go and get it. Only the ones that are real for this
+ * material are in the ring: a steel bar cannot be gathered and a log can only
+ * be made by transmuting one, so the tag on a log offers all three and the tag
+ * on a bar offers two. Nothing can be two at once, which is why this is a ring
+ * rather than a pair of switches.
+ */
+export function cycleSource(itemId) {
+  const make = new Set(q().make || []);
+  const gather = new Set(q().gather || []);
+  const ring = ['buy', recipeOf(itemId) ? 'make' : null, isRaw(itemId) ? 'gather' : null]
+    .filter(Boolean);
+  const next = ring[(ring.indexOf(sourceOf(itemId)) + 1) % ring.length];
+  make.delete(itemId);
+  gather.delete(itemId);
+  if (next === 'make') make.add(itemId);
+  if (next === 'gather') gather.add(itemId);
+  setQ({ make: [...make], gather: [...gather] });
+}
+
+/** Everything in this run you have said you will gather. */
+export const gatherSet = () => new Set(q().gather || []);
 
 /* ---------------------------------------------------------- the data --- */
 
@@ -180,6 +224,7 @@ export function currentRun() {
     recipeOf,
     qty: q().qty || 100,
     make: new Set(q().make || []),
+    gather: gatherSet(),
     priceOf,
     costOf,
     sellPriceOf: sell.priceOf,
@@ -255,6 +300,21 @@ export function craft() {
         ${sellsToBlackMarket(recipe) ? '' : 'disabled'}>Black Market</button>
     </div>`,
   }) + (sellsToBlackMarket(recipe) ? '' : '<div class="hint">Black Market: equipment only</div>') : '';
+  /* What you are going out for. Only offered once the run actually contains
+   * something gatherable, which most do not: a potion is leaves and water all
+   * the way down and there is nothing in it to go and chop. */
+  const gathered = run ? Object.keys(run.gathered) : [];
+  const canGather = recipe && (gathered.length
+    || run?.buys?.some((b) => isRaw(b.id)));
+  const kit = kitOf(s);
+  const gatherLine = canGather ? askLine({
+    act: 'gather-setup', k: 'Gather',
+    state: gathered.length ? 'set' : 'unset',
+    v: gathered.length
+      ? `${gathered.map((id) => esc(nameOf(id))).join(', ')}${kit.toolTier
+        ? ` · T${kit.toolTier} tool` : ' · no tool set'}`
+      : 'Tap a material below to gather it instead',
+  }) : '';
   const where = recipe ? askLine({
     act: 'craft-city', k: 'In', state: s.craftCityPicked ? 'set' : 'default',
     v: s.craftWhere === 'best' ? 'Best city per step'
@@ -272,7 +332,7 @@ export function craft() {
     title: 'Craft',
     action: recipe ? { label: '↓ Prices', act: 'craft-prices' } : null,
     html: `
-      ${askStrip(make + howMany + sellLine + where, seg, '')}
+      ${askStrip(make + howMany + sellLine + where + gatherLine, seg, '')}
       ${recipe ? runHTML(run, recipe) : note('Pick anything the game can craft: potions, food, bars, weapons, armour, mounts. Then say how many.', 'centered')}
       ${gearBanner()}`,
   };
@@ -309,21 +369,40 @@ function runHTML(run, recipe) {
     }) : '',
   ].filter(Boolean).join('');
 
+  /* A run with a gathered leaf in it is a run whose cost is mostly hours, so
+   * the three small facts under the headline change to be about the hours.
+   * Silver an hour is the one everybody wants and it is the one that is only
+   * there once you have timed a run; until then it is silver a swing-second,
+   * which is exact and file-backed and does not pretend to include walking. */
+  const swung = run.gatherSwingSeconds > 0;
+  const stats = swung ? [
+    { v: timeText(run.gatherSwingSeconds), k: 'swinging' },
+    { v: run.gatherHours ? hoursText(run.gatherHours) : '—', k: 'your pace' },
+    run.gatherHours
+      ? { v: short(run.profit / run.gatherHours), k: 'an hour', cls: toneOf(run.profit) }
+      : {
+        v: short(run.profit / run.gatherSwingSeconds),
+        k: 'a swing-second',
+        cls: toneOf(run.profit),
+      },
+  ] : [
+    { v: run.silverPerFocus != null ? perFocus(run.silverPerFocus) : 'none', k: 'per focus' },
+    { v: short(run.focus), k: 'focus in all' },
+    { v: String(run.crafts), k: run.crafts === 1 ? 'batch' : 'batches' },
+  ];
+
   return `
     ${heroHTML({
     label: `Profit on ${short(run.qty)} ${esc(recipe.name)}`,
     amount: short(run.profit), tone: toneOf(run.profit),
     sub: `${silver(run.perItem)} each · ${pct(run.margin)} margin`,
-    stats: [
-      { v: run.silverPerFocus != null ? perFocus(run.silverPerFocus) : 'none', k: 'per focus' },
-      { v: short(run.focus), k: 'focus in all' },
-      { v: String(run.crafts), k: run.crafts === 1 ? 'batch' : 'batches' },
-    ],
+    stats,
   })}
     ${run.sell.where === 'black' ? note(`Black Market: no setup fee, ${
     (s.marketTransactionTax / (s.premium ? 2 : 1)).toFixed(2)}% tax, sells instantly in Caerleon.`, 'centered')
     : run.sell.refused ? note('The Black Market only takes equipment, so this is priced on the open market.', 'centered') : ''}
     ${nudges ? `<section>${nudges}</section>` : ''}
+    ${gatherSection(run)}
     ${buysHTML(run, recipe)}
     ${stepsSection(run)}
     <section>
@@ -371,6 +450,118 @@ function qualityTable(run) {
     </div>`;
 }
 
+/* What the game calls each grade above plain. Taken off the item's own name,
+ * which is where the game puts it: "Uncommon Cedar Logs". */
+const GRADE_WORD = { 1: 'uncommon', 2: 'rare', 3: 'exceptional', 4: 'pristine' };
+const gradeWord = (id) => GRADE_WORD[enchantOf(id)] || 'plain';
+
+/* Seconds, as a person would say them. Minutes for anything under an hour,
+ * because "1.4h of swinging" reads as a working afternoon and 84 minutes
+ * reads as what it is. */
+function timeText(seconds) {
+  const s = Number(seconds) || 0;
+  if (s < 90) return `${Math.round(s)}s`;
+  if (s < 5400) return `${(s / 60).toFixed(s < 600 ? 1 : 0)}m`;
+  return hoursText(s / 3600);
+}
+
+/**
+ * What to go and get, and what it costs in swings.
+ *
+ * The one section on the screen whose currency is time rather than silver.
+ * Everything in it comes out of the game's own tables except the hours, which
+ * are yours: node density, travel, competition and live respawn are in no
+ * dump, so the app reports the swing floor exactly and says the rest is
+ * unknown until you have timed a run.
+ */
+function gatherSection(run) {
+  const runs = Object.entries(run.gathered || {});
+  if (!runs.length) return '';
+  const s = state.settings;
+  const kit = kitOf(s);
+
+  const rows = runs.map(([id, g]) => {
+    if (g.impossible) {
+      return rowHTML({
+        act: 'gather-setup', icon: ICON.warn, cls: 'warn',
+        title: `${esc(nameOf(id))} · cannot be gathered`,
+        meta: `${esc(g.why)} · bought at the market instead`,
+        right: tag('Fix the kit'),
+      });
+    }
+    const y = g.rate.yield;
+    const speed = g.rate.speed;
+    return rowHTML({
+      tagName: 'div', icon: ICON.raw, cls: 'wrap',
+      title: `${short(g.qty)} × ${esc(nameOf(id))}`,
+      meta: esc([
+        `${short(g.harvests)} harvests off ${short(Math.ceil(g.nodes))} nodes`,
+        `${g.rate.secondsPerSwing.toFixed(1)}s a swing`,
+        y.multiplier > 1.005 ? `+${pct((y.multiplier - 1), 0)} yield` : 'no yield bonus',
+        speed.total > 0 ? `+${pct(speed.total, 0)} speed${speed.capped ? ' (capped)' : ''}` : '',
+        g.rate.node.respawn ? `${Math.round(g.rate.node.respawn / 60)} min respawn` : '',
+      ].filter(Boolean).join(' · ')),
+      right: amt(timeText(g.swingSeconds), { tone: 'flat' }),
+    });
+  });
+
+  /* What fell out of it. Real silver and the reason anyone has enchanted
+   * resources at all, so it gets a row rather than a footnote. */
+  /* A hundred planks is a twelfth of a stack, so the rarest grade comes out at
+   * nine hundredths of a log. Real, and worth counting, and not worth four
+   * significant figures - so the sentence names what you can actually hold and
+   * the total below it carries the rest. */
+  const some = (run.byproducts || []).filter((b) => b.qty >= 0.5);
+  const trace = (run.byproducts || []).filter((b) => b.qty < 0.5);
+  const total = (run.byproducts || []).reduce((t, b) => t + b.qty, 0);
+  const extra = (run.byproducts || []).length ? rowHTML({
+    tagName: 'div', icon: ICON.spark, cls: 'wrap',
+    title: `Also came back with ${short(Math.round(total)) || 'under one'} enchanted`,
+    meta: esc([
+      [...some.map((b) => `${Math.round(b.qty)} ${gradeWord(b.id)}`),
+        trace.length ? `a trace of ${trace.map((b) => gradeWord(b.id)).join(' and ')}` : '']
+        .filter(Boolean).join(', '),
+      'sold on the open market, after tax, and in the profit above',
+    ].join(' · ')),
+    right: amt(run.byproductRevenue, { sign: true }),
+  }) : '';
+
+  const fame = run.gatherFame > 0 ? rowHTML({
+    tagName: 'div', icon: ICON.board, cls: 'wrap',
+    title: `${short(run.gatherFame)} gathering fame`,
+    meta: `${esc(kit.danger.startsWith('black') && kit.danger !== 'black'
+      ? `deep black zone, ${pct((s.gathering?.fameFactor?.[kit.danger] ?? 1) - 1, 0)} more`
+      : 'zone colour changes fame and nothing else')}${s.premium ? ' · premium is half again on it' : ''}`,
+    right: '',
+  }) : '';
+
+  const pies = runs.reduce((t, [, g]) => t + (g.pies || 0), 0);
+  const weight = run.gatherWeight > 0 ? rowHTML({
+    act: 'craft-city', icon: ICON.carry, cls: 'wrap',
+    title: `${short(run.gatherWeight)} kg to carry home`,
+    meta: s.carryWeight > 0
+      ? `${Math.ceil(run.gatherWeight / s.carryWeight)} trips at ${short(s.carryWeight)} kg${
+        pies ? ` · ${pies} ${pies === 1 ? 'pie' : 'pies'} to keep the bonus up` : ''}`
+      : `set what you can carry on Me to count trips${pies ? ` · ${pies} ${pies === 1 ? 'pie' : 'pies'}` : ''}`,
+    right: go(),
+  }) : '';
+
+  const assumed = (run.assumed || []).length ? rowHTML({
+    act: 'gather-setup', icon: ICON.assume, cls: 'slim',
+    title: `${run.assumed.length} ${run.assumed.length === 1 ? 'thing is' : 'things are'} yours, not the game's`,
+    meta: esc(run.assumed.join(' · ')),
+    right: go(),
+  }) : '';
+
+  return `
+    <section>
+      <div class="section-head"><h2>Gather · what to go and get</h2>
+        <span class="right num">${run.gatherSwingSeconds > 0
+      ? `${timeText(run.gatherSwingSeconds)} swinging` : ''}</span></div>
+      ${rows.join('')}${extra}${fame}${weight}${assumed}
+    </section>`;
+}
+
 function moneyHTML(run) {
   const line = (label, value, tone) => `
     <div class="bar-row"><span class="n">${esc(label)}</span>
@@ -384,6 +575,9 @@ function moneyHTML(run) {
       ${line(run.sellInstant
     ? `Tax (${pct(run.tax)}, no setup fee)`
     : `Market tax (${pct(run.tax)})`, short(-run.taxPaid), 'bad')}
+      ${run.byproductRevenue > 0.5 ? line(
+    `Enchanted ${run.byproducts.length === 1 ? 'resource' : 'resources'} that fell out of the gathering`,
+    short(run.byproductRevenue), 'good') : ''}
       ${line('Materials bought', short(-run.buyCost), 'bad')}
       ${run.fees > 0.5 ? line('Station fees', short(-run.fees), 'bad') : ''}
       <div class="bar-row total"><span class="n">Profit</span>
@@ -396,25 +590,43 @@ function moneyHTML(run) {
  * that could be made instead shows a tag, and tapping the tag flips it. The
  * row itself still opens the price.
  */
+/* A span, not a button: a button inside a button is not HTML, and the parser
+ * splits the row apart. The tap still lands on the tag first. */
+const SOURCE_LABEL = { buy: 'buy', make: 'make', gather: 'gather' };
+const sourceTag = (id, at) =>
+  `<span class="tag ${at === 'buy' ? '' : 'on'}" role="button" data-source="${esc(id)}"
+    aria-label="Coming from: ${SOURCE_LABEL[at]}. Tap to change.">${SOURCE_LABEL[at]}</span>`;
+
 function buysHTML(run, recipe) {
   const make = new Set(q().make || []);
   const opts = makeable(recipe, make);
-  // A span, not a button: a button inside a button is not HTML, and the
-  // parser splits the row apart. The tap still lands on the tag first.
-  const makeTag = (id, chosen) => `<span class="tag ${chosen ? 'on' : ''}" role="button" data-make="${esc(id)}">${
-    chosen ? 'make' : 'buy'}</span>`;
+  /* Which materials have somewhere else to come from. A log can be gathered
+   * whether or not the run's tree happens to offer a transmute for it, so the
+   * tag is on every raw in the list and not only on the makeable ones. */
+  const hasChoice = (id) => opts.some((o) => o.id === id) || isRaw(id) || !!recipeOf(id);
+  const anyGathered = Object.keys(run.gathered || {}).length > 0;
+
   const rows = run.buys.map((b) => {
     /* What you carry to the station and what the run really costs are two
      * numbers. They only pull apart on a short run, where nothing has come
      * back yet to spend on the next batch. */
     const spare = b.qty - b.net;
-    const opt = opts.find((o) => o.id === b.id);
+    const at = sourceOf(b.id);
+    const got = run.gathered?.[b.id];
+    const gathering = at === 'gather' && got && !got.impossible;
     return rowHTML({
-      attrs: `data-price="${esc(b.id)}"`, icon: ICON.cart, cls: b.unit ? '' : 'warn',
+      attrs: `data-price="${esc(b.id)}"`,
+      icon: gathering ? ICON.raw : ICON.cart,
+      cls: gathering || b.unit ? '' : 'warn',
       title: `${short(b.qty)} × ${esc(nameOf(b.id))}`,
-      meta: esc(`${b.unit ? `${silver(b.unit)} each` : 'no price set'} · ${short(b.perCraft)} a batch${
-        spare > 0.05 ? ` · ${short(spare)} come back, really ${short(b.net)}` : ''}`),
-      right: (opt ? makeTag(b.id, false) : '') + (b.unit ? amt(-b.cost) : tag('Set price')),
+      meta: esc(gathering
+        ? `yours, off ${short(Math.ceil(got.nodes))} nodes · ${short(b.perCraft)} a batch${
+          b.unit ? ` · ${silver(b.unit * b.qty)} not spent` : ''}`
+        : `${b.unit ? `${silver(b.unit)} each` : 'no price set'} · ${short(b.perCraft)} a batch${
+          spare > 0.05 ? ` · ${short(spare)} come back, really ${short(b.net)}` : ''}`),
+      right: (hasChoice(b.id) ? sourceTag(b.id, at) : '')
+        + (gathering ? amt(timeText(got.swingSeconds), { tone: 'flat' })
+          : b.unit ? amt(-b.cost) : tag('Set price')),
     });
   });
   // Things you chose to make: no longer bought, so they get a row of their own.
@@ -422,14 +634,17 @@ function buysHTML(run, recipe) {
     attrs: `data-price="${esc(o.id)}"`, icon: ICON.make, cls: o.depth > 0 ? 'nested' : '',
     title: `${tierText(tierOf(o.id), enchantOf(o.id))} ${esc(nameOf(o.id))}`,
     meta: `made from ${o.recipe.inputs.map((i) => esc(nameOf(i.id))).join(' + ')} → see Craft`,
-    right: makeTag(o.id, true),
+    right: sourceTag(o.id, 'make'),
   }));
   if (!rows.length && !made.length) return '';
   return `
     <section>
-      <div class="section-head"><h2>Buy · what to have on you</h2>
+      <div class="section-head"><h2>${anyGathered
+    ? 'Materials · what to have on you' : 'Buy · what to have on you'}</h2>
         <span class="right num ${run.buyCost > 0.5 ? 'bad' : 'flat'}">${run.buyCost > 0.5 ? short(-run.buyCost) : ''}</span></div>
       ${rows.join('')}${made.join('')}
+      ${rows.some((r) => r.includes('data-source'))
+    ? note('Tap buy / make / gather on a material to change where it comes from.') : ''}
     </section>`;
 }
 

@@ -10,14 +10,18 @@ import {
 } from './prices.js';
 import {
   addCraft, addPlot, addSpare, applySolution, bmPriceOf, carryStockIn,
-  clearLand, clearStock, commit, DATA, exportJSON, importJSON, itemMeta,
+  clearLand, clearStock, commit, costOf, DATA, exportJSON, importJSON, itemMeta,
   landSummary, plotsOwned, pricedItemIds, priceOf, qBmPriceOf, qPriceOf,
   removeCraft, removePlot, scheduleDays, setBmPrice, setBuyPrice,
-  setCraftCity, setDayMode, setGoal, setGoalStamp, setHolding, setNodeLevel,
-  setPrice, setPrices, setQualityPrice, setQualityPrices, setSchedule,
-  setScheduleLength, setSettings, setSpec, setStock, state, updateCraft,
-  updatePlot, wipe,
+  setCraftCity, setDayMode, setGather, setGoal, setGoalStamp, setHolding,
+  setMeasured, setNodeLevel, setPrice, setPrices, setQualityPrice,
+  setQualityPrices, setSchedule, setScheduleLength, setSettings, setSpec,
+  setStock, state, updateCraft, updatePlot, wipe,
 } from './store.js';
+import {
+  enchantUp, gatherRun, gatherSpeed, gatherYield, kitOf, rateKey, rawId, rawIdOf,
+} from './gather.js';
+import { resourceExits } from './exits.js';
 import { solve } from './solve.js';
 import { $, $$, closeSheet, esc, openSheet, toast } from './ui.js';
 import { ICON, amt, go, moreHTML, note, rowHTML, tag, tick } from './html.js';
@@ -31,13 +35,19 @@ import {
   allRecipes, craftTarget, currentRun, ensureGear, gearReady, groupIcon,
   groupOf as craftGroupOf, GROUPS, hasQuality as craftHasQuality,
   nameOf as craftNameOf, recipeOf, resetMakeIfFollowing, scan, scanBlackIds,
-  scanIds, setCraftTarget, setScan,
+  scanIds, setCraftRoute, setCraftTarget, setScan,
 } from './craft.js';
 
 /* Whichever file knows this item. Once the Craft tab has loaded the weapon
  * and armour list, a steel bar has a name here too; before that it does not,
  * and showing the raw id is better than pretending. */
 const nameOf = (id) => itemMeta(id)?.name || id;
+
+/* Sheets do not usually change tab: whatever they set, the screen behind them
+ * is already the one showing it. A ranked route is the exception - it is read
+ * on Best and worked on in Craft - so the shell lends its router. */
+let navigate = () => {};
+export const setNavigate = (fn) => { navigate = fn; };
 
 /* Ask the market about all five qualities at once. It is the same request
  * either way, and on equipment the four above plain are where the money is. */
@@ -1735,6 +1745,12 @@ export function carryLeftoversIn() {
  * covers everything under it, and each specialisation also quietly cheapens its
  * siblings. Levels are shown against the things you actually farm and brew.
  */
+/* Gathering is a branch of the same board, and its nodes come from the
+ * gathering tables rather than from the focus tables, because what they buy is
+ * yield and swing speed rather than a cheaper craft. Same list of levels
+ * underneath, so there is one destiny board and not two. */
+export const GATHER_BRANCH = 'Gathering';
+
 export function openBoard(branch = null) {
   rememberMastery();
   const s = state.settings;
@@ -1744,6 +1760,7 @@ export function openBoard(branch = null) {
    * sorted and the whole strip wraps. */
   const labelOf = (n) => n.branchLabel || n.branch;
   const branches = [...new Set(nodes.map(labelOf))].sort();
+  const gatherNodes = s.gathering?.board || [];
   /* Farming branches first: they are the ones a potion plan cares about, and
    * with the gear file loaded the rest is forty-odd names. */
   const farmIds = new Set([
@@ -1758,10 +1775,12 @@ export function openBoard(branch = null) {
   const wanted = first ? (first.category.startsWith('meat_') ? 'Animal Breeder' : BY_CAT[first.category]) : null;
   const most = branches.map((b) => [b, nodes.filter((n) => labelOf(n) === b && state.nodeLevels[n.id]).length])
     .sort((a, b) => b[1] - a[1])[0];
-  const open = branches.includes(branch) ? branch
-    : branches.includes(wanted) ? wanted
-      : most && most[1] > 0 ? most[0] : farming[0] || branches[0];
+  const open = branch === GATHER_BRANCH ? GATHER_BRANCH
+    : branches.includes(branch) ? branch
+      : branches.includes(wanted) ? wanted
+        : most && most[1] > 0 ? most[0] : farming[0] || branches[0];
   const mine = nodes.filter((n) => labelOf(n) === open);
+  const gathering = open === GATHER_BRANCH;
 
   // What your current levels do to the things on your plan.
   const examples = [];
@@ -1793,23 +1812,57 @@ export function openBoard(branch = null) {
       </div>`;
   };
 
+  /* A gathering node buys yield and swing speed rather than a cheaper craft,
+   * so its row says what it is worth in those terms instead. */
+  const gatherRow = (n) => {
+    const level = state.nodeLevels[n.id] || '';
+    const on = Number(level) || 0;
+    return `
+      <div class="row" style="gap:8px">
+        <span class="ico">${FAMILY_ICON[n.family] || '\u2022'}</span>
+        <span class="body"><span class="title">${esc(n.name)}</span>
+          <span class="meta">${esc(on
+      ? `+${pct(on * n.yieldPerLevel, 0)} yield, +${pct(Math.min(on * n.speedPerLevel,
+        s.gathering.speedCap), 0)} speed at ${on}`
+      : `+${pct(n.yieldPerLevel, 1)} yield and speed a level, to ${n.maxLevel}`)}</span></span>
+        <input type="number" class="spec-input" data-node="${esc(n.id)}"
+          inputmode="numeric" min="0" max="${n.maxLevel}" placeholder="0"
+          value="${level}" aria-label="Level for ${esc(n.name)}">
+      </div>`;
+  };
+
   openSheet(`
     <h2>Destiny board</h2>
     <div class="field">
       <select id="branch">
         <optgroup label="Farming">${farming.map((b) => `
           <option value="${esc(b)}" ${b === open ? 'selected' : ''}>${esc(b)}</option>`).join('')}</optgroup>
+        ${gatherNodes.length ? `<optgroup label="Gathering">
+          <option value="${esc(GATHER_BRANCH)}" ${gathering ? 'selected' : ''}>Gatherer</option>
+        </optgroup>` : ''}
         ${gear.length ? `<optgroup label="Gear">${gear.map((b) => `
           <option value="${esc(b)}" ${b === open ? 'selected' : ''}>${esc(b)}</option>`).join('')}</optgroup>` : ''}
       </select>
     </div>
 
-    ${mine.filter((n) => n.kind === 'mastery').map(nodeRow).join('')}
-    ${mine.some((n) => n.kind === 'spec')
-      ? `<div class="section-head" style="margin-top:14px"><h2>Specialisations</h2></div>` : ''}
-    ${mine.filter((n) => n.kind === 'spec').map(nodeRow).join('')}
+    ${gathering ? (s.gathering.families || []).map((f) => {
+      const rows = gatherNodes.filter((n) => n.family === f);
+      return rows.length ? `
+        <div class="section-head" style="margin-top:14px"><h2>${esc(FAMILY_LABEL[f] || f)}</h2></div>
+        ${rows.map(gatherRow).join('')}` : '';
+    }).join('') : ''}
+    ${gathering ? note(`Every level is +${pct(0.005, 1)} to how much a swing gives AND +${
+      pct(0.005, 1)} to how fast you swing, and the speed half is capped at +${
+      pct(s.gathering.speedCap, 0)} across everything. At 100 that is half again as
+      much per swing, which is the largest single bonus in gathering — bigger than
+      a full set, an Avalonian tool and a pork pie together.`) : ''}
 
-    ${examples.length ? `
+    ${gathering ? '' : mine.filter((n) => n.kind === 'mastery').map(nodeRow).join('')}
+    ${!gathering && mine.some((n) => n.kind === 'spec')
+      ? `<div class="section-head" style="margin-top:14px"><h2>Specialisations</h2></div>` : ''}
+    ${gathering ? '' : mine.filter((n) => n.kind === 'spec').map(nodeRow).join('')}
+
+    ${!gathering && examples.length ? `
       <div class="section-head" style="margin-top:16px"><h2>What that costs you</h2></div>
       <div class="card">
         ${examples.map((e) => {
@@ -1824,7 +1877,7 @@ export function openBoard(branch = null) {
           <span class="n">Every 100 efficiency</span>
           <span class="v num">halves the cost</span></div>
       </div>` : ''}
-    ${note('The branch node counts for everything under it, and every specialisation also cheapens its siblings a little: levelling Potato Schnapps makes healing potions cheaper too.')}
+    ${gathering ? '' : note('The branch node counts for everything under it, and every specialisation also cheapens its siblings a little: levelling Potato Schnapps makes healing potions cheaper too.')}
 
     <div class="sheet-actions">
       <button class="btn primary" id="done">Done</button>
@@ -1838,6 +1891,415 @@ export function openBoard(branch = null) {
       $('#done', root).onclick = () => { leaveMastery(); closeSheet(); };
     },
     onDismiss: leaveMastery,
+  });
+}
+
+/* --------------------------------------------------- the gathering kit -- */
+
+const FAMILY_LABEL = {
+  WOOD: 'Wood', ORE: 'Ore', FIBER: 'Fibre', HIDE: 'Hide', ROCK: 'Rock',
+};
+const FAMILY_ICON = {
+  WOOD: '\u{1FAB5}', ORE: '⛰️', FIBER: '\u{1F33F}',
+  HIDE: '\u{1F98C}', ROCK: '\u{1FAA8}',
+};
+
+/** How good the cluster is, which is the only thing that sets the grade odds. */
+const ZONES = [
+  ['royal', 'Royal', 'Royal continent and the starter zones'],
+  ['outlandsLow', 'Outlands, low', 'A low-quality black-zone cluster'],
+  ['outlandsMedium', 'Outlands, medium', 'Twice the enchanted of a royal zone'],
+  ['outlandsHigh', 'Outlands, high', 'Four times the enchanted of a royal zone'],
+];
+
+/** Zone colour, which changes gathering fame and nothing else at all. */
+const DANGERS = [
+  ['yellow', 'Yellow'], ['red', 'Red'], ['black', 'Black'],
+  ['black3', 'Deep black (3)'], ['black6', 'Deepest black (6)'],
+];
+
+const GATHER_SLOTS = [['head', 'Cap'], ['armor', 'Garb'], ['shoes', 'Workboots']];
+
+/** Which resource the preview is about. Not saved: it is a question, not a plan. */
+let gatherPeek = { family: 'WOOD', tier: 5 };
+
+/**
+ * Your gathering kit, and what it is worth.
+ *
+ * Two levers here and confusing them is how every other calculator gets this
+ * wrong. The TOOL decides how long a swing takes. Everything else decides how
+ * much a swing gives, which is not the same thing as being faster - it means
+ * needing fewer swings. Only the gathering potion and the destiny board touch
+ * the swing itself, and their total is hard capped at 40%.
+ *
+ * Nothing in here is switched on to begin with. A full set and a pork pie is
+ * most of a second run's worth of resources, so assuming them would double
+ * every answer on the screen for someone who owns neither.
+ */
+export function openGatherSetup(forId = null) {
+  const s = state.settings;
+  const G = s.gathering;
+  const kit = kitOf(s);
+  const at = forId ? rawIdOf(forId) : null;
+  if (at) gatherPeek = { family: at.family, tier: at.tier };
+  const { family, tier } = gatherPeek;
+  const peekId = rawId(family, tier, at?.enchant || 0);
+
+  const seg = (name, options, chosen, attr) => `
+    <div class="seg small">${options.map(([v, label, title]) => `
+      <button data-${attr}="${esc(String(v))}" aria-pressed="${String(v) === String(chosen)}"
+        ${title ? `title="${esc(title)}"` : ''}>${esc(label)}</button>`).join('')}</div>`;
+
+  /* A row of tier buttons. `none` is a real answer for a piece of gear you do
+   * not own and is not one for the resource the preview is about. */
+  const tiers = (attr, chosen, { min = 2, none = true } = {}) => seg(attr,
+    [...(none ? [[0, 'none']] : []),
+      ...Array.from({ length: 9 - min }, (_, i) => [min + i, `T${min + i}`])],
+    chosen, attr);
+
+  /* The preview. Everything above it is a control and this is the answer, so it
+   * sits at the top where it can be watched changing rather than at the bottom
+   * where it would have to be scrolled to. */
+  const run = gatherRun(peekId, { qty: 999, settings: s });
+  const yld = gatherYield(family, tier, at?.enchant || 0, s);
+  const speed = gatherSpeed(family, tier, s);
+  const key = rateKey(family, tier, kit);
+  const measured = kit.measured[key];
+
+  const part = (label, value, extra = '') => (value > 0 ? `
+    <div class="bar-row"><span class="n">${esc(label)}${extra ? ` <small>${esc(extra)}</small>` : ''}</span>
+      <span class="v num good">+${pct(value, 1)}</span></div>` : '');
+
+  const preview = run?.impossible ? `
+    <div class="warn-note bad">${esc(run.why)}.</div>`
+    : run ? `
+    <div class="card">
+      <div class="bar-row"><span class="n">A swing</span>
+        <span class="v num">${run.rate.secondsPerSwing.toFixed(1)}s${
+  run.rate.factor !== 1 ? ` <small>T${kit.toolTier} tool on a T${tier} node</small>` : ''}</span></div>
+      <div class="bar-row"><span class="n">Gives</span>
+        <span class="v num">${run.rate.unitsPerSwing.toFixed(2)}</span></div>
+      ${part('Gatherer set', yld.gear, yld.ramped ? '' : 'still ramping')}
+      ${part('Avalonian tool', yld.tool)}
+      ${part(G.food[kit.food]?.name || 'Pie', yld.food)}
+      ${part(G.potions[kit.potion]?.name || 'Potion', yld.potion)}
+      ${part('Destiny board', yld.spec)}
+      ${part('Premium', yld.premium, kit.premiumMode === 'multiply' ? 'multiplied' : 'added')}
+      ${speed.total > 0 ? `
+        <div class="bar-row"><span class="n">Swing speed${speed.capped ? ' <small>capped</small>' : ''}</span>
+          <span class="v num good">+${pct(speed.total, 0)}</span></div>` : ''}
+      <div class="bar-row total"><span class="n">999 ${esc(nameOf(peekId))}</span>
+        <span class="v num">${gMin(run.swingSeconds)} swinging</span></div>
+      <div class="bar-row"><span class="n">${measured
+  ? `At your measured ${short(run.perHour)} an hour` : 'In real hours'}</span>
+        <span class="v num ${measured ? '' : 'flat'}">${run.hours
+  ? hours(run.hours) : 'not until you time a run'}</span></div>
+      <div class="bar-row"><span class="n">Off</span>
+        <span class="v num">${short(Math.ceil(run.nodes))} nodes${
+  run.rate.node.respawn ? ` <small>${Math.round(run.rate.node.respawn / 60)} min respawn</small>` : ''}</span></div>
+    </div>` : '<div class="hint">No node of that sort at that tier.</div>';
+
+  const measuredRows = Object.entries(kit.measured).map(([k, v]) => {
+    const [fam, t, kind, zone] = k.split(':');
+    return `
+      <div class="stock-line">
+        <span class="body"><span class="title">${esc(FAMILY_LABEL[fam] || fam)} T${esc(t)}</span>
+          <span class="meta">${esc(G.kindLabels[kind] || kind)} · ${esc(
+  (ZONES.find(([z]) => z === zone) || [, zone])[1])} · ${short(v.per10min * 6)} an hour</span></span>
+        <input type="number" inputmode="numeric" min="0" step="1" data-measured="${esc(k)}"
+          value="${v.per10min}" aria-label="Per ten minutes">
+      </div>`;
+  }).join('');
+
+  openSheet(`
+    <h2>Your gathering kit</h2>
+    <p class="muted">Two levers, and they are not the same one. Your <b>tool</b>
+      decides how long a swing takes. Everything else — the set, the Avalonian
+      tool's own bonus, the pie, the board, premium — decides how much a swing
+      gives, which means needing fewer swings rather than swinging faster.</p>
+
+    <div class="section-head"><h2>What it comes to</h2>
+      <span class="right num">${esc(FAMILY_LABEL[family])} T${tier}</span></div>
+    <div class="seg small" style="margin-bottom:8px">
+      ${(G.families || []).map((f) => `
+        <button data-peek-family="${esc(f)}" aria-pressed="${f === family}">${
+  FAMILY_ICON[f] || ''} ${esc(FAMILY_LABEL[f] || f)}</button>`).join('')}
+    </div>
+    ${tiers('peek-tier', tier, { min: 1, none: false })}
+    <div style="height:8px"></div>
+    ${preview}
+
+    <div class="section-head" style="margin-top:16px"><h2>Tool</h2></div>
+    ${tiers('tool-tier', kit.toolTier)}
+    <div class="card tight" style="margin-top:8px">
+      ${kitToggle('toolAvalon', 'Avalonian tool',
+    'Only an Avalonian tool carries a gathering bonus of its own.', kit.toolAvalon)}
+    </div>
+    <div class="hint">A plain tool has no passive slot and gives no yield at all,
+      however good it is — it only decides the swing. A tool two tiers under the
+      node and the game will not let you harvest it.</div>
+
+    <div class="section-head" style="margin-top:16px"><h2>Gatherer set</h2></div>
+    <div class="card">
+      ${GATHER_SLOTS.map(([slot, label]) => `
+        <div class="field" style="margin-bottom:10px">
+          <label>${esc(label)}</label>
+          ${tiers(`gear-${slot}`, kit.gear[slot])}
+        </div>`).join('')}
+    </div>
+    <div class="hint">Every piece is hard tier-gated: a T5 set on a T6 node is
+      worth exactly nothing. It also ramps — a little every 30 seconds up to ten
+      stacks, so the number on the tooltip is what you have after five minutes.
+      The gatherer backpack is weight only and carries no yield, so it changes
+      how many trips you make and not how much you come back with.</div>
+
+    <div class="section-head" style="margin-top:16px"><h2>Where you swing</h2></div>
+    <div class="field">
+      <label for="gatherKind">Sort of node</label>
+      <select id="gatherKind">${Object.entries(G.kindLabels)
+    .filter(([k]) => G.nodes[family]?.[k])
+    .map(([k, label]) => `<option value="${esc(k)}" ${k === kit.kind ? 'selected' : ''}>${
+  esc(label)}</option>`).join('')}</select>
+    </div>
+    <div class="field">
+      <label>Cluster quality — this is what sets the grade odds</label>
+      ${seg('zone', ZONES.map(([v, label, title]) => [v, label, title]), kit.zone, 'zone')}
+      <div class="hint">${(G.rareOdds[kit.zone] || []).slice(1, 4)
+    .map((o, i) => `.${i + 1} ${pct(o, o < 0.01 ? 2 : 1)}`).join(' · ')} of harvests.</div>
+    </div>
+    <div class="field">
+      <label>Zone colour — fame only, never yield</label>
+      ${seg('danger', DANGERS, kit.danger, 'danger')}
+    </div>
+
+    <div class="section-head" style="margin-top:16px"><h2>Pie and potion</h2></div>
+    <div class="field">
+      <label for="gatherFood">Pie</label>
+      <select id="gatherFood">
+        <option value="" ${kit.food ? '' : 'selected'}>None</option>
+        ${Object.entries(G.food).map(([id, f]) => `
+          <option value="${esc(id)}" ${id === kit.food ? 'selected' : ''}>T${f.tier} ${
+  esc(f.name)} · +${pct(f.grades['0'].gatheringyield, 0)}</option>`).join('')}
+      </select>
+      ${kit.food ? seg('food-enchant', GRADES, kit.foodEnchant, 'food-enchant') : ''}
+    </div>
+    <div class="field">
+      <label for="gatherPotion">Potion</label>
+      <select id="gatherPotion">
+        <option value="" ${kit.potion ? '' : 'selected'}>None</option>
+        ${Object.entries(G.potions).map(([id, f]) => `
+          <option value="${esc(id)}" ${id === kit.potion ? 'selected' : ''}>T${f.tier} ${
+  esc(f.name)} · +${pct(f.grades['0'].gatheringspeed, 0)} speed</option>`).join('')}
+      </select>
+      ${kit.potion ? seg('potion-enchant', GRADES, kit.potionEnchant, 'potion-enchant') : ''}
+    </div>
+    <div class="hint">A pie has no resource filter of any kind — it covers every
+      family and every grade. A gathering potion lasts half a minute and is the
+      only thing besides the board that makes you swing faster; the two together
+      are capped at +${pct(G.speedCap, 0)}.</div>
+
+    <div class="section-head" style="margin-top:16px"><h2>Destiny board</h2></div>
+    ${rowHTML({
+    act: 'gather-board', icon: ICON.board, title: 'Gathering nodes',
+    meta: `${(G.board || []).filter((n) => state.nodeLevels[n.id]).length} of ${
+      (G.board || []).length} set · +${pct(0.005, 1)} yield and speed a level`,
+    right: go(),
+  })}
+
+    <div class="section-head" style="margin-top:16px"><h2>Your real rate</h2></div>
+    <div class="field">
+      <label for="gatherMeasured">${esc(FAMILY_LABEL[family])} T${tier}, in ten minutes</label>
+      <input type="number" id="gatherMeasured" inputmode="numeric" min="0" step="1"
+        placeholder="0" value="${measured?.per10min || ''}">
+      <div class="hint">Stand where you would really farm, gather for ten minutes
+        by the clock, and type how many resources you came home with — every
+        grade together. That is the one number no game file can give: node
+        density, travel, competition and live respawn are in no dump. Until you
+        fill one in the app quotes the swing floor and says the hours are
+        unknown, rather than inventing a number.</div>
+    </div>
+    ${measuredRows ? `<div class="card">${measuredRows}</div>` : ''}
+
+    <div class="section-head" style="margin-top:16px"><h2>The two guesses</h2></div>
+    <div class="field">
+      <label>Premium's +${pct(G.premiumYield, 0)} gathering yield</label>
+      ${seg('premium-mode', [['add', 'Adds to the pool'], ['multiply', 'Multiplies the total']],
+    kit.premiumMode, 'premium-mode')}
+      <div class="hint">The store page advertises it and no table in the game
+        files implements it, so which of the two it means is genuinely unknown.
+        Adding is the conservative reading and the default.</div>
+    </div>
+    <div class="field">
+      <label>Does the set pay on an enchanted node?</label>
+      ${seg('covers', [['yes', 'Yes'], ['no', 'No']], kit.gearCoversEnchanted ? 'yes' : 'no', 'covers')}
+      <div class="hint">The set and the Avalonian tool name the plain resource
+        type exactly, and an enchanted log is a different resource type. The
+        files do not settle it. The pie and the board reach it either way.</div>
+    </div>
+
+    <div class="sheet-actions">
+      <button class="btn primary" id="done">Done</button>
+    </div>
+  `, {
+    onMount(root) {
+      const again = () => openGatherSetup(forId);
+      const wireSeg = (attr, fn) => {
+        for (const b of $$(`[data-${attr}]`, root)) {
+          b.onclick = () => { fn(b.dataset[camel(attr)]); again(); };
+        }
+      };
+      wireSeg('peek-family', (v) => { gatherPeek = { ...gatherPeek, family: v }; });
+      wireSeg('peek-tier', (v) => { gatherPeek = { ...gatherPeek, tier: Number(v) }; });
+      wireSeg('tool-tier', (v) => setGather({ toolTier: Number(v) }));
+      for (const [slot] of GATHER_SLOTS) {
+        wireSeg(`gear-${slot}`, (v) => setGather({
+          gear: { ...state.settings.gather.gear, [slot]: Number(v) },
+        }));
+      }
+      wireSeg('zone', (v) => setGather({ zone: v }));
+      wireSeg('danger', (v) => setGather({ danger: v }));
+      wireSeg('food-enchant', (v) => setGather({ foodEnchant: Number(v) }));
+      wireSeg('potion-enchant', (v) => setGather({ potionEnchant: Number(v) }));
+      wireSeg('premium-mode', (v) => setGather({ premiumMode: v }));
+      wireSeg('covers', (v) => setGather({ gearCoversEnchanted: v === 'yes' }));
+
+      for (const t of $$('[data-kit-toggle]', root)) {
+        t.onclick = () => {
+          setGather({ [t.dataset.kitToggle]: !state.settings.gather[t.dataset.kitToggle] });
+          again();
+        };
+      }
+      $('#gatherKind', root).onchange = (e) => { setGather({ kind: e.target.value }); again(); };
+      $('#gatherFood', root).onchange = (e) => { setGather({ food: e.target.value }); again(); };
+      $('#gatherPotion', root).onchange = (e) => { setGather({ potion: e.target.value }); again(); };
+      $('#gatherMeasured', root).onchange = (e) => { setMeasured(key, e.target.value); again(); };
+      for (const box of $$('[data-measured]', root)) {
+        box.onchange = () => { setMeasured(box.dataset.measured, box.value); again(); };
+      }
+      /* A data-act inside a sheet reaches no delegate, so the one row that
+       * leaves for another sheet is wired by hand. */
+      const board = $('[data-act="gather-board"]', root);
+      if (board) board.onclick = () => openBoard(GATHER_BRANCH);
+      $('#done', root).onclick = () => { closeSheet(); toast('Kit saved'); };
+    },
+  });
+}
+
+const GRADES = [[0, 'plain'], [1, '.1'], [2, '.2'], [3, '.3']];
+
+/** "gear-head" -> "gearHead", to read the dataset the browser built. */
+const camel = (attr) => attr.replace(/-(\w)/g, (_, c) => c.toUpperCase());
+
+/** Minutes, or hours once minutes stop being readable. */
+const gMin = (seconds) => (seconds < 5400
+  ? `${(seconds / 60).toFixed(seconds < 600 ? 1 : 0)}m` : hours(seconds / 3600));
+
+/** A switch inside the kit sheet, which writes to settings.gather and not to settings. */
+const kitToggle = (key, title, desc, on) => `
+  <button class="toggle" type="button" role="switch" aria-checked="${on}"
+    data-kit-toggle="${esc(key)}" aria-label="${esc(title)}">
+    <span class="body"><span class="t">${esc(title)}</span>
+      <span class="d">${esc(desc)}</span></span>
+    <span class="switch" aria-pressed="${on}"></span>
+  </button>`;
+
+/**
+ * One pile of one resource, and every way out of it.
+ *
+ * The question this whole half of the app exists to answer. Sell the logs,
+ * refine them into planks, transmute them a grade up, transmute them a tier up,
+ * or transmute and then refine — five completely different businesses off the
+ * same tree, all costed off the same swings, the same city, the same focus and
+ * the same tax. Which one wins moves with the market week to week, which is why
+ * it is a screen and not a rule of thumb.
+ */
+export function openResourceExits(id, qty = 999) {
+  const s = state.settings;
+  const ctxNow = {
+    recipeOf, priceOf, costOf, sellPriceOf: priceOf,
+    settings: s, cityId: s.craftCity,
+  };
+  const rows = resourceExits(id, ctxNow, { qty });
+  const ready = rows.filter((r) => !r.missing.length);
+  const best = ready[0] || null;
+  const blocked = rows[0]?.pnl?.gathered?.[id];
+  const city = cityFor(s);
+
+  const routeRow = (r, i) => {
+    const gap = best && r !== best && r.silverPerSwingSecond != null
+      ? r.silverPerSwingSecond - best.silverPerSwingSecond : 0;
+    return rowHTML({
+      attrs: r.pnl.recipe ? `data-route="${esc(r.pnl.recipe.id)}" data-route-key="${esc(r.key)}"` : '',
+      tagName: r.pnl.recipe ? 'button' : 'div',
+      icon: i === 0 && r === best ? '\u{1F947}' : ICON.raw,
+      cls: r.missing.length ? 'warn' : '',
+      title: `${esc(r.label)} → ${short(r.made)} ${esc(nameOf(r.pnl.recipe
+        ? (r.pnl.recipe.out || r.pnl.recipe.id) : id))}`,
+      meta: esc(r.missing.length
+        ? `needs a price for ${r.missing.slice(0, 2).map(nameOf).join(', ')}`
+        : [
+          `${short(r.profit)} profit`,
+          r.focus > 0 ? `${short(r.focus)} focus` : 'no focus',
+          r.byproductRevenue > 0.5 ? `${short(r.byproductRevenue)} on the side` : '',
+          gap < -0.5 ? `${short(-gap)}/swing-s behind` : '',
+        ].filter(Boolean).join(' · ')),
+      right: r.missing.length ? tag('Set prices')
+        : amt(r.silverPerSwingSecond, { unit: '/swing-s' }),
+    });
+  };
+
+  openSheet(`
+    <h2>${esc(nameOf(id))}</h2>
+    <p class="muted">What ${short(qty)} of them are worth, by what you do next.
+      Every row is the same pile off the same swings, refined in
+      ${esc(city?.name || 'your crafting city')} and taxed the same way, so the
+      difference between two rows is the route and nothing else.</p>
+
+    ${blocked?.impossible ? `<div class="warn-note bad">${esc(blocked.why)}.</div>` : `
+      <div class="card">
+        <div class="bar-row"><span class="n">Swinging, at the game's own floor</span>
+          <span class="v num">${gMin(blocked?.swingSeconds || 0)}</span></div>
+        <div class="bar-row"><span class="n">Harvests, off ${short(Math.ceil(blocked?.nodes || 0))} nodes</span>
+          <span class="v num">${short(blocked?.harvests || 0)}</span></div>
+        ${blocked?.hours ? `
+          <div class="bar-row"><span class="n">At your measured pace</span>
+            <span class="v num">${hours(blocked.hours)}</span></div>` : ''}
+        ${best ? `
+          <div class="bar-row total"><span class="n">Best route</span>
+            <span class="v num good">${short(best.profit)} · ${esc(best.label.toLowerCase())}</span></div>` : ''}
+      </div>`}
+
+    <div class="section-head" style="margin-top:14px"><h2>Every way out</h2></div>
+    ${rows.map(routeRow).join('') || '<div class="hint">Nothing this can become.</div>'}
+
+    ${(blocked?.assumed || []).length ? note(`Yours rather than the game's: ${
+      esc(blocked.assumed.join('; '))}.`) : ''}
+    ${note('Tap a route to open it in Craft, where you can change the city, the'
+      + ' focus and how deep you refine.')}
+
+    <div class="sheet-actions">
+      <button class="btn" id="kit">Change the kit</button>
+      <button class="btn primary" id="done">Done</button>
+    </div>
+  `, {
+    onMount(root) {
+      for (const b of $$('[data-route]', root)) {
+        b.onclick = () => {
+          const key = b.dataset.routeKey;
+          /* The two-step route has to say it is two steps, or Craft would buy
+           * the enchanted logs it was supposed to transmute. */
+          setCraftRoute(b.dataset.route, {
+            make: key === 'enchantRefine' ? [enchantUp(id)] : [],
+            gather: [id],
+            qty: rows.find((r) => r.key === key)?.made || 0,
+          });
+          closeSheet();
+          navigate('craft');
+        };
+      }
+      $('#kit', root).onclick = () => openGatherSetup(id);
+      $('#done', root).onclick = closeSheet;
+    },
   });
 }
 

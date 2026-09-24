@@ -279,7 +279,11 @@ test('a grade a node never rolls is refused, not quoted', () => {
   const low = gatherRun('T5_WOOD', { qty: 10, settings: kit({ gather: { toolTier: 3 } }) });
   assert.equal(low.impossible, true);
   assert.equal(low.ungatherable, undefined);
-  assert.match(low.why, /at least a T4 tool/);
+  assert.match(low.why, /T3 tool is too small.*takes a T4/);
+  // And having said nothing at all is a question, not a refusal to answer.
+  const none = gatherRun('T5_WOOD', { qty: 10, settings: kit({ gather: { toolTier: 0 } }) });
+  assert.equal(none.impossible, true);
+  assert.equal(none.why, 'no tool set yet');
 });
 
 test('what fell out of the gathering is counted, and counted separately', () => {
