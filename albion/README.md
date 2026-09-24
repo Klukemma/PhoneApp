@@ -10,7 +10,7 @@ CoinKeep.
 
 ---
 
-## The three screens
+## The five screens
 
 **Plan** — one whole **cycle**, not a daily rate. Farming and crafting are
 separate phases because that is how focus works: it banks up while you farm,
@@ -49,20 +49,30 @@ Three things it tells you that are easy to miss:
 - **Whether the farm is outrunning the crafting.** Each crop is scored against
   what your crafting actually gets through — "6.8× what you use" — with the
   plot count that would match it, and how many cycles before the pile passes
-  the spare stock you are willing to sit on (5,000 by default, under Setup).
+  the spare stock you are willing to sit on (5,000 by default, under Me).
   That is the point at which you stop farming it and let the pile drain.
 - **What is really limiting each craft** — and *which* material, by name.
   "Short on Elusive Foxglove" tells you what to plant; "no Potato Schnapps at
   all" tells you that you forgot a step, and offers to add it. Leftover focus
   means grow more; leftover materials mean focus is the wall.
 
-**Best** — the "what should I plant" screen. Every crop, herb and animal ranked
-by silver per plot per day, and every recipe ranked by **silver per focus**,
-which is the number that matters once focus is your bottleneck rather than
-silver. Toggle watering, premium, focus and the city bonus and watch the order
-change. Tap any row to add it to your plan.
+**Craft** — a profit and loss for one production run, whatever it is: a stack
+of potions, a set of plate boots, a pile of steel bars, a saddled mount. Every
+material carries a **buy / make / gather** tag, and tapping it changes where
+that material comes from. Buy it and it is a bill; make it and the run grows a
+refining step; gather it and the bill goes to zero and the run starts costing
+hours instead.
 
-**Prices** — your market prices. Everything else is fixed by the game; this is
+**Best** — four rankings, on four tabs. *Farm*: every crop, herb and animal by
+silver per plot per day. *Brew*: every recipe by **silver per focus**, which is
+the number that matters once focus is the bottleneck rather than silver.
+*Gear*: one slice of the six thousand weapons and armours, whichever of the
+market and the Black Market pays more. *Gather*: every resource at a tier by
+the best thing to do with it. Toggle watering, premium, focus and the city
+bonus and watch the order change. Tap any row to open it where it can be
+worked on.
+
+**Market** — your market prices. Everything else is fixed by the game; this is
 the only part that is yours, and it is what makes the answers real. Seeds
 default to the NPC price, which is usually well above what they fetch on the
 market — worth correcting before you read anything into a big seed surplus.
@@ -70,7 +80,7 @@ market — worth correcting before you read anything into a big seed surplus.
 Tap any row anywhere to get the full breakdown — every number in this app
 opens up into the arithmetic behind it. Nothing is a black box.
 
-### Prices
+### Market
 
 Hit **Fetch live market prices** to pull current sell orders from the
 [Albion Online Data Project](https://www.albion-online-data.com/), choosing
@@ -121,7 +131,7 @@ return rate = 1 − 100 / (100 + sum of bonuses)
 Bonuses add as percentage points before converting, which is why they do not
 simply stack. The defaults reproduce the figures players see in game:
 
-| Setup | Bonuses | Return rate |
+| Me | Bonuses | Return rate |
 | --- | --- | --- |
 | Royal city, no focus | 18 | 15.2% |
 | Royal city + focus | 18 + 59 | 43.5% |
@@ -167,12 +177,12 @@ An animal's favourite food is deliberately boosted in a *different* city from
 the animal, so no single city is best at everything — there is a test that
 asserts exactly that, to catch it if the game ever changes.
 
-Set your usual places under **⚙️ Setup** — *Farm in…* and *Craft in…* — and
+Set your usual places under **Me** — *Farm in…* and *Craft in…* — and
 override either per plot or per craft job by tapping it on the Plan screen.
 
 ### Mastery
 
-Focus cost is driven by the **destiny board**, under **⚙️ Setup → Destiny
+Focus cost is driven by the **destiny board**, under **Me → Destiny
 board**, and both halves of it count:
 
 | Node | Per level | Covers |
@@ -206,15 +216,68 @@ Worked example, a T6 Major Healing Potion at 768 focus:
 | + Potato Schnapps spec 100 | 325 | 81 |
 
 If you would rather just type the number your game screen shows, there is a
-per-recipe override under **Setup → Per-recipe overrides** which wins over the
+per-recipe override under **Me → Per-recipe overrides** which wins over the
 board.
 
 **Not everything is published in the dumps.** Focus regeneration (10,000 a day,
 capped at 30,000) and premium doubling the farm yield are community-sourced and
-editable under **⚙️ Setup → Game numbers**. Everything else now comes out of the
+editable under **Me → Game numbers**. Everything else now comes out of the
 game files, including market tax: `gamedata.xml` gives a 2.5% setup fee and an
 8% transaction tax, and premium halves the transaction half — 6.5% against
 10.5%.
+
+### Gathering
+
+The other half of the same question: what an hour in the open world is worth.
+Set your kit under **Me → Your gathering** — the tool and whether it is
+Avalonian, a tier per gear slot, the pie, the potion, what sort of node and how
+good the cluster is — and the sheet shows what it comes to while you change it.
+
+Two levers and they are not the same one. Your **tool** decides how long a
+swing takes. Everything else decides how much a swing gives, which means
+needing fewer swings rather than swinging faster. Only the gathering potion and
+the destiny board touch the swing itself, and the two together are capped at
++40%.
+
+Three details the game files settle and most calculators get wrong:
+
+- **A plain tool gives no yield at all.** It has no passive slot. Only the
+  Avalonian ones carry a bonus, and that bonus pays from T2 up.
+- **Gatherer gear ramps and is hard tier-gated.** A little every 30 seconds up
+  to ten stacks, so the number on the tooltip is what you have after five
+  minutes — and a T5 set on a T6 node is worth exactly nothing.
+- **You cannot aim at an enchanted node.** Every harvest is a roll on an
+  ordinary one, so 999 T5.1 logs is twenty stacks of plain gathering with the
+  plain ones kept aside, and 999 *plain* logs needs 1,058 harvests because a
+  twentieth of them come up enchanted. Those enchanted ones are real money and
+  the app counts them on their own line.
+
+The **swing floor** is exact and comes out of the game's own tables. **Real
+hours** are yours: node density, travel, competition and live respawn appear in
+no dump anywhere, so the app asks you to time a ten-minute run and says the
+hours are unknown until you have. It tells you the ceiling for that
+measurement — ten minutes of nothing but swinging with the kit you have set —
+so you can check your own count against it.
+
+Node counts come as a range. A static tree sits at one charge of five and fills
+up over time, so a stack of T5 logs is 212 trees if you find every one full and
+1,058 if you find every one fresh.
+
+**Best → Gather** ranks every resource at a tier by the best thing to do with
+it, and tapping one lays out all five routes side by side: sell it, refine it,
+transmute it a grade up, a tier up, or a grade up and then refine. Same pile,
+same swings, same city, same tax, so the only difference between two rows is
+the route. It ends with what the refining city and your focus are each worth on
+the winner.
+
+Two things no game file settles, so both are controls rather than silent
+constants, and anything that depended on them says so:
+
+- whether premium's advertised **+50% gathering yield** joins the pool or
+  multiplies the total — no table in the files implements either;
+- whether the gear and the Avalonian tool pay on an **enchanted** node — they
+  name the plain resource type exactly, and an enchanted log is a different
+  type. The pie and the board reach it either way.
 
 ### One assumption worth knowing
 
@@ -222,7 +285,7 @@ Animals list a favourite plant with a `favouritebonus` of 1 in the game files.
 The app reads that as *the favourite is worth double nutrition*, so a chicken
 eats 9 wheat instead of 18 of something else. The breakdown always shows the
 plant count, so check it against your pasture once and turn **Feed animals
-their favourite** off in Setup if it does not match.
+their favourite** off on Me if it does not match.
 
 ---
 
@@ -272,7 +335,7 @@ every 24 — the honest cadence for someone logging in once a day — so ten
 farming days is ten harvests. Per day and per 30 days are just the cycle figure
 spread out, for comparing against something on a different schedule.
 
-Set the cycle under **⚙️ Setup → Your cycle**: its length, how many of those
+Set the cycle under **Me → Your cycle**: its length, how many of those
 days you actually farm, and how much focus you start with.
 
 Everything is priced **after market tax** on the sell side and at what you
@@ -284,7 +347,7 @@ actually pay on the buy side.
 
 ```bash
 npm start      # http://localhost:8080/albion/
-npm test       # 89 tests over the profit engine and the extracted data
+npm test       # 292 tests over the profit engine and the extracted data
 npm run gamedata
 ```
 
@@ -294,4 +357,4 @@ Every figure on every screen comes from it, so no two screens can disagree.
 file formats; the app only ever sees `data/gamedata.json`.
 
 Your prices, plan and settings live in this browser's storage and nowhere else.
-Back them up under **⚙️ Setup → Export backup**.
+Back them up under **Me → Export backup**.
