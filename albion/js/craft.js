@@ -450,6 +450,13 @@ function qualityTable(run) {
     </div>`;
 }
 
+/* How many nodes a run means. Two numbers where a node charges up over time,
+ * because a static tree you walk up to holds one charge of five and quoting
+ * only the full-tree figure was a fifth of the truth. */
+const nodeRange = (g) => (g.nodeVisits > g.nodes * 1.05
+  ? `${short(Math.ceil(g.nodes))}–${short(Math.ceil(g.nodeVisits))} nodes`
+  : `${short(Math.ceil(g.nodes))} nodes`);
+
 /* What the game calls each grade above plain. Taken off the item's own name,
  * which is where the game puts it: "Uncommon Cedar Logs". */
 const GRADE_WORD = { 1: 'uncommon', 2: 'rare', 3: 'exceptional', 4: 'pristine' };
@@ -497,8 +504,7 @@ function gatherSection(run) {
       meta: esc([
         `${short(g.harvests)} harvests`,
         g.nodeVisits > g.nodes * 1.05
-          ? `${short(Math.ceil(g.nodes))}–${short(Math.ceil(g.nodeVisits))} nodes, by how charged you find them`
-          : `${short(Math.ceil(g.nodes))} nodes`,
+          ? `${nodeRange(g)}, by how charged you find them` : nodeRange(g),
         `${g.rate.secondsPerSwing.toFixed(1)}s a swing`,
         y.multiplier > 1.005 ? `+${pct((y.multiplier - 1), 0)} yield` : 'no yield bonus',
         speed.total > 0 ? `+${pct(speed.total, 0)} speed${speed.capped ? ' (capped)' : ''}` : '',
@@ -641,7 +647,7 @@ function buysHTML(run, recipe) {
       cls: gathering || b.unit ? '' : 'warn',
       title: `${short(b.qty)} × ${esc(nameOf(b.id))}`,
       meta: esc(gathering
-        ? `yours, off ${short(Math.ceil(got.nodes))} nodes · ${short(b.perCraft)} a batch${
+        ? `yours, off ${nodeRange(got)} · ${short(b.perCraft)} a batch${
           b.unit ? ` · ${silver(b.unit * b.qty)} not spent` : ''}`
         : `${b.unit ? `${silver(b.unit)} each` : 'no price set'} · ${short(b.perCraft)} a batch${
           spare > 0.05 ? ` · ${short(spare)} come back, really ${short(b.net)}` : ''}`),

@@ -1215,7 +1215,7 @@ function gatherRankHTML() {
     }
     const w = (Math.abs(b.silverPerSwingSecond) / top) * 100;
     return `
-      <button class="row rank" data-gather-row="${esc(r.id)}">
+      <button class="row rank wrap" data-gather-row="${esc(r.id)}">
         <span class="ico">${ICON.raw}</span>
         <span class="body">
           <span class="title">${esc(nameOf(r.id))} → ${esc(b.label.toLowerCase())}</span>
