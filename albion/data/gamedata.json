@@ -17453,6 +17453,1723 @@
    "tier": 8,
    "cat": "food",
    "weight": 7.55
+  },
+  "T2_CLOTH": {
+   "name": "Simple Cloth",
+   "tier": 2,
+   "cat": "refined",
+   "weight": 0.23
+  },
+  "T2_FIBER": {
+   "name": "Cotton",
+   "tier": 2,
+   "cat": "raw",
+   "weight": 0.23
+  },
+  "T2_HIDE": {
+   "name": "Rugged Hide",
+   "tier": 2,
+   "cat": "raw",
+   "weight": 0.23
+  },
+  "T2_LEATHER": {
+   "name": "Stiff Leather",
+   "tier": 2,
+   "cat": "refined",
+   "weight": 0.23
+  },
+  "T2_METALBAR": {
+   "name": "Copper Bar",
+   "tier": 2,
+   "cat": "refined",
+   "weight": 0.23
+  },
+  "T2_ORE": {
+   "name": "Copper Ore",
+   "tier": 2,
+   "cat": "raw",
+   "weight": 0.23
+  },
+  "T2_PLANKS": {
+   "name": "Birch Planks",
+   "tier": 2,
+   "cat": "refined",
+   "weight": 0.23
+  },
+  "T2_ROCK": {
+   "name": "Limestone",
+   "tier": 2,
+   "cat": "raw",
+   "weight": 0.23
+  },
+  "T2_STONEBLOCK": {
+   "name": "Limestone Block",
+   "tier": 2,
+   "cat": "refined",
+   "weight": 0.23
+  },
+  "T2_WOOD": {
+   "name": "Birch Logs",
+   "tier": 2,
+   "cat": "raw",
+   "weight": 0.23
+  },
+  "T3_CLOTH": {
+   "name": "Neat Cloth",
+   "tier": 3,
+   "cat": "refined",
+   "weight": 0.34
+  },
+  "T3_FIBER": {
+   "name": "Flax",
+   "tier": 3,
+   "cat": "raw",
+   "weight": 0.34
+  },
+  "T3_HIDE": {
+   "name": "Thin Hide",
+   "tier": 3,
+   "cat": "raw",
+   "weight": 0.34
+  },
+  "T3_LEATHER": {
+   "name": "Thick Leather",
+   "tier": 3,
+   "cat": "refined",
+   "weight": 0.34
+  },
+  "T3_METALBAR": {
+   "name": "Bronze Bar",
+   "tier": 3,
+   "cat": "refined",
+   "weight": 0.34
+  },
+  "T3_ORE": {
+   "name": "Tin Ore",
+   "tier": 3,
+   "cat": "raw",
+   "weight": 0.34
+  },
+  "T3_PLANKS": {
+   "name": "Chestnut Planks",
+   "tier": 3,
+   "cat": "refined",
+   "weight": 0.34
+  },
+  "T3_ROCK": {
+   "name": "Sandstone",
+   "tier": 3,
+   "cat": "raw",
+   "weight": 0.34
+  },
+  "T3_STONEBLOCK": {
+   "name": "Sandstone Block",
+   "tier": 3,
+   "cat": "refined",
+   "weight": 0.34
+  },
+  "T3_WOOD": {
+   "name": "Chestnut Logs",
+   "tier": 3,
+   "cat": "raw",
+   "weight": 0.34
+  },
+  "T4_CLOTH": {
+   "name": "Fine Cloth",
+   "tier": 4,
+   "cat": "refined",
+   "weight": 0.51
+  },
+  "T4_CLOTH_LEVEL1": {
+   "name": "Uncommon Fine Cloth",
+   "tier": 4,
+   "cat": "refined",
+   "weight": 0.51
+  },
+  "T4_CLOTH_LEVEL2": {
+   "name": "Rare Fine Cloth",
+   "tier": 4,
+   "cat": "refined",
+   "weight": 0.51
+  },
+  "T4_CLOTH_LEVEL3": {
+   "name": "Exceptional Fine Cloth",
+   "tier": 4,
+   "cat": "refined",
+   "weight": 0.51
+  },
+  "T4_CLOTH_LEVEL4": {
+   "name": "Pristine Fine Cloth",
+   "tier": 4,
+   "cat": "refined",
+   "weight": 0.51
+  },
+  "T4_FIBER": {
+   "name": "Hemp",
+   "tier": 4,
+   "cat": "raw",
+   "weight": 0.51
+  },
+  "T4_FIBER_LEVEL1": {
+   "name": "Uncommon Hemp",
+   "tier": 4,
+   "cat": "raw",
+   "weight": 0.51
+  },
+  "T4_FIBER_LEVEL2": {
+   "name": "Rare Hemp",
+   "tier": 4,
+   "cat": "raw",
+   "weight": 0.51
+  },
+  "T4_FIBER_LEVEL3": {
+   "name": "Exceptional Hemp",
+   "tier": 4,
+   "cat": "raw",
+   "weight": 0.51
+  },
+  "T4_FIBER_LEVEL4": {
+   "name": "Pristine Hemp",
+   "tier": 4,
+   "cat": "raw",
+   "weight": 0.51
+  },
+  "T4_HIDE": {
+   "name": "Medium Hide",
+   "tier": 4,
+   "cat": "raw",
+   "weight": 0.51
+  },
+  "T4_HIDE_LEVEL1": {
+   "name": "Uncommon Medium Hide",
+   "tier": 4,
+   "cat": "raw",
+   "weight": 0.51
+  },
+  "T4_HIDE_LEVEL2": {
+   "name": "Rare Medium Hide",
+   "tier": 4,
+   "cat": "raw",
+   "weight": 0.51
+  },
+  "T4_HIDE_LEVEL3": {
+   "name": "Exceptional Medium Hide",
+   "tier": 4,
+   "cat": "raw",
+   "weight": 0.51
+  },
+  "T4_HIDE_LEVEL4": {
+   "name": "Pristine Medium Hide",
+   "tier": 4,
+   "cat": "raw",
+   "weight": 0.51
+  },
+  "T4_LEATHER": {
+   "name": "Worked Leather",
+   "tier": 4,
+   "cat": "refined",
+   "weight": 0.51
+  },
+  "T4_LEATHER_LEVEL1": {
+   "name": "Uncommon Worked Leather",
+   "tier": 4,
+   "cat": "refined",
+   "weight": 0.51
+  },
+  "T4_LEATHER_LEVEL2": {
+   "name": "Rare Worked Leather",
+   "tier": 4,
+   "cat": "refined",
+   "weight": 0.51
+  },
+  "T4_LEATHER_LEVEL3": {
+   "name": "Exceptional Worked Leather",
+   "tier": 4,
+   "cat": "refined",
+   "weight": 0.51
+  },
+  "T4_LEATHER_LEVEL4": {
+   "name": "Pristine Worked Leather",
+   "tier": 4,
+   "cat": "refined",
+   "weight": 0.51
+  },
+  "T4_METALBAR": {
+   "name": "Steel Bar",
+   "tier": 4,
+   "cat": "refined",
+   "weight": 0.51
+  },
+  "T4_METALBAR_LEVEL1": {
+   "name": "Uncommon Steel Bar",
+   "tier": 4,
+   "cat": "refined",
+   "weight": 0.51
+  },
+  "T4_METALBAR_LEVEL2": {
+   "name": "Rare Steel Bar",
+   "tier": 4,
+   "cat": "refined",
+   "weight": 0.51
+  },
+  "T4_METALBAR_LEVEL3": {
+   "name": "Exceptional Steel Bar",
+   "tier": 4,
+   "cat": "refined",
+   "weight": 0.51
+  },
+  "T4_METALBAR_LEVEL4": {
+   "name": "Pristine Steel Bar",
+   "tier": 4,
+   "cat": "refined",
+   "weight": 0.51
+  },
+  "T4_ORE": {
+   "name": "Iron Ore",
+   "tier": 4,
+   "cat": "raw",
+   "weight": 0.51
+  },
+  "T4_ORE_LEVEL1": {
+   "name": "Uncommon Iron Ore",
+   "tier": 4,
+   "cat": "raw",
+   "weight": 0.51
+  },
+  "T4_ORE_LEVEL2": {
+   "name": "Rare Iron Ore",
+   "tier": 4,
+   "cat": "raw",
+   "weight": 0.51
+  },
+  "T4_ORE_LEVEL3": {
+   "name": "Exceptional Iron Ore",
+   "tier": 4,
+   "cat": "raw",
+   "weight": 0.51
+  },
+  "T4_ORE_LEVEL4": {
+   "name": "Pristine Iron Ore",
+   "tier": 4,
+   "cat": "raw",
+   "weight": 0.51
+  },
+  "T4_PLANKS": {
+   "name": "Pine Planks",
+   "tier": 4,
+   "cat": "refined",
+   "weight": 0.51
+  },
+  "T4_PLANKS_LEVEL1": {
+   "name": "Uncommon Pine Planks",
+   "tier": 4,
+   "cat": "refined",
+   "weight": 0.51
+  },
+  "T4_PLANKS_LEVEL2": {
+   "name": "Rare Pine Planks",
+   "tier": 4,
+   "cat": "refined",
+   "weight": 0.51
+  },
+  "T4_PLANKS_LEVEL3": {
+   "name": "Exceptional Pine Planks",
+   "tier": 4,
+   "cat": "refined",
+   "weight": 0.51
+  },
+  "T4_PLANKS_LEVEL4": {
+   "name": "Pristine Pine Planks",
+   "tier": 4,
+   "cat": "refined",
+   "weight": 0.51
+  },
+  "T4_ROCK": {
+   "name": "Travertine",
+   "tier": 4,
+   "cat": "raw",
+   "weight": 0.51
+  },
+  "T4_ROCK_LEVEL1": {
+   "name": "Uncommon Travertine",
+   "tier": 4,
+   "cat": "raw",
+   "weight": 0.51
+  },
+  "T4_ROCK_LEVEL2": {
+   "name": "Rare Travertine",
+   "tier": 4,
+   "cat": "raw",
+   "weight": 0.51
+  },
+  "T4_ROCK_LEVEL3": {
+   "name": "Exceptional Travertine",
+   "tier": 4,
+   "cat": "raw",
+   "weight": 0.51
+  },
+  "T4_STONEBLOCK": {
+   "name": "Travertine Block",
+   "tier": 4,
+   "cat": "refined",
+   "weight": 0.51
+  },
+  "T4_WOOD": {
+   "name": "Pine Logs",
+   "tier": 4,
+   "cat": "raw",
+   "weight": 0.51
+  },
+  "T4_WOOD_LEVEL1": {
+   "name": "Uncommon Pine Logs",
+   "tier": 4,
+   "cat": "raw",
+   "weight": 0.51
+  },
+  "T4_WOOD_LEVEL2": {
+   "name": "Rare Pine Logs",
+   "tier": 4,
+   "cat": "raw",
+   "weight": 0.51
+  },
+  "T4_WOOD_LEVEL3": {
+   "name": "Exceptional Pine Logs",
+   "tier": 4,
+   "cat": "raw",
+   "weight": 0.51
+  },
+  "T4_WOOD_LEVEL4": {
+   "name": "Pristine Pine Logs",
+   "tier": 4,
+   "cat": "raw",
+   "weight": 0.51
+  },
+  "T5_CLOTH": {
+   "name": "Ornate Cloth",
+   "tier": 5,
+   "cat": "refined",
+   "weight": 0.76
+  },
+  "T5_CLOTH_LEVEL1": {
+   "name": "Uncommon Ornate Cloth",
+   "tier": 5,
+   "cat": "refined",
+   "weight": 0.76
+  },
+  "T5_CLOTH_LEVEL2": {
+   "name": "Rare Ornate Cloth",
+   "tier": 5,
+   "cat": "refined",
+   "weight": 0.76
+  },
+  "T5_CLOTH_LEVEL3": {
+   "name": "Exceptional Ornate Cloth",
+   "tier": 5,
+   "cat": "refined",
+   "weight": 0.76
+  },
+  "T5_CLOTH_LEVEL4": {
+   "name": "Pristine Ornate Cloth",
+   "tier": 5,
+   "cat": "refined",
+   "weight": 0.76
+  },
+  "T5_FIBER": {
+   "name": "Skyflower",
+   "tier": 5,
+   "cat": "raw",
+   "weight": 0.76
+  },
+  "T5_FIBER_LEVEL1": {
+   "name": "Uncommon Skyflower",
+   "tier": 5,
+   "cat": "raw",
+   "weight": 0.76
+  },
+  "T5_FIBER_LEVEL2": {
+   "name": "Rare Skyflower",
+   "tier": 5,
+   "cat": "raw",
+   "weight": 0.76
+  },
+  "T5_FIBER_LEVEL3": {
+   "name": "Exceptional Skyflower",
+   "tier": 5,
+   "cat": "raw",
+   "weight": 0.76
+  },
+  "T5_FIBER_LEVEL4": {
+   "name": "Pristine Skyflower",
+   "tier": 5,
+   "cat": "raw",
+   "weight": 0.76
+  },
+  "T5_HIDE": {
+   "name": "Heavy Hide",
+   "tier": 5,
+   "cat": "raw",
+   "weight": 0.76
+  },
+  "T5_HIDE_LEVEL1": {
+   "name": "Uncommon Heavy Hide",
+   "tier": 5,
+   "cat": "raw",
+   "weight": 0.76
+  },
+  "T5_HIDE_LEVEL2": {
+   "name": "Rare Heavy Hide",
+   "tier": 5,
+   "cat": "raw",
+   "weight": 0.76
+  },
+  "T5_HIDE_LEVEL3": {
+   "name": "Exceptional Heavy Hide",
+   "tier": 5,
+   "cat": "raw",
+   "weight": 0.76
+  },
+  "T5_HIDE_LEVEL4": {
+   "name": "Pristine Heavy Hide",
+   "tier": 5,
+   "cat": "raw",
+   "weight": 0.76
+  },
+  "T5_LEATHER": {
+   "name": "Cured Leather",
+   "tier": 5,
+   "cat": "refined",
+   "weight": 0.76
+  },
+  "T5_LEATHER_LEVEL1": {
+   "name": "Uncommon Cured Leather",
+   "tier": 5,
+   "cat": "refined",
+   "weight": 0.76
+  },
+  "T5_LEATHER_LEVEL2": {
+   "name": "Rare Cured Leather",
+   "tier": 5,
+   "cat": "refined",
+   "weight": 0.76
+  },
+  "T5_LEATHER_LEVEL3": {
+   "name": "Exceptional Cured Leather",
+   "tier": 5,
+   "cat": "refined",
+   "weight": 0.76
+  },
+  "T5_LEATHER_LEVEL4": {
+   "name": "Pristine Cured Leather",
+   "tier": 5,
+   "cat": "refined",
+   "weight": 0.76
+  },
+  "T5_METALBAR": {
+   "name": "Titanium Steel Bar",
+   "tier": 5,
+   "cat": "refined",
+   "weight": 0.76
+  },
+  "T5_METALBAR_LEVEL1": {
+   "name": "Uncommon Titanium Steel Bar",
+   "tier": 5,
+   "cat": "refined",
+   "weight": 0.76
+  },
+  "T5_METALBAR_LEVEL2": {
+   "name": "Rare Titanium Steel Bar",
+   "tier": 5,
+   "cat": "refined",
+   "weight": 0.76
+  },
+  "T5_METALBAR_LEVEL3": {
+   "name": "Exceptional Titanium Steel Bar",
+   "tier": 5,
+   "cat": "refined",
+   "weight": 0.76
+  },
+  "T5_METALBAR_LEVEL4": {
+   "name": "Pristine Titanium Steel Bar",
+   "tier": 5,
+   "cat": "refined",
+   "weight": 0.76
+  },
+  "T5_ORE": {
+   "name": "Titanium Ore",
+   "tier": 5,
+   "cat": "raw",
+   "weight": 0.76
+  },
+  "T5_ORE_LEVEL1": {
+   "name": "Uncommon Titanium Ore",
+   "tier": 5,
+   "cat": "raw",
+   "weight": 0.76
+  },
+  "T5_ORE_LEVEL2": {
+   "name": "Rare Titanium Ore",
+   "tier": 5,
+   "cat": "raw",
+   "weight": 0.76
+  },
+  "T5_ORE_LEVEL3": {
+   "name": "Exceptional Titanium Ore",
+   "tier": 5,
+   "cat": "raw",
+   "weight": 0.76
+  },
+  "T5_ORE_LEVEL4": {
+   "name": "Pristine Titanium Ore",
+   "tier": 5,
+   "cat": "raw",
+   "weight": 0.76
+  },
+  "T5_PLANKS": {
+   "name": "Cedar Planks",
+   "tier": 5,
+   "cat": "refined",
+   "weight": 0.76
+  },
+  "T5_PLANKS_LEVEL1": {
+   "name": "Uncommon Cedar Planks",
+   "tier": 5,
+   "cat": "refined",
+   "weight": 0.76
+  },
+  "T5_PLANKS_LEVEL2": {
+   "name": "Rare Cedar Planks",
+   "tier": 5,
+   "cat": "refined",
+   "weight": 0.76
+  },
+  "T5_PLANKS_LEVEL3": {
+   "name": "Exceptional Cedar Planks",
+   "tier": 5,
+   "cat": "refined",
+   "weight": 0.76
+  },
+  "T5_PLANKS_LEVEL4": {
+   "name": "Pristine Cedar Planks",
+   "tier": 5,
+   "cat": "refined",
+   "weight": 0.76
+  },
+  "T5_ROCK": {
+   "name": "Granite",
+   "tier": 5,
+   "cat": "raw",
+   "weight": 0.76
+  },
+  "T5_ROCK_LEVEL1": {
+   "name": "Uncommon Granite",
+   "tier": 5,
+   "cat": "raw",
+   "weight": 0.76
+  },
+  "T5_ROCK_LEVEL2": {
+   "name": "Rare Granite",
+   "tier": 5,
+   "cat": "raw",
+   "weight": 0.76
+  },
+  "T5_ROCK_LEVEL3": {
+   "name": "Exceptional Granite",
+   "tier": 5,
+   "cat": "raw",
+   "weight": 0.76
+  },
+  "T5_STONEBLOCK": {
+   "name": "Granite Block",
+   "tier": 5,
+   "cat": "refined",
+   "weight": 0.76
+  },
+  "T5_WOOD": {
+   "name": "Cedar Logs",
+   "tier": 5,
+   "cat": "raw",
+   "weight": 0.76
+  },
+  "T5_WOOD_LEVEL1": {
+   "name": "Uncommon Cedar Logs",
+   "tier": 5,
+   "cat": "raw",
+   "weight": 0.76
+  },
+  "T5_WOOD_LEVEL2": {
+   "name": "Rare Cedar Logs",
+   "tier": 5,
+   "cat": "raw",
+   "weight": 0.76
+  },
+  "T5_WOOD_LEVEL3": {
+   "name": "Exceptional Cedar Logs",
+   "tier": 5,
+   "cat": "raw",
+   "weight": 0.76
+  },
+  "T5_WOOD_LEVEL4": {
+   "name": "Pristine Cedar Logs",
+   "tier": 5,
+   "cat": "raw",
+   "weight": 0.76
+  },
+  "T6_CLOTH": {
+   "name": "Lavish Cloth",
+   "tier": 6,
+   "cat": "refined",
+   "weight": 1.14
+  },
+  "T6_CLOTH_LEVEL1": {
+   "name": "Uncommon Lavish Cloth",
+   "tier": 6,
+   "cat": "refined",
+   "weight": 1.14
+  },
+  "T6_CLOTH_LEVEL2": {
+   "name": "Rare Lavish Cloth",
+   "tier": 6,
+   "cat": "refined",
+   "weight": 1.14
+  },
+  "T6_CLOTH_LEVEL3": {
+   "name": "Exceptional Lavish Cloth",
+   "tier": 6,
+   "cat": "refined",
+   "weight": 1.14
+  },
+  "T6_CLOTH_LEVEL4": {
+   "name": "Pristine Lavish Cloth",
+   "tier": 6,
+   "cat": "refined",
+   "weight": 1.14
+  },
+  "T6_FIBER": {
+   "name": "Amberleaf Cotton",
+   "tier": 6,
+   "cat": "raw",
+   "weight": 1.14
+  },
+  "T6_FIBER_LEVEL1": {
+   "name": "Uncommon Amberleaf Cotton",
+   "tier": 6,
+   "cat": "raw",
+   "weight": 1.14
+  },
+  "T6_FIBER_LEVEL2": {
+   "name": "Rare Amberleaf Cotton",
+   "tier": 6,
+   "cat": "raw",
+   "weight": 1.14
+  },
+  "T6_FIBER_LEVEL3": {
+   "name": "Exceptional Amberleaf Cotton",
+   "tier": 6,
+   "cat": "raw",
+   "weight": 1.14
+  },
+  "T6_FIBER_LEVEL4": {
+   "name": "Pristine Amberleaf Cotton",
+   "tier": 6,
+   "cat": "raw",
+   "weight": 1.14
+  },
+  "T6_HIDE": {
+   "name": "Robust Hide",
+   "tier": 6,
+   "cat": "raw",
+   "weight": 1.14
+  },
+  "T6_HIDE_LEVEL1": {
+   "name": "Uncommon Robust Hide",
+   "tier": 6,
+   "cat": "raw",
+   "weight": 1.14
+  },
+  "T6_HIDE_LEVEL2": {
+   "name": "Rare Robust Hide",
+   "tier": 6,
+   "cat": "raw",
+   "weight": 1.14
+  },
+  "T6_HIDE_LEVEL3": {
+   "name": "Exceptional Robust Hide",
+   "tier": 6,
+   "cat": "raw",
+   "weight": 1.14
+  },
+  "T6_HIDE_LEVEL4": {
+   "name": "Pristine Robust Hide",
+   "tier": 6,
+   "cat": "raw",
+   "weight": 1.14
+  },
+  "T6_LEATHER": {
+   "name": "Hardened Leather",
+   "tier": 6,
+   "cat": "refined",
+   "weight": 1.14
+  },
+  "T6_LEATHER_LEVEL1": {
+   "name": "Uncommon Hardened Leather",
+   "tier": 6,
+   "cat": "refined",
+   "weight": 1.14
+  },
+  "T6_LEATHER_LEVEL2": {
+   "name": "Rare Hardened Leather",
+   "tier": 6,
+   "cat": "refined",
+   "weight": 1.14
+  },
+  "T6_LEATHER_LEVEL3": {
+   "name": "Exceptional Hardened Leather",
+   "tier": 6,
+   "cat": "refined",
+   "weight": 1.14
+  },
+  "T6_LEATHER_LEVEL4": {
+   "name": "Pristine Hardened Leather",
+   "tier": 6,
+   "cat": "refined",
+   "weight": 1.14
+  },
+  "T6_METALBAR": {
+   "name": "Runite Steel Bar",
+   "tier": 6,
+   "cat": "refined",
+   "weight": 1.14
+  },
+  "T6_METALBAR_LEVEL1": {
+   "name": "Uncommon Runite Steel Bar",
+   "tier": 6,
+   "cat": "refined",
+   "weight": 1.14
+  },
+  "T6_METALBAR_LEVEL2": {
+   "name": "Rare Runite Steel Bar",
+   "tier": 6,
+   "cat": "refined",
+   "weight": 1.14
+  },
+  "T6_METALBAR_LEVEL3": {
+   "name": "Exceptional Runite Steel Bar",
+   "tier": 6,
+   "cat": "refined",
+   "weight": 1.14
+  },
+  "T6_METALBAR_LEVEL4": {
+   "name": "Pristine Runite Steel Bar",
+   "tier": 6,
+   "cat": "refined",
+   "weight": 1.14
+  },
+  "T6_ORE": {
+   "name": "Runite Ore",
+   "tier": 6,
+   "cat": "raw",
+   "weight": 1.14
+  },
+  "T6_ORE_LEVEL1": {
+   "name": "Uncommon Runite Ore",
+   "tier": 6,
+   "cat": "raw",
+   "weight": 1.14
+  },
+  "T6_ORE_LEVEL2": {
+   "name": "Rare Runite Ore",
+   "tier": 6,
+   "cat": "raw",
+   "weight": 1.14
+  },
+  "T6_ORE_LEVEL3": {
+   "name": "Exceptional Runite Ore",
+   "tier": 6,
+   "cat": "raw",
+   "weight": 1.14
+  },
+  "T6_ORE_LEVEL4": {
+   "name": "Pristine Runite Ore",
+   "tier": 6,
+   "cat": "raw",
+   "weight": 1.14
+  },
+  "T6_PLANKS": {
+   "name": "Bloodoak Planks",
+   "tier": 6,
+   "cat": "refined",
+   "weight": 1.14
+  },
+  "T6_PLANKS_LEVEL1": {
+   "name": "Uncommon Bloodoak Planks",
+   "tier": 6,
+   "cat": "refined",
+   "weight": 1.14
+  },
+  "T6_PLANKS_LEVEL2": {
+   "name": "Rare Bloodoak Planks",
+   "tier": 6,
+   "cat": "refined",
+   "weight": 1.14
+  },
+  "T6_PLANKS_LEVEL3": {
+   "name": "Exceptional Bloodoak Planks",
+   "tier": 6,
+   "cat": "refined",
+   "weight": 1.14
+  },
+  "T6_PLANKS_LEVEL4": {
+   "name": "Pristine Bloodoak Planks",
+   "tier": 6,
+   "cat": "refined",
+   "weight": 1.14
+  },
+  "T6_ROCK": {
+   "name": "Slate",
+   "tier": 6,
+   "cat": "raw",
+   "weight": 1.14
+  },
+  "T6_ROCK_LEVEL1": {
+   "name": "Uncommon Slate",
+   "tier": 6,
+   "cat": "raw",
+   "weight": 1.14
+  },
+  "T6_ROCK_LEVEL2": {
+   "name": "Rare Slate",
+   "tier": 6,
+   "cat": "raw",
+   "weight": 1.14
+  },
+  "T6_ROCK_LEVEL3": {
+   "name": "Exceptional Slate",
+   "tier": 6,
+   "cat": "raw",
+   "weight": 1.14
+  },
+  "T6_STONEBLOCK": {
+   "name": "Slate Block",
+   "tier": 6,
+   "cat": "refined",
+   "weight": 1.14
+  },
+  "T6_WOOD": {
+   "name": "Bloodoak Logs",
+   "tier": 6,
+   "cat": "raw",
+   "weight": 1.14
+  },
+  "T6_WOOD_LEVEL1": {
+   "name": "Uncommon Bloodoak Logs",
+   "tier": 6,
+   "cat": "raw",
+   "weight": 1.14
+  },
+  "T6_WOOD_LEVEL2": {
+   "name": "Rare Bloodoak Logs",
+   "tier": 6,
+   "cat": "raw",
+   "weight": 1.14
+  },
+  "T6_WOOD_LEVEL3": {
+   "name": "Exceptional Bloodoak Logs",
+   "tier": 6,
+   "cat": "raw",
+   "weight": 1.14
+  },
+  "T6_WOOD_LEVEL4": {
+   "name": "Pristine Bloodoak Logs",
+   "tier": 6,
+   "cat": "raw",
+   "weight": 1.14
+  },
+  "T7_CLOTH": {
+   "name": "Opulent Cloth",
+   "tier": 7,
+   "cat": "refined",
+   "weight": 1.71
+  },
+  "T7_CLOTH_LEVEL1": {
+   "name": "Uncommon Opulent Cloth",
+   "tier": 7,
+   "cat": "refined",
+   "weight": 1.71
+  },
+  "T7_CLOTH_LEVEL2": {
+   "name": "Rare Opulent Cloth",
+   "tier": 7,
+   "cat": "refined",
+   "weight": 1.71
+  },
+  "T7_CLOTH_LEVEL3": {
+   "name": "Exceptional Opulent Cloth",
+   "tier": 7,
+   "cat": "refined",
+   "weight": 1.71
+  },
+  "T7_CLOTH_LEVEL4": {
+   "name": "Pristine Opulent Cloth",
+   "tier": 7,
+   "cat": "refined",
+   "weight": 1.71
+  },
+  "T7_FIBER": {
+   "name": "Sunflax",
+   "tier": 7,
+   "cat": "raw",
+   "weight": 1.71
+  },
+  "T7_FIBER_LEVEL1": {
+   "name": "Uncommon Sunflax",
+   "tier": 7,
+   "cat": "raw",
+   "weight": 1.71
+  },
+  "T7_FIBER_LEVEL2": {
+   "name": "Rare Sunflax",
+   "tier": 7,
+   "cat": "raw",
+   "weight": 1.71
+  },
+  "T7_FIBER_LEVEL3": {
+   "name": "Exceptional Sunflax",
+   "tier": 7,
+   "cat": "raw",
+   "weight": 1.71
+  },
+  "T7_FIBER_LEVEL4": {
+   "name": "Pristine Sunflax",
+   "tier": 7,
+   "cat": "raw",
+   "weight": 1.71
+  },
+  "T7_HIDE": {
+   "name": "Thick Hide",
+   "tier": 7,
+   "cat": "raw",
+   "weight": 1.71
+  },
+  "T7_HIDE_LEVEL1": {
+   "name": "Uncommon Thick Hide",
+   "tier": 7,
+   "cat": "raw",
+   "weight": 1.71
+  },
+  "T7_HIDE_LEVEL2": {
+   "name": "Rare Thick Hide",
+   "tier": 7,
+   "cat": "raw",
+   "weight": 1.71
+  },
+  "T7_HIDE_LEVEL3": {
+   "name": "Exceptional Thick Hide",
+   "tier": 7,
+   "cat": "raw",
+   "weight": 1.71
+  },
+  "T7_HIDE_LEVEL4": {
+   "name": "Pristine Thick Hide",
+   "tier": 7,
+   "cat": "raw",
+   "weight": 1.71
+  },
+  "T7_LEATHER": {
+   "name": "Reinforced Leather",
+   "tier": 7,
+   "cat": "refined",
+   "weight": 1.71
+  },
+  "T7_LEATHER_LEVEL1": {
+   "name": "Uncommon Reinforced Leather",
+   "tier": 7,
+   "cat": "refined",
+   "weight": 1.71
+  },
+  "T7_LEATHER_LEVEL2": {
+   "name": "Rare Reinforced Leather",
+   "tier": 7,
+   "cat": "refined",
+   "weight": 1.71
+  },
+  "T7_LEATHER_LEVEL3": {
+   "name": "Exceptional Reinforced Leather",
+   "tier": 7,
+   "cat": "refined",
+   "weight": 1.71
+  },
+  "T7_LEATHER_LEVEL4": {
+   "name": "Pristine Reinforced Leather",
+   "tier": 7,
+   "cat": "refined",
+   "weight": 1.71
+  },
+  "T7_METALBAR": {
+   "name": "Meteorite Steel Bar",
+   "tier": 7,
+   "cat": "refined",
+   "weight": 1.71
+  },
+  "T7_METALBAR_LEVEL1": {
+   "name": "Uncommon Meteorite Steel Bar",
+   "tier": 7,
+   "cat": "refined",
+   "weight": 1.71
+  },
+  "T7_METALBAR_LEVEL2": {
+   "name": "Rare Meteorite Steel Bar",
+   "tier": 7,
+   "cat": "refined",
+   "weight": 1.71
+  },
+  "T7_METALBAR_LEVEL3": {
+   "name": "Exceptional Meteorite Steel Bar",
+   "tier": 7,
+   "cat": "refined",
+   "weight": 1.71
+  },
+  "T7_METALBAR_LEVEL4": {
+   "name": "Pristine Meteorite Steel Bar",
+   "tier": 7,
+   "cat": "refined",
+   "weight": 1.71
+  },
+  "T7_ORE": {
+   "name": "Meteorite Ore",
+   "tier": 7,
+   "cat": "raw",
+   "weight": 1.71
+  },
+  "T7_ORE_LEVEL1": {
+   "name": "Uncommon Meteorite Ore",
+   "tier": 7,
+   "cat": "raw",
+   "weight": 1.71
+  },
+  "T7_ORE_LEVEL2": {
+   "name": "Rare Meteorite Ore",
+   "tier": 7,
+   "cat": "raw",
+   "weight": 1.71
+  },
+  "T7_ORE_LEVEL3": {
+   "name": "Exceptional Meteorite Ore",
+   "tier": 7,
+   "cat": "raw",
+   "weight": 1.71
+  },
+  "T7_ORE_LEVEL4": {
+   "name": "Pristine Meteorite Ore",
+   "tier": 7,
+   "cat": "raw",
+   "weight": 1.71
+  },
+  "T7_PLANKS": {
+   "name": "Ashenbark Planks",
+   "tier": 7,
+   "cat": "refined",
+   "weight": 1.71
+  },
+  "T7_PLANKS_LEVEL1": {
+   "name": "Uncommon Ashenbark Planks",
+   "tier": 7,
+   "cat": "refined",
+   "weight": 1.71
+  },
+  "T7_PLANKS_LEVEL2": {
+   "name": "Rare Ashenbark Planks",
+   "tier": 7,
+   "cat": "refined",
+   "weight": 1.71
+  },
+  "T7_PLANKS_LEVEL3": {
+   "name": "Exceptional Ashenbark Planks",
+   "tier": 7,
+   "cat": "refined",
+   "weight": 1.71
+  },
+  "T7_PLANKS_LEVEL4": {
+   "name": "Pristine Ashenbark Planks",
+   "tier": 7,
+   "cat": "refined",
+   "weight": 1.71
+  },
+  "T7_ROCK": {
+   "name": "Basalt",
+   "tier": 7,
+   "cat": "raw",
+   "weight": 1.71
+  },
+  "T7_ROCK_LEVEL1": {
+   "name": "Uncommon Basalt",
+   "tier": 7,
+   "cat": "raw",
+   "weight": 1.71
+  },
+  "T7_ROCK_LEVEL2": {
+   "name": "Rare Basalt",
+   "tier": 7,
+   "cat": "raw",
+   "weight": 1.71
+  },
+  "T7_ROCK_LEVEL3": {
+   "name": "Exceptional Basalt",
+   "tier": 7,
+   "cat": "raw",
+   "weight": 1.71
+  },
+  "T7_STONEBLOCK": {
+   "name": "Basalt Block",
+   "tier": 7,
+   "cat": "refined",
+   "weight": 1.71
+  },
+  "T7_WOOD": {
+   "name": "Ashenbark Logs",
+   "tier": 7,
+   "cat": "raw",
+   "weight": 1.71
+  },
+  "T7_WOOD_LEVEL1": {
+   "name": "Uncommon Ashenbark Logs",
+   "tier": 7,
+   "cat": "raw",
+   "weight": 1.71
+  },
+  "T7_WOOD_LEVEL2": {
+   "name": "Rare Ashenbark Logs",
+   "tier": 7,
+   "cat": "raw",
+   "weight": 1.71
+  },
+  "T7_WOOD_LEVEL3": {
+   "name": "Exceptional Ashenbark Logs",
+   "tier": 7,
+   "cat": "raw",
+   "weight": 1.71
+  },
+  "T7_WOOD_LEVEL4": {
+   "name": "Pristine Ashenbark Logs",
+   "tier": 7,
+   "cat": "raw",
+   "weight": 1.71
+  },
+  "T8_CLOTH": {
+   "name": "Baroque Cloth",
+   "tier": 8,
+   "cat": "refined",
+   "weight": 2.56
+  },
+  "T8_CLOTH_LEVEL1": {
+   "name": "Uncommon Baroque Cloth",
+   "tier": 8,
+   "cat": "refined",
+   "weight": 2.56
+  },
+  "T8_CLOTH_LEVEL2": {
+   "name": "Rare Baroque Cloth",
+   "tier": 8,
+   "cat": "refined",
+   "weight": 2.56
+  },
+  "T8_CLOTH_LEVEL3": {
+   "name": "Exceptional Baroque Cloth",
+   "tier": 8,
+   "cat": "refined",
+   "weight": 2.56
+  },
+  "T8_CLOTH_LEVEL4": {
+   "name": "Pristine Baroque Cloth",
+   "tier": 8,
+   "cat": "refined",
+   "weight": 2.56
+  },
+  "T8_FIBER": {
+   "name": "Ghost Hemp",
+   "tier": 8,
+   "cat": "raw",
+   "weight": 2.56
+  },
+  "T8_FIBER_LEVEL1": {
+   "name": "Uncommon Ghost Hemp",
+   "tier": 8,
+   "cat": "raw",
+   "weight": 2.56
+  },
+  "T8_FIBER_LEVEL2": {
+   "name": "Rare Ghost Hemp",
+   "tier": 8,
+   "cat": "raw",
+   "weight": 2.56
+  },
+  "T8_FIBER_LEVEL3": {
+   "name": "Exceptional Ghost Hemp",
+   "tier": 8,
+   "cat": "raw",
+   "weight": 2.56
+  },
+  "T8_FIBER_LEVEL4": {
+   "name": "Pristine Ghost Hemp",
+   "tier": 8,
+   "cat": "raw",
+   "weight": 2.56
+  },
+  "T8_HIDE": {
+   "name": "Resilient Hide",
+   "tier": 8,
+   "cat": "raw",
+   "weight": 2.56
+  },
+  "T8_HIDE_LEVEL1": {
+   "name": "Uncommon Resilient Hide",
+   "tier": 8,
+   "cat": "raw",
+   "weight": 2.56
+  },
+  "T8_HIDE_LEVEL2": {
+   "name": "Rare Resilient Hide",
+   "tier": 8,
+   "cat": "raw",
+   "weight": 2.56
+  },
+  "T8_HIDE_LEVEL3": {
+   "name": "Exceptional Resilient Hide",
+   "tier": 8,
+   "cat": "raw",
+   "weight": 2.56
+  },
+  "T8_HIDE_LEVEL4": {
+   "name": "Pristine Resilient Hide",
+   "tier": 8,
+   "cat": "raw",
+   "weight": 2.56
+  },
+  "T8_LEATHER": {
+   "name": "Fortified Leather",
+   "tier": 8,
+   "cat": "refined",
+   "weight": 2.56
+  },
+  "T8_LEATHER_LEVEL1": {
+   "name": "Uncommon Fortified Leather",
+   "tier": 8,
+   "cat": "refined",
+   "weight": 2.56
+  },
+  "T8_LEATHER_LEVEL2": {
+   "name": "Rare Fortified Leather",
+   "tier": 8,
+   "cat": "refined",
+   "weight": 2.56
+  },
+  "T8_LEATHER_LEVEL3": {
+   "name": "Exceptional Fortified Leather",
+   "tier": 8,
+   "cat": "refined",
+   "weight": 2.56
+  },
+  "T8_LEATHER_LEVEL4": {
+   "name": "Pristine Fortified Leather",
+   "tier": 8,
+   "cat": "refined",
+   "weight": 2.56
+  },
+  "T8_METALBAR": {
+   "name": "Adamantium Steel Bar",
+   "tier": 8,
+   "cat": "refined",
+   "weight": 2.56
+  },
+  "T8_METALBAR_LEVEL1": {
+   "name": "Uncommon Adamantium Steel Bar",
+   "tier": 8,
+   "cat": "refined",
+   "weight": 2.56
+  },
+  "T8_METALBAR_LEVEL2": {
+   "name": "Rare Adamantium Steel Bar",
+   "tier": 8,
+   "cat": "refined",
+   "weight": 2.56
+  },
+  "T8_METALBAR_LEVEL3": {
+   "name": "Exceptional Adamantium Steel Bar",
+   "tier": 8,
+   "cat": "refined",
+   "weight": 2.56
+  },
+  "T8_METALBAR_LEVEL4": {
+   "name": "Pristine Adamantium Steel Bar",
+   "tier": 8,
+   "cat": "refined",
+   "weight": 2.56
+  },
+  "T8_ORE": {
+   "name": "Adamantium Ore",
+   "tier": 8,
+   "cat": "raw",
+   "weight": 2.56
+  },
+  "T8_ORE_LEVEL1": {
+   "name": "Uncommon Adamantium Ore",
+   "tier": 8,
+   "cat": "raw",
+   "weight": 2.56
+  },
+  "T8_ORE_LEVEL2": {
+   "name": "Rare Adamantium Ore",
+   "tier": 8,
+   "cat": "raw",
+   "weight": 2.56
+  },
+  "T8_ORE_LEVEL3": {
+   "name": "Exceptional Adamantium Ore",
+   "tier": 8,
+   "cat": "raw",
+   "weight": 2.56
+  },
+  "T8_ORE_LEVEL4": {
+   "name": "Pristine Adamantium Ore",
+   "tier": 8,
+   "cat": "raw",
+   "weight": 2.56
+  },
+  "T8_PLANKS": {
+   "name": "Whitewood Planks",
+   "tier": 8,
+   "cat": "refined",
+   "weight": 2.56
+  },
+  "T8_PLANKS_LEVEL1": {
+   "name": "Uncommon Whitewood Planks",
+   "tier": 8,
+   "cat": "refined",
+   "weight": 2.56
+  },
+  "T8_PLANKS_LEVEL2": {
+   "name": "Rare Whitewood Planks",
+   "tier": 8,
+   "cat": "refined",
+   "weight": 2.56
+  },
+  "T8_PLANKS_LEVEL3": {
+   "name": "Exceptional Whitewood Planks",
+   "tier": 8,
+   "cat": "refined",
+   "weight": 2.56
+  },
+  "T8_PLANKS_LEVEL4": {
+   "name": "Pristine Whitewood Planks",
+   "tier": 8,
+   "cat": "refined",
+   "weight": 2.56
+  },
+  "T8_ROCK": {
+   "name": "Marble",
+   "tier": 8,
+   "cat": "raw",
+   "weight": 2.56
+  },
+  "T8_ROCK_LEVEL1": {
+   "name": "Uncommon Marble",
+   "tier": 8,
+   "cat": "raw",
+   "weight": 2.56
+  },
+  "T8_ROCK_LEVEL2": {
+   "name": "Rare Marble",
+   "tier": 8,
+   "cat": "raw",
+   "weight": 2.56
+  },
+  "T8_ROCK_LEVEL3": {
+   "name": "Exceptional Marble",
+   "tier": 8,
+   "cat": "raw",
+   "weight": 2.56
+  },
+  "T8_STONEBLOCK": {
+   "name": "Marble Block",
+   "tier": 8,
+   "cat": "refined",
+   "weight": 2.56
+  },
+  "T8_WOOD": {
+   "name": "Whitewood Logs",
+   "tier": 8,
+   "cat": "raw",
+   "weight": 2.56
+  },
+  "T8_WOOD_LEVEL1": {
+   "name": "Uncommon Whitewood Logs",
+   "tier": 8,
+   "cat": "raw",
+   "weight": 2.56
+  },
+  "T8_WOOD_LEVEL2": {
+   "name": "Rare Whitewood Logs",
+   "tier": 8,
+   "cat": "raw",
+   "weight": 2.56
+  },
+  "T8_WOOD_LEVEL3": {
+   "name": "Exceptional Whitewood Logs",
+   "tier": 8,
+   "cat": "raw",
+   "weight": 2.56
+  },
+  "T8_WOOD_LEVEL4": {
+   "name": "Pristine Whitewood Logs",
+   "tier": 8,
+   "cat": "raw",
+   "weight": 2.56
   }
- }
+ },
+ "resources": [
+  "T2_CLOTH",
+  "T2_FIBER",
+  "T2_HIDE",
+  "T2_LEATHER",
+  "T2_METALBAR",
+  "T2_ORE",
+  "T2_PLANKS",
+  "T2_ROCK",
+  "T2_STONEBLOCK",
+  "T2_WOOD",
+  "T3_CLOTH",
+  "T3_FIBER",
+  "T3_HIDE",
+  "T3_LEATHER",
+  "T3_METALBAR",
+  "T3_ORE",
+  "T3_PLANKS",
+  "T3_ROCK",
+  "T3_STONEBLOCK",
+  "T3_WOOD",
+  "T4_CLOTH",
+  "T4_CLOTH_LEVEL1",
+  "T4_CLOTH_LEVEL2",
+  "T4_CLOTH_LEVEL3",
+  "T4_CLOTH_LEVEL4",
+  "T4_FIBER",
+  "T4_FIBER_LEVEL1",
+  "T4_FIBER_LEVEL2",
+  "T4_FIBER_LEVEL3",
+  "T4_FIBER_LEVEL4",
+  "T4_HIDE",
+  "T4_HIDE_LEVEL1",
+  "T4_HIDE_LEVEL2",
+  "T4_HIDE_LEVEL3",
+  "T4_HIDE_LEVEL4",
+  "T4_LEATHER",
+  "T4_LEATHER_LEVEL1",
+  "T4_LEATHER_LEVEL2",
+  "T4_LEATHER_LEVEL3",
+  "T4_LEATHER_LEVEL4",
+  "T4_METALBAR",
+  "T4_METALBAR_LEVEL1",
+  "T4_METALBAR_LEVEL2",
+  "T4_METALBAR_LEVEL3",
+  "T4_METALBAR_LEVEL4",
+  "T4_ORE",
+  "T4_ORE_LEVEL1",
+  "T4_ORE_LEVEL2",
+  "T4_ORE_LEVEL3",
+  "T4_ORE_LEVEL4",
+  "T4_PLANKS",
+  "T4_PLANKS_LEVEL1",
+  "T4_PLANKS_LEVEL2",
+  "T4_PLANKS_LEVEL3",
+  "T4_PLANKS_LEVEL4",
+  "T4_ROCK",
+  "T4_ROCK_LEVEL1",
+  "T4_ROCK_LEVEL2",
+  "T4_ROCK_LEVEL3",
+  "T4_STONEBLOCK",
+  "T4_WOOD",
+  "T4_WOOD_LEVEL1",
+  "T4_WOOD_LEVEL2",
+  "T4_WOOD_LEVEL3",
+  "T4_WOOD_LEVEL4",
+  "T5_CLOTH",
+  "T5_CLOTH_LEVEL1",
+  "T5_CLOTH_LEVEL2",
+  "T5_CLOTH_LEVEL3",
+  "T5_CLOTH_LEVEL4",
+  "T5_FIBER",
+  "T5_FIBER_LEVEL1",
+  "T5_FIBER_LEVEL2",
+  "T5_FIBER_LEVEL3",
+  "T5_FIBER_LEVEL4",
+  "T5_HIDE",
+  "T5_HIDE_LEVEL1",
+  "T5_HIDE_LEVEL2",
+  "T5_HIDE_LEVEL3",
+  "T5_HIDE_LEVEL4",
+  "T5_LEATHER",
+  "T5_LEATHER_LEVEL1",
+  "T5_LEATHER_LEVEL2",
+  "T5_LEATHER_LEVEL3",
+  "T5_LEATHER_LEVEL4",
+  "T5_METALBAR",
+  "T5_METALBAR_LEVEL1",
+  "T5_METALBAR_LEVEL2",
+  "T5_METALBAR_LEVEL3",
+  "T5_METALBAR_LEVEL4",
+  "T5_ORE",
+  "T5_ORE_LEVEL1",
+  "T5_ORE_LEVEL2",
+  "T5_ORE_LEVEL3",
+  "T5_ORE_LEVEL4",
+  "T5_PLANKS",
+  "T5_PLANKS_LEVEL1",
+  "T5_PLANKS_LEVEL2",
+  "T5_PLANKS_LEVEL3",
+  "T5_PLANKS_LEVEL4",
+  "T5_ROCK",
+  "T5_ROCK_LEVEL1",
+  "T5_ROCK_LEVEL2",
+  "T5_ROCK_LEVEL3",
+  "T5_STONEBLOCK",
+  "T5_WOOD",
+  "T5_WOOD_LEVEL1",
+  "T5_WOOD_LEVEL2",
+  "T5_WOOD_LEVEL3",
+  "T5_WOOD_LEVEL4",
+  "T6_CLOTH",
+  "T6_CLOTH_LEVEL1",
+  "T6_CLOTH_LEVEL2",
+  "T6_CLOTH_LEVEL3",
+  "T6_CLOTH_LEVEL4",
+  "T6_FIBER",
+  "T6_FIBER_LEVEL1",
+  "T6_FIBER_LEVEL2",
+  "T6_FIBER_LEVEL3",
+  "T6_FIBER_LEVEL4",
+  "T6_HIDE",
+  "T6_HIDE_LEVEL1",
+  "T6_HIDE_LEVEL2",
+  "T6_HIDE_LEVEL3",
+  "T6_HIDE_LEVEL4",
+  "T6_LEATHER",
+  "T6_LEATHER_LEVEL1",
+  "T6_LEATHER_LEVEL2",
+  "T6_LEATHER_LEVEL3",
+  "T6_LEATHER_LEVEL4",
+  "T6_METALBAR",
+  "T6_METALBAR_LEVEL1",
+  "T6_METALBAR_LEVEL2",
+  "T6_METALBAR_LEVEL3",
+  "T6_METALBAR_LEVEL4",
+  "T6_ORE",
+  "T6_ORE_LEVEL1",
+  "T6_ORE_LEVEL2",
+  "T6_ORE_LEVEL3",
+  "T6_ORE_LEVEL4",
+  "T6_PLANKS",
+  "T6_PLANKS_LEVEL1",
+  "T6_PLANKS_LEVEL2",
+  "T6_PLANKS_LEVEL3",
+  "T6_PLANKS_LEVEL4",
+  "T6_ROCK",
+  "T6_ROCK_LEVEL1",
+  "T6_ROCK_LEVEL2",
+  "T6_ROCK_LEVEL3",
+  "T6_STONEBLOCK",
+  "T6_WOOD",
+  "T6_WOOD_LEVEL1",
+  "T6_WOOD_LEVEL2",
+  "T6_WOOD_LEVEL3",
+  "T6_WOOD_LEVEL4",
+  "T7_CLOTH",
+  "T7_CLOTH_LEVEL1",
+  "T7_CLOTH_LEVEL2",
+  "T7_CLOTH_LEVEL3",
+  "T7_CLOTH_LEVEL4",
+  "T7_FIBER",
+  "T7_FIBER_LEVEL1",
+  "T7_FIBER_LEVEL2",
+  "T7_FIBER_LEVEL3",
+  "T7_FIBER_LEVEL4",
+  "T7_HIDE",
+  "T7_HIDE_LEVEL1",
+  "T7_HIDE_LEVEL2",
+  "T7_HIDE_LEVEL3",
+  "T7_HIDE_LEVEL4",
+  "T7_LEATHER",
+  "T7_LEATHER_LEVEL1",
+  "T7_LEATHER_LEVEL2",
+  "T7_LEATHER_LEVEL3",
+  "T7_LEATHER_LEVEL4",
+  "T7_METALBAR",
+  "T7_METALBAR_LEVEL1",
+  "T7_METALBAR_LEVEL2",
+  "T7_METALBAR_LEVEL3",
+  "T7_METALBAR_LEVEL4",
+  "T7_ORE",
+  "T7_ORE_LEVEL1",
+  "T7_ORE_LEVEL2",
+  "T7_ORE_LEVEL3",
+  "T7_ORE_LEVEL4",
+  "T7_PLANKS",
+  "T7_PLANKS_LEVEL1",
+  "T7_PLANKS_LEVEL2",
+  "T7_PLANKS_LEVEL3",
+  "T7_PLANKS_LEVEL4",
+  "T7_ROCK",
+  "T7_ROCK_LEVEL1",
+  "T7_ROCK_LEVEL2",
+  "T7_ROCK_LEVEL3",
+  "T7_STONEBLOCK",
+  "T7_WOOD",
+  "T7_WOOD_LEVEL1",
+  "T7_WOOD_LEVEL2",
+  "T7_WOOD_LEVEL3",
+  "T7_WOOD_LEVEL4",
+  "T8_CLOTH",
+  "T8_CLOTH_LEVEL1",
+  "T8_CLOTH_LEVEL2",
+  "T8_CLOTH_LEVEL3",
+  "T8_CLOTH_LEVEL4",
+  "T8_FIBER",
+  "T8_FIBER_LEVEL1",
+  "T8_FIBER_LEVEL2",
+  "T8_FIBER_LEVEL3",
+  "T8_FIBER_LEVEL4",
+  "T8_HIDE",
+  "T8_HIDE_LEVEL1",
+  "T8_HIDE_LEVEL2",
+  "T8_HIDE_LEVEL3",
+  "T8_HIDE_LEVEL4",
+  "T8_LEATHER",
+  "T8_LEATHER_LEVEL1",
+  "T8_LEATHER_LEVEL2",
+  "T8_LEATHER_LEVEL3",
+  "T8_LEATHER_LEVEL4",
+  "T8_METALBAR",
+  "T8_METALBAR_LEVEL1",
+  "T8_METALBAR_LEVEL2",
+  "T8_METALBAR_LEVEL3",
+  "T8_METALBAR_LEVEL4",
+  "T8_ORE",
+  "T8_ORE_LEVEL1",
+  "T8_ORE_LEVEL2",
+  "T8_ORE_LEVEL3",
+  "T8_ORE_LEVEL4",
+  "T8_PLANKS",
+  "T8_PLANKS_LEVEL1",
+  "T8_PLANKS_LEVEL2",
+  "T8_PLANKS_LEVEL3",
+  "T8_PLANKS_LEVEL4",
+  "T8_ROCK",
+  "T8_ROCK_LEVEL1",
+  "T8_ROCK_LEVEL2",
+  "T8_ROCK_LEVEL3",
+  "T8_STONEBLOCK",
+  "T8_WOOD",
+  "T8_WOOD_LEVEL1",
+  "T8_WOOD_LEVEL2",
+  "T8_WOOD_LEVEL3",
+  "T8_WOOD_LEVEL4"
+ ]
 }

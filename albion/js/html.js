@@ -11,6 +11,7 @@ export const ICON = {
   crop: '\u{1F33E}', herb: '\u{1F33F}', seed: '\u{1F331}', livestock: '\u{1F404}',
   baby: '\u{1F423}', animal: '\u{1F404}', mount: '\u{1F40E}', product: '\u{1F95A}',
   potion: '\u{1F9EA}', food: '\u{1F35E}', meat: '\u{1F969}', material: '\u{1F9F1}',
+  raw: '\u26CF\uFE0F', refined: '\u{1F9F1}',
   other: '\u{1F4E6}', city: '\u{1F3EF}', island: '\u{1F3DD}️', cart: '\u{1F6D2}',
   bag: '\u{1F392}', carry: '\u{1F40E}', board: '\u{1F31F}', spark: '✨',
   farm: '\u{1F33E}', herbgarden: '\u{1F33F}', pasture: '\u{1F404}', kennel: '\u{1F43A}',

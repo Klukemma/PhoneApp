@@ -60,7 +60,11 @@ export function ago(ms) {
 
 /** 1, 2 or 3 for an enchanted item — `T6_POTION_HEAL@2` — and 0 for a plain one. */
 export const enchantOf = (id) => {
-  const m = /@(\d)$/.exec(id || '');
+  /* The game writes an enchant two ways and the app has to read both. A
+   * weapon or a potion gets a suffix the dumps invent, T4_MAIN_SWORD@2; a
+   * resource carries it in its own name, T5_WOOD_LEVEL2. Reading only the
+   * first showed Exceptional Cedar Logs as plain T5. */
+  const m = /@(\d)$/.exec(id || '') || /_LEVEL(\d)$/.exec(id || '');
   return m ? Number(m[1]) : 0;
 };
 

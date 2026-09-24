@@ -6,8 +6,8 @@ import {
   returnRate, simulateCycle, taxRate,
 } from './calc.js';
 import {
-  costOf, DATA, hasOwnCost, itemMeta, landSummary, plotsOwned, priceOf,
-  scheduleDays, state,
+  costOf, DATA, hasOwnCost, itemMeta, landSummary, plotsOwned, pricedItemIds,
+  priceOf, scheduleDays, state,
 } from './store.js';
 import { serverName } from './prices.js';
 import {
@@ -1204,11 +1204,12 @@ export function priceListHTML() {
 
   const groups = new Map();
   for (const id of ids) {
-    const cat = DATA.items[id]?.cat || 'other';
+    const cat = itemMeta(id)?.cat || 'other';
     if (!groups.has(cat)) groups.set(cat, []);
     groups.get(cat).push(id);
   }
-  const ORDER = ['crop', 'herb', 'seed', 'product', 'baby', 'animal', 'potion', 'food', 'material', 'other'];
+  const ORDER = ['crop', 'herb', 'seed', 'product', 'baby', 'animal',
+    'raw', 'refined', 'potion', 'food', 'material', 'other'];
   const sorted = [...groups.entries()]
     .sort((a, b) => ORDER.indexOf(a[0]) - ORDER.indexOf(b[0]));
 
@@ -1220,7 +1221,7 @@ export function priceListHTML() {
         ${priceFilter === 'all' ? `<span class="right flat">${list.filter(priceOf).length} of ${list.length} set</span>` : ''}</div>
       ${list.sort((a, b) => tierOf(a) - tierOf(b) || nameOf(a).localeCompare(nameOf(b)))
     .map((id) => rowHTML({
-      attrs: `data-price="${esc(id)}"`, icon: iconFor(DATA.items[id]?.cat),
+      attrs: `data-price="${esc(id)}"`, icon: iconFor(itemMeta(id)?.cat),
       title: esc(label(id)),
       meta: `${esc(catLabel(cat).replace(/s$/, ''))} · ${tierText(tierOf(id), enchantOf(id))}${hasOwnCost(id) ? ` · you pay ${silver(costOf(id))}` : ''}`,
       right: priceOf(id) ? amt(silver(priceOf(id)), { tone: '' }) : tag('Set price'),
@@ -1274,23 +1275,12 @@ export function prices() {
 const CAT_LABELS = {
   crop: 'Crops', herb: 'Herbs', seed: 'Seeds', product: 'Eggs & milk',
   baby: 'Baby animals', animal: 'Grown animals', potion: 'Potions',
-  food: 'Food', material: 'Other materials', other: 'Other',
+  food: 'Food', raw: 'Gathered resources', refined: 'Refined materials',
+  material: 'Other materials', other: 'Other',
 };
 const catLabel = (c) => CAT_LABELS[c] || c;
 
-function pricedIds() {
-  const ids = new Set();
-  for (const p of DATA.plants) { ids.add(p.seedId); ids.add(p.cropId); }
-  for (const a of DATA.animals) {
-    ids.add(a.babyId); ids.add(a.grownId);
-    if (a.product) ids.add(a.product.itemId);
-  }
-  for (const r of DATA.recipes) {
-    ids.add(r.id);
-    for (const i of r.inputs) ids.add(i.id);
-  }
-  return [...ids];
-}
+const pricedIds = () => pricedItemIds(DATA);
 
 function planItemIds() {
   const ids = new Set();

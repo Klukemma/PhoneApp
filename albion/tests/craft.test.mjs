@@ -10,6 +10,8 @@ import {
   bestCityFor, cityBonus, craftPnL, haulOf, mixFor, outputOf, qualityMix,
   qualityPoints, returnRate, simulateCycle, taxRate,
 } from '../js/calc.js';
+import { enchantOf, tierText } from '../js/util.js';
+import { pricedItemIds } from '../js/store.js';
 
 const data = JSON.parse(
   readFileSync(new URL('../data/gamedata.json', import.meta.url), 'utf8'));
@@ -670,7 +672,8 @@ test('the market groups every refined material together', () => {
     'T5_METALBAR', 'T5_STONEBLOCK', 'T8_LEATHER']) {
     assert.equal(raw.items[id].cat, 'refined', id);
   }
-  assert.equal(raw.items.T5_WOOD.cat, 'material');
+  // And what you dig up is not filed with what you make at a bench.
+  assert.equal(raw.items.T5_WOOD.cat, 'raw');
 });
 
 /* ------------------------------------------------ where you refine --- */
@@ -725,4 +728,28 @@ test('a stack of planks costs what the game charges for it', () => {
   const lower = run.buys.find((b) => b.id === 'T4_PLANKS');
   assert.equal(Math.round(wood.net * 10) / 10, 1381.1, '2997 less 53.92% back');
   assert.equal(Math.round(lower.net * 10) / 10, 460.4);
+});
+
+test('the market can reach a log, and knows what grade it is', () => {
+  // Nothing could price T5_WOOD from the Market tab before: the walk only
+  // covered the farming tables, and the refining ones live in the file that
+  // is not downloaded until the Craft tab is opened.
+  const ids = pricedItemIds(data);
+  for (const id of ['T5_WOOD', 'T5_PLANKS', 'T8_ORE', 'T4_HIDE_LEVEL2',
+    'T6_FIBER', 'T5_ROCK_LEVEL1']) {
+    assert.ok(ids.includes(id), `${id} is priceable`);
+  }
+  assert.equal(data.resources.length, 245);
+  // Five families x seven tiers, plus four enchants on the five tiers that
+  // have them, on both sides of the bench.
+  assert.equal(Object.values(data.items).filter((m) => m.cat === 'raw').length, 130);
+  assert.equal(Object.values(data.items).filter((m) => m.cat === 'refined').length, 115);
+  // A weapon is not in the list: six thousand of them is not a price fetch.
+  assert.ok(!ids.includes('T4_MAIN_SWORD'));
+
+  // The grade shows, which needs the other way the game writes an enchant.
+  assert.equal(enchantOf('T5_WOOD_LEVEL3'), 3);
+  assert.equal(enchantOf('T4_MAIN_SWORD@2'), 2);
+  assert.equal(enchantOf('T5_WOOD'), 0);
+  assert.equal(tierText(5, enchantOf('T5_WOOD_LEVEL3')), 'T5.3');
 });

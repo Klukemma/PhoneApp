@@ -462,6 +462,12 @@ export function pricedItemIds(data = DATA) {
     ids.add(r.id);
     for (const i of r.inputs) ids.add(i.id);
   }
+  /* Logs, ore, fibre, hide and rock, and the planks, bars, cloth, leather
+   * and blocks they refine into. Every tier and every enchant, which is 245
+   * ids on top of the farm's 549 - a couple more batches on a fetch. The six
+   * thousand weapons stay out of it: the Best tab fetches the slice it is
+   * looking at, because nobody prices all of them at once. */
+  for (const id of data.resources || []) ids.add(id);
   return [...ids];
 }
 

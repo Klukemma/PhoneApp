@@ -598,6 +598,33 @@ def build_equipment(items, item_value, weights):
     return recipes, meta
 
 
+def resource_meta(equip_recipes, equip_items):
+    """The raws and refined materials, pulled out of the equipment tables.
+
+    Everything a refining recipe eats or makes, and nothing else: five
+    families, seven tiers, five enchant levels, plus the plain blocks the
+    enchanted rock rows share. Weapons and armour are deliberately left where
+    they are, because nobody prices six thousand of them at once.
+    """
+    made = set()
+    eaten = set()
+    for r in equip_recipes:
+        if not r.get("refine"):
+            continue
+        made.add(r.get("out") or r["id"])
+        for i in r["inputs"]:
+            eaten.add(i["id"])
+    ids = sorted(i for i in (made | eaten) if "#" not in i)
+    # What you dig out of the ground against what you make at a bench. A plank
+    # is eaten by the tier above it AND made by a bench, so the test is
+    # whether anything makes it at all. Without the split, Cedar Logs would
+    # sit in the same list as alchemy extract under "other materials".
+    for i in ids:
+        if i in equip_items and i not in made:
+            equip_items[i]["cat"] = "raw"
+    return ids, {i: equip_items[i] for i in ids if i in equip_items}
+
+
 def main() -> None:
     print("Reading Albion dumps...", file=sys.stderr)
     global NAMES_BY_ID
@@ -875,6 +902,15 @@ def main() -> None:
 
     recipes.sort(key=lambda x: (x["category"], x["name"], x["tier"], x["enchant"]))
 
+    # Built here rather than after the farming file is written, because the
+    # raws and refined materials it knows about are listed in that file too.
+    equip_recipes, equip_items = build_equipment(items, item_value, weights)
+    resource_ids, resource_items = resource_meta(equip_recipes, equip_items)
+    # A resource the farming tables already describe keeps their row; the
+    # refining tables only fill the gaps.
+    for rid, row in resource_items.items():
+        item_meta.setdefault(rid, row)
+
     data = {
         "source": "ao-data/ao-bin-dumps (items.xml, loot.xml, gamedata.xml)",
         "generated": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
@@ -948,6 +984,15 @@ def main() -> None:
             for cat in ("plants", "meat", "mount")
         },
         "items": item_meta,
+        # The raw resources and the refined materials they become, by id.
+        #
+        # They are listed here as well as in the equipment file because three
+        # screens want them before anybody opens the Craft tab: the Market
+        # tab, which cannot price a log it has never heard of, and the
+        # gathering setup, which has to name what you are going out to chop.
+        # It is 240-odd short rows against a two-megabyte download, so the
+        # duplication is cheaper than the wait.
+        "resources": resource_ids,
     }
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
@@ -955,7 +1000,6 @@ def main() -> None:
     print(f"\nWrote {OUT.relative_to(HERE.parent.parent)}")
 
     # --- weapons, armour and refining, in their own file ------------------
-    equip_recipes, equip_items = build_equipment(items, item_value, weights)
     equip_nodes = build_focus_nodes(("CRAFT_",))
     equip = {
         "source": OUT.name + " companion (items.xml, achievements.xml)",
