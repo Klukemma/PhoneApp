@@ -11,6 +11,7 @@ import {
   qualityPoints, returnRate, simulateCycle, taxRate,
 } from '../js/calc.js';
 import { enchantOf, tierText } from '../js/util.js';
+import { sellsToBlackMarket } from '../js/craft.js';
 import { pricedItemIds } from '../js/store.js';
 
 const data = JSON.parse(
@@ -23,7 +24,7 @@ const gear = raw.recipes.map((r) => ({
   enchant: 0, amount: 1, silver: 0, refine: false, ...r,
   name: raw.items[r.id]?.name || r.id,
   tier: raw.items[r.id]?.tier ?? 0,
-  group: raw.groups[r.category] || 'gear',
+  group: r.group || raw.groups[r.category] || 'gear',
 }));
 const all = new Map([...data.recipes, ...gear].map((r) => [r.id, r]));
 const recipeOf = (id) => all.get(id) || null;
@@ -647,7 +648,7 @@ test('enchanted rock pays in extra blocks, because enchanted blocks do not exist
   // And the enchanted rock is a known item now, which it was not before.
   assert.equal(raw.items.T5_ROCK_LEVEL1.name, 'Uncommon Granite');
   // Five tiers times three enchant levels, in rock and nowhere else.
-  const variants = gear.filter((r) => r.out);
+  const variants = gear.filter((r) => r.out && r.refine);
   assert.equal(variants.length, 15);
   assert.ok(variants.every((r) => r.category === 'rock'));
 });
@@ -752,4 +753,64 @@ test('the market can reach a log, and knows what grade it is', () => {
   assert.equal(enchantOf('T4_MAIN_SWORD@2'), 2);
   assert.equal(enchantOf('T5_WOOD'), 0);
   assert.equal(tierText(5, enchantOf('T5_WOOD_LEVEL3')), 'T5.3');
+});
+
+/* ------------------------------------------------- transmutation ---- */
+
+test('a resource can climb a tier or a grade, for silver and no focus', () => {
+  const all = gear.filter((r) => r.kind === 'transmute');
+  assert.equal(all.length, 191);
+  assert.equal(all.filter((r) => r.via === 'enchant').length, 95);
+  assert.equal(all.filter((r) => r.via === 'tier').length, 96);
+  // Never any focus, never any return, always one in and one out.
+  for (const r of all) {
+    assert.equal(r.focus, 0, r.id);
+    assert.equal(r.amount, 1, r.id);
+    assert.equal(r.inputs.length, 1, r.id);
+    assert.equal(r.inputs[0].count, 1, r.id);
+    assert.equal(r.inputs[0].noReturn, true, r.id);
+    assert.ok(r.silver > 0, r.id);
+  }
+  // The bare id upgrades what you already hold at this tier; the other
+  // route buys the tier below and climbs it.
+  const up = recipeOf('T5_WOOD_LEVEL1');
+  assert.equal(up.via, 'enchant');
+  assert.equal(up.inputs[0].id, 'T5_WOOD');
+  assert.equal(up.silver, 2000);
+  const over = recipeOf('T5_WOOD_LEVEL1#tier');
+  assert.equal(over.inputs[0].id, 'T4_WOOD_LEVEL1');
+  assert.equal(over.out, 'T5_WOOD_LEVEL1');
+  // A plain raw has only the one way up.
+  assert.equal(recipeOf('T5_WOOD').via, 'tier');
+  assert.equal(recipeOf('T5_WOOD').inputs[0].id, 'T4_WOOD');
+  // Rock stops at .3, so it has no pristine row to climb to.
+  assert.equal(recipeOf('T5_ROCK_LEVEL4'), null);
+});
+
+test('transmuting is costed without touching the engine', () => {
+  // The question the user asked: is it worth turning 5.0 into 5.1.
+  const prices = { T5_WOOD: 260, T5_WOOD_LEVEL1: 3500 };
+  const run = craftPnL('T5_WOOD_LEVEL1', {
+    ...ctx({ cityId: 'fortsterling' }),
+    qty: 100,
+    make: new Set(['T5_WOOD_LEVEL1']),
+    priceOf: (id) => prices[id] ?? 0,
+  });
+  assert.equal(run.crafts, 100);
+  assert.equal(run.focus, 0, 'a transmutation costs no focus');
+  assert.equal(run.fees, 200000, '2,000 silver each');
+  // The log goes in and does not come back, whatever the return rate is.
+  const logs = run.buys.find((b) => b.id === 'T5_WOOD');
+  assert.equal(logs.net, 100);
+  assert.equal(logs.qty, 100);
+  // 100 x 3500 less 6.5% tax, less 26,000 of logs, less 200,000 of fees.
+  assert.equal(Math.round(run.revenue), Math.round(100 * 3500 * (1 - taxRate(ctx().settings))));
+  assert.equal(Math.round(run.profit), Math.round(run.revenue - 26000 - 200000));
+});
+
+test('a transmutation is its own list, not filed under refining', () => {
+  assert.equal(recipeOf('T5_WOOD_LEVEL1').group, 'transmute');
+  assert.equal(recipeOf('T5_PLANKS').group, 'refined');
+  // And it never reaches the Black Market, which takes equipment only.
+  assert.equal(sellsToBlackMarket(recipeOf('T5_WOOD_LEVEL1')), false);
 });

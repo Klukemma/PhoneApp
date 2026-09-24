@@ -74,6 +74,11 @@ EQUIP_CATEGORIES = WEAPON_CATEGORIES + ARMOR_CATEGORIES + GEAR_CATEGORIES
 # cloth and bars that come back at the return rate.
 MOUNT_CATEGORY = "mount"
 REFINE_BUTTON = "@CRAFTBUILDING_ITEM_DETAILS_BUTTON_REFINE"
+# The other button on a resource. Transmuting takes one raw and hands back one
+# raw a tier higher or an enchant higher, for silver and no focus, and it never
+# gives the input back. 191 of them, which is the whole 2-D lattice: every raw
+# from T5 up can climb a tier, and every enchanted raw can climb either way.
+TRANSMUTE_BUTTON = "@CRAFTBUILDING_ITEM_DETAILS_BUTTON_TRANSMUTE"
 
 # The five quality levels, in the order the game lists them. The names are
 # not in the tables as a set - they are scattered through localization - so
@@ -143,6 +148,18 @@ def pretty(unique: str) -> str:
     if base in NAMES_BY_ID:
         return NAMES_BY_ID[base]
     return unique.replace("FARM_", "").replace("_", " ").title()
+
+
+def enchant_of(unique: str) -> int:
+    """The enchant level the game writes into a resource's own name."""
+    m = re.search(r"_LEVEL(\d)$", unique or "")
+    return int(m.group(1)) if m else 0
+
+
+def via_of(inputs, out: str) -> str:
+    """Which way a transmutation climbs: a tier, or an enchant level."""
+    src = (inputs[0] or {}).get("id", "") if inputs else ""
+    return "tier" if tier_of(src) < tier_of(out) else "enchant"
 
 
 def tier_of(unique: str) -> int:
@@ -491,15 +508,26 @@ def build_equipment(items, item_value, weights):
             if not any("_FARM_" in i for i in ins) or any("TOKEN" in i for i in ins):
                 continue
             cat = MOUNT_CATEGORY
+        # A raw resource carries no craftingcategory at all, so the guard
+        # below dropped every transmutation in the game. It is not the zero
+        # focus cost and not the button that hid them - it is the missing
+        # category - so one is synthesised from the resource family, which is
+        # what cityBonus and the Market grouping both key on.
+        transmutes = [r for r in reqs
+                      if r.get("craftbuttonlocaoverride") == TRANSMUTE_BUTTON]
+        if cat is None and transmutes and el.get("resourcetype"):
+            cat = el.get("resourcetype").split("_LEVEL")[0].lower()
         if cat not in EQUIP_CATEGORIES + REFINE_CATEGORIES + (MOUNT_CATEGORY,):
             continue
         group = GROUP_OF[cat]
-        # The game labels a refining bench's button differently from a
-        # crafting bench's, which is the only place the dumps say which of
-        # the two a recipe belongs to.
-        refine = req.get("craftbuttonlocaoverride") == REFINE_BUTTON
 
         def add(rid, rreq, enchant, out=None, label=None):
+            # Which bench this row belongs to. A refining bench pays the city
+            # its refining bonus; a transmutation gives nothing back whatever
+            # the rate is, because its input is flagged unreturnable.
+            button = rreq.get("craftbuttonlocaoverride")
+            refine = button == REFINE_BUTTON
+            transmute = button == TRANSMUTE_BUTTON
             inputs = []
             for c in rreq.findall("craftresource"):
                 item = {"id": c.get("uniquename"), "count": int(c.get("count"))}
@@ -536,6 +564,10 @@ def build_equipment(items, item_value, weights):
                 **({"out": out} if out else {}),
                 **({"enchant": enchant} if enchant else {}),
                 **({"refine": True} if refine else {}),
+                # Transmuting is neither refining nor crafting, and listing it
+                # beside the planks would bury it, so it gets a list of its own.
+                **({"kind": "transmute", "group": "transmute",
+                    "via": via_of(inputs, out or rid)} if transmute else {}),
                 **({"amount": amount} if amount != 1 else {}),
                 **({"silver": silver} if silver else {}),
                 **({"maxQuality": max_q} if max_q != 5 else {}),
@@ -552,7 +584,21 @@ def build_equipment(items, item_value, weights):
         # five of T5_PLANKS..T5_PLANKS_LEVEL4 as "T5, plain" and left the .1
         # and .2 slices of the Craft tab permanently empty.
         own_enchant = int(el.get("enchantmentlevel") or 0)
-        add(unique, req, own_enchant)
+
+        # Which transmutation gets the bare id: the one that upgrades what you
+        # are already holding at this tier, because that is the question a
+        # gatherer actually asks. The other route - buy the tier below and
+        # climb it - carries #tier. A plain raw has only the one route, so it
+        # keeps the bare id either way.
+        ordered = list(reqs)
+        if len(transmutes) > 1:
+            ordered = sorted(
+                transmutes,
+                key=lambda r: 0 if via_of(
+                    [{"id": c.get("uniquename")} for c in r.findall("craftresource")],
+                    unique) == "enchant" else 1)
+            ordered += [r for r in reqs if r not in transmutes]
+        add(unique, ordered[0], own_enchant)
 
         # The rest of the <craftingrequirements> on this item. Two kinds exist,
         # 100 in all, and the build used to read only the first:
@@ -564,7 +610,7 @@ def build_equipment(items, item_value, weights):
         #     item in the game, so enchanted rock instead pays 2, 4 or 8 plain
         #     blocks for the same focus. Without these, enchanted rock has no
         #     use in the app at all and T5_ROCK_LEVEL1 is not even a known id.
-        for n, vreq in enumerate(reqs[1:], 1):
+        for n, vreq in enumerate(ordered[1:], 1):
             vins = [c.get("uniquename") or "" for c in vreq.findall("craftresource")]
             if any("TOKEN" in i for i in vins):
                 continue
@@ -576,11 +622,15 @@ def build_equipment(items, item_value, weights):
             # Four rows all called "Travertine Block" would be four rows
             # nobody can tell apart, so a variant is named after the thing
             # that makes it different: the enchanted raw it eats.
-            eats = next((i for i in vins if "_LEVEL" in i), None)
+            eats = next((i for i in vins if "_LEVEL" in i), None) or (vins[0] if vins else None)
             label = None
             if eats:
                 label = f"{pretty(unique)} from {pretty(eats)}"
-            add(f"{unique}#{mark}", vreq, own_enchant, out=unique, label=label)
+            if vreq.get("craftbuttonlocaoverride") == TRANSMUTE_BUTTON:
+                suffix = via_of([{"id": i} for i in vins], unique)
+            else:
+                suffix = str(mark)
+            add(f"{unique}#{suffix}", vreq, own_enchant, out=unique, label=label)
 
         # Equipment enchants to .4, one level further than a potion, and each
         # level swaps every material for its own enchanted version rather

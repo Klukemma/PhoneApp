@@ -46,7 +46,9 @@ export function loadEquipment() {
         enchant: 0, amount: 1, silver: 0, refine: false, ...r,
         name: nameOf(r.id),
         tier: raw.items[r.id]?.tier ?? 0,
-        group: raw.groups[r.category] || 'gear',
+        // A transmutation names its own list: it is neither refining nor
+        // crafting, and filing it under the planks would bury it.
+        group: r.group || raw.groups[r.category] || 'gear',
       })),
     };
     /* The destiny board is one board. Once the weapon and armour half is

@@ -103,6 +103,7 @@ export const GROUPS = [
   ['food', 'Food', '\u{1F35E}'],
   ['butcher', 'Butchering', '\u{1F969}'],
   ['refined', 'Refining', '\u{1F9F1}'],
+  ['transmute', 'Transmuting', '\u2B06\uFE0F'],
   ['weapon', 'Weapons', '\u{2694}\u{FE0F}'],
   ['armor', 'Armour', '\u{1F6E1}\u{FE0F}'],
   ['gear', 'Bags, capes and tools', '\u{1F392}'],
