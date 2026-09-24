@@ -1,6 +1,8 @@
 // The profit engine. Pure: game data + prices + settings in, silver out.
 // Nothing here touches storage or the DOM, so every screen agrees.
 
+import { gatherRun } from './gather.js';
+
 export const HOUR = 3600;
 export const NUTRITION_PER_PLANT = 48;   // every crop and herb is 48 (items.xml)
 
@@ -719,6 +721,11 @@ function haulLegs(steps, bought, settings) {
  */
 export function craftPnL(recipeId, {
   recipeOf, qty = 1, make = new Set(),
+  /* Which of the raw materials you are going to go out and gather rather
+   * than buy. A gathered leaf costs no silver; it costs hours, and the run
+   * reports them separately, because an hour is not a number this app is
+   * willing to turn into silver on your behalf. */
+  gather = new Set(),
   priceOf, costOf = priceOf, sellPriceOf = priceOf,
   // What each quality of the finished thing fetches, and how the run is
   // spread across them. Leave them out and everything is plain, which is
@@ -738,6 +745,12 @@ export function craftPnL(recipeId, {
   const stepBy = new Map();      // the same bar can be wanted by two things
   const bought = {};
   const missing = new Set();
+  // What was gathered rather than bought, and what that cost in time.
+  const gathered = {};
+  const assumed = new Set();
+  let gatherSwingSeconds = 0;
+  let gatherHours = 0;
+  let gatherFame = 0;
   let focus = 0;
   let fees = 0;
   let buyCost = 0;
@@ -773,6 +786,25 @@ export function craftPnL(recipeId, {
     const recipe = depth < maxDepth && make.has(itemId) && !seen.has(itemId)
       ? recipeOf(itemId) : null;
     if (!recipe) {
+      if (gather.has(itemId)) {
+        /* Gathered. The station still wants a full batch in your bags, so
+         * the amount is the same as if you had bought it - it is the bill
+         * that goes to zero, and the time that does not. A run with a
+         * gathered leaf and no measured rate is honest about costing unknown
+         * hours in exactly the way a run with no price is honest about
+         * costing unknown silver. */
+        const run = gatherRun(itemId, { qty: units, settings });
+        if (run) {
+          gathered[itemId] = run;
+          gatherSwingSeconds += run.swingSeconds;
+          gatherHours = run.hours === null ? null
+            : (gatherHours === null ? null : gatherHours + run.hours);
+          gatherFame += run.fame;
+          for (const a of run.assumed) assumed.add(a);
+          buy(itemId, units, perCraft, 0);
+          return null;
+        }
+      }
       const unit = costOf(itemId);
       if (!unit) missing.add(itemId);
       buy(itemId, units, perCraft, units * unit);
@@ -880,6 +912,14 @@ export function craftPnL(recipeId, {
     // A step done somewhere else is a step whose output you have to move.
     legs: haulLegs(steps, bought, settings),
     focus, fees, buyCost, cost,
+    /* The gathering side of the same run. `hours` is null when nothing has
+     * been measured: the swing floor is exact and the rest is yours. */
+    gathered,
+    gatherSwingSeconds,
+    gatherHours: Object.keys(gathered).length ? gatherHours : 0,
+    gatherFame,
+    // Everything in this answer that came from you rather than from the game.
+    assumed: [...assumed],
     gross, tax, taxPaid: gross - revenue, revenue, profit,
     margin: revenue > 0 ? profit / revenue : 0,
     perItem: made > 0 ? profit / made : 0,

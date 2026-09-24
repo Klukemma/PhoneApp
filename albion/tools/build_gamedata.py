@@ -738,6 +738,27 @@ def build_gather_board():
     return out
 
 
+def build_gather_raws(items):
+    """The gatherable resources themselves: what each is worth in fame, and
+    what it weighs, which is what decides how many trips a stack takes."""
+    out = {}
+    for el in items.iter("simpleitem"):
+        unique = el.get("uniquename") or ""
+        family = (el.get("resourcetype") or "").split("_LEVEL")[0]
+        if family not in FAMILIES or not re.match(r"^T\d_", unique):
+            continue
+        row = {}
+        fame = float(el.get("famevalue") or 0)
+        weight = float(el.get("weight") or 0)
+        if fame:
+            row["fame"] = fame
+        if weight:
+            row["weight"] = weight
+        if row:
+            out[unique] = row
+    return out
+
+
 def build_gathering(gd, items, spells):
     """Everything the app needs to cost an hour in the open world."""
     nodes, kind_labels, factors = build_harvestables()
@@ -772,6 +793,7 @@ def build_gathering(gd, items, spells):
 
     return {
         "families": list(FAMILIES),
+        "raws": build_gather_raws(items),
         "nodes": nodes,
         "kindLabels": kind_labels,
         "toolTimeFactor": factors,

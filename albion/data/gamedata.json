@@ -19180,6 +19180,537 @@
    "HIDE",
    "ROCK"
   ],
+  "raws": {
+   "T1_WOOD": {
+    "weight": 0.15
+   },
+   "T2_WOOD": {
+    "fame": 1.5,
+    "weight": 0.23
+   },
+   "T3_WOOD": {
+    "fame": 3.0,
+    "weight": 0.34
+   },
+   "T4_WOOD": {
+    "fame": 7.5,
+    "weight": 0.51
+   },
+   "T5_WOOD": {
+    "fame": 22.5,
+    "weight": 0.76
+   },
+   "T6_WOOD": {
+    "fame": 45.0,
+    "weight": 1.14
+   },
+   "T7_WOOD": {
+    "fame": 75.0,
+    "weight": 1.71
+   },
+   "T8_WOOD": {
+    "fame": 150.0,
+    "weight": 2.56
+   },
+   "T4_WOOD_LEVEL1": {
+    "fame": 15.0,
+    "weight": 0.51
+   },
+   "T5_WOOD_LEVEL1": {
+    "fame": 45.0,
+    "weight": 0.76
+   },
+   "T6_WOOD_LEVEL1": {
+    "fame": 90.0,
+    "weight": 1.14
+   },
+   "T7_WOOD_LEVEL1": {
+    "fame": 150.0,
+    "weight": 1.71
+   },
+   "T8_WOOD_LEVEL1": {
+    "fame": 300.0,
+    "weight": 2.56
+   },
+   "T4_WOOD_LEVEL2": {
+    "fame": 30.0,
+    "weight": 0.51
+   },
+   "T5_WOOD_LEVEL2": {
+    "fame": 90.0,
+    "weight": 0.76
+   },
+   "T6_WOOD_LEVEL2": {
+    "fame": 180.0,
+    "weight": 1.14
+   },
+   "T7_WOOD_LEVEL2": {
+    "fame": 300.0,
+    "weight": 1.71
+   },
+   "T8_WOOD_LEVEL2": {
+    "fame": 600.0,
+    "weight": 2.56
+   },
+   "T4_WOOD_LEVEL3": {
+    "fame": 60.0,
+    "weight": 0.51
+   },
+   "T5_WOOD_LEVEL3": {
+    "fame": 180.0,
+    "weight": 0.76
+   },
+   "T6_WOOD_LEVEL3": {
+    "fame": 360.0,
+    "weight": 1.14
+   },
+   "T7_WOOD_LEVEL3": {
+    "fame": 600.0,
+    "weight": 1.71
+   },
+   "T8_WOOD_LEVEL3": {
+    "fame": 1200.0,
+    "weight": 2.56
+   },
+   "T4_WOOD_LEVEL4": {
+    "fame": 120.0,
+    "weight": 0.51
+   },
+   "T5_WOOD_LEVEL4": {
+    "fame": 360.0,
+    "weight": 0.76
+   },
+   "T6_WOOD_LEVEL4": {
+    "fame": 720.0,
+    "weight": 1.14
+   },
+   "T7_WOOD_LEVEL4": {
+    "fame": 1200.0,
+    "weight": 1.71
+   },
+   "T8_WOOD_LEVEL4": {
+    "fame": 2400.0,
+    "weight": 2.56
+   },
+   "T1_ROCK": {
+    "weight": 0.15
+   },
+   "T2_ROCK": {
+    "fame": 1.5,
+    "weight": 0.23
+   },
+   "T3_ROCK": {
+    "fame": 3.0,
+    "weight": 0.34
+   },
+   "T4_ROCK": {
+    "fame": 7.5,
+    "weight": 0.51
+   },
+   "T5_ROCK": {
+    "fame": 22.5,
+    "weight": 0.76
+   },
+   "T6_ROCK": {
+    "fame": 45.0,
+    "weight": 1.14
+   },
+   "T7_ROCK": {
+    "fame": 75.0,
+    "weight": 1.71
+   },
+   "T8_ROCK": {
+    "fame": 150.0,
+    "weight": 2.56
+   },
+   "T4_ROCK_LEVEL1": {
+    "fame": 15.0,
+    "weight": 0.51
+   },
+   "T5_ROCK_LEVEL1": {
+    "fame": 45.0,
+    "weight": 0.76
+   },
+   "T6_ROCK_LEVEL1": {
+    "fame": 90.0,
+    "weight": 1.14
+   },
+   "T7_ROCK_LEVEL1": {
+    "fame": 150.0,
+    "weight": 1.71
+   },
+   "T8_ROCK_LEVEL1": {
+    "fame": 300.0,
+    "weight": 2.56
+   },
+   "T4_ROCK_LEVEL2": {
+    "fame": 30.0,
+    "weight": 0.51
+   },
+   "T5_ROCK_LEVEL2": {
+    "fame": 90.0,
+    "weight": 0.76
+   },
+   "T6_ROCK_LEVEL2": {
+    "fame": 180.0,
+    "weight": 1.14
+   },
+   "T7_ROCK_LEVEL2": {
+    "fame": 300.0,
+    "weight": 1.71
+   },
+   "T8_ROCK_LEVEL2": {
+    "fame": 600.0,
+    "weight": 2.56
+   },
+   "T4_ROCK_LEVEL3": {
+    "fame": 60.0,
+    "weight": 0.51
+   },
+   "T5_ROCK_LEVEL3": {
+    "fame": 180.0,
+    "weight": 0.76
+   },
+   "T6_ROCK_LEVEL3": {
+    "fame": 360.0,
+    "weight": 1.14
+   },
+   "T7_ROCK_LEVEL3": {
+    "fame": 600.0,
+    "weight": 1.71
+   },
+   "T8_ROCK_LEVEL3": {
+    "fame": 1200.0,
+    "weight": 2.56
+   },
+   "T2_ORE": {
+    "fame": 1.5,
+    "weight": 0.23
+   },
+   "T3_ORE": {
+    "fame": 3.0,
+    "weight": 0.34
+   },
+   "T4_ORE": {
+    "fame": 7.5,
+    "weight": 0.51
+   },
+   "T5_ORE": {
+    "fame": 22.5,
+    "weight": 0.76
+   },
+   "T6_ORE": {
+    "fame": 45.0,
+    "weight": 1.14
+   },
+   "T7_ORE": {
+    "fame": 75.0,
+    "weight": 1.71
+   },
+   "T8_ORE": {
+    "fame": 150.0,
+    "weight": 2.56
+   },
+   "T4_ORE_LEVEL1": {
+    "fame": 15.0,
+    "weight": 0.51
+   },
+   "T5_ORE_LEVEL1": {
+    "fame": 45.0,
+    "weight": 0.76
+   },
+   "T6_ORE_LEVEL1": {
+    "fame": 90.0,
+    "weight": 1.14
+   },
+   "T7_ORE_LEVEL1": {
+    "fame": 150.0,
+    "weight": 1.71
+   },
+   "T8_ORE_LEVEL1": {
+    "fame": 300.0,
+    "weight": 2.56
+   },
+   "T4_ORE_LEVEL2": {
+    "fame": 30.0,
+    "weight": 0.51
+   },
+   "T5_ORE_LEVEL2": {
+    "fame": 90.0,
+    "weight": 0.76
+   },
+   "T6_ORE_LEVEL2": {
+    "fame": 180.0,
+    "weight": 1.14
+   },
+   "T7_ORE_LEVEL2": {
+    "fame": 300.0,
+    "weight": 1.71
+   },
+   "T8_ORE_LEVEL2": {
+    "fame": 600.0,
+    "weight": 2.56
+   },
+   "T4_ORE_LEVEL3": {
+    "fame": 60.0,
+    "weight": 0.51
+   },
+   "T5_ORE_LEVEL3": {
+    "fame": 180.0,
+    "weight": 0.76
+   },
+   "T6_ORE_LEVEL3": {
+    "fame": 360.0,
+    "weight": 1.14
+   },
+   "T7_ORE_LEVEL3": {
+    "fame": 600.0,
+    "weight": 1.71
+   },
+   "T8_ORE_LEVEL3": {
+    "fame": 1200.0,
+    "weight": 2.56
+   },
+   "T4_ORE_LEVEL4": {
+    "fame": 120.0,
+    "weight": 0.51
+   },
+   "T5_ORE_LEVEL4": {
+    "fame": 360.0,
+    "weight": 0.76
+   },
+   "T6_ORE_LEVEL4": {
+    "fame": 720.0,
+    "weight": 1.14
+   },
+   "T7_ORE_LEVEL4": {
+    "fame": 1200.0,
+    "weight": 1.71
+   },
+   "T8_ORE_LEVEL4": {
+    "fame": 2400.0,
+    "weight": 2.56
+   },
+   "T1_HIDE": {
+    "weight": 0.15
+   },
+   "T2_HIDE": {
+    "fame": 1.5,
+    "weight": 0.23
+   },
+   "T3_HIDE": {
+    "fame": 3.0,
+    "weight": 0.34
+   },
+   "T4_HIDE": {
+    "fame": 7.5,
+    "weight": 0.51
+   },
+   "T5_HIDE": {
+    "fame": 22.5,
+    "weight": 0.76
+   },
+   "T6_HIDE": {
+    "fame": 45.0,
+    "weight": 1.14
+   },
+   "T7_HIDE": {
+    "fame": 75.0,
+    "weight": 1.71
+   },
+   "T8_HIDE": {
+    "fame": 150.0,
+    "weight": 2.56
+   },
+   "T4_HIDE_LEVEL1": {
+    "fame": 15.0,
+    "weight": 0.51
+   },
+   "T5_HIDE_LEVEL1": {
+    "fame": 45.0,
+    "weight": 0.76
+   },
+   "T6_HIDE_LEVEL1": {
+    "fame": 90.0,
+    "weight": 1.14
+   },
+   "T7_HIDE_LEVEL1": {
+    "fame": 150.0,
+    "weight": 1.71
+   },
+   "T8_HIDE_LEVEL1": {
+    "fame": 300.0,
+    "weight": 2.56
+   },
+   "T4_HIDE_LEVEL2": {
+    "fame": 30.0,
+    "weight": 0.51
+   },
+   "T5_HIDE_LEVEL2": {
+    "fame": 90.0,
+    "weight": 0.76
+   },
+   "T6_HIDE_LEVEL2": {
+    "fame": 180.0,
+    "weight": 1.14
+   },
+   "T7_HIDE_LEVEL2": {
+    "fame": 300.0,
+    "weight": 1.71
+   },
+   "T8_HIDE_LEVEL2": {
+    "fame": 600.0,
+    "weight": 2.56
+   },
+   "T4_HIDE_LEVEL3": {
+    "fame": 60.0,
+    "weight": 0.51
+   },
+   "T5_HIDE_LEVEL3": {
+    "fame": 180.0,
+    "weight": 0.76
+   },
+   "T6_HIDE_LEVEL3": {
+    "fame": 360.0,
+    "weight": 1.14
+   },
+   "T7_HIDE_LEVEL3": {
+    "fame": 600.0,
+    "weight": 1.71
+   },
+   "T8_HIDE_LEVEL3": {
+    "fame": 1200.0,
+    "weight": 2.56
+   },
+   "T4_HIDE_LEVEL4": {
+    "fame": 120.0,
+    "weight": 0.51
+   },
+   "T5_HIDE_LEVEL4": {
+    "fame": 360.0,
+    "weight": 0.76
+   },
+   "T6_HIDE_LEVEL4": {
+    "fame": 720.0,
+    "weight": 1.14
+   },
+   "T7_HIDE_LEVEL4": {
+    "fame": 1200.0,
+    "weight": 1.71
+   },
+   "T8_HIDE_LEVEL4": {
+    "fame": 2400.0,
+    "weight": 2.56
+   },
+   "T2_FIBER": {
+    "fame": 1.5,
+    "weight": 0.23
+   },
+   "T3_FIBER": {
+    "fame": 3.0,
+    "weight": 0.34
+   },
+   "T4_FIBER": {
+    "fame": 7.5,
+    "weight": 0.51
+   },
+   "T5_FIBER": {
+    "fame": 22.5,
+    "weight": 0.76
+   },
+   "T6_FIBER": {
+    "fame": 45.0,
+    "weight": 1.14
+   },
+   "T7_FIBER": {
+    "fame": 75.0,
+    "weight": 1.71
+   },
+   "T8_FIBER": {
+    "fame": 150.0,
+    "weight": 2.56
+   },
+   "T4_FIBER_LEVEL1": {
+    "fame": 15.0,
+    "weight": 0.51
+   },
+   "T5_FIBER_LEVEL1": {
+    "fame": 45.0,
+    "weight": 0.76
+   },
+   "T6_FIBER_LEVEL1": {
+    "fame": 90.0,
+    "weight": 1.14
+   },
+   "T7_FIBER_LEVEL1": {
+    "fame": 150.0,
+    "weight": 1.71
+   },
+   "T8_FIBER_LEVEL1": {
+    "fame": 300.0,
+    "weight": 2.56
+   },
+   "T4_FIBER_LEVEL2": {
+    "fame": 30.0,
+    "weight": 0.51
+   },
+   "T5_FIBER_LEVEL2": {
+    "fame": 90.0,
+    "weight": 0.76
+   },
+   "T6_FIBER_LEVEL2": {
+    "fame": 180.0,
+    "weight": 1.14
+   },
+   "T7_FIBER_LEVEL2": {
+    "fame": 300.0,
+    "weight": 1.71
+   },
+   "T8_FIBER_LEVEL2": {
+    "fame": 600.0,
+    "weight": 2.56
+   },
+   "T4_FIBER_LEVEL3": {
+    "fame": 60.0,
+    "weight": 0.51
+   },
+   "T5_FIBER_LEVEL3": {
+    "fame": 180.0,
+    "weight": 0.76
+   },
+   "T6_FIBER_LEVEL3": {
+    "fame": 360.0,
+    "weight": 1.14
+   },
+   "T7_FIBER_LEVEL3": {
+    "fame": 600.0,
+    "weight": 1.71
+   },
+   "T8_FIBER_LEVEL3": {
+    "fame": 1200.0,
+    "weight": 2.56
+   },
+   "T4_FIBER_LEVEL4": {
+    "fame": 120.0,
+    "weight": 0.51
+   },
+   "T5_FIBER_LEVEL4": {
+    "fame": 360.0,
+    "weight": 0.76
+   },
+   "T6_FIBER_LEVEL4": {
+    "fame": 720.0,
+    "weight": 1.14
+   },
+   "T7_FIBER_LEVEL4": {
+    "fame": 1200.0,
+    "weight": 1.71
+   },
+   "T8_FIBER_LEVEL4": {
+    "fame": 2400.0,
+    "weight": 2.56
+   }
+  },
   "nodes": {
    "WOOD": {
     "static": {
