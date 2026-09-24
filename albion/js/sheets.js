@@ -1981,6 +1981,12 @@ export function openGatherSetup(forId = null) {
   const speed = gatherSpeed(family, tier, s);
   const key = rateKey(family, tier, kit);
   const measured = kit.measured[key];
+  /* What ten minutes of pure swinging comes to. A real run is always under it
+   * - you spend some of every minute walking to the next tree - so it is a
+   * ceiling you can check your own count against rather than a target. It is
+   * also the one sanity check the app can offer on a number it cannot know. */
+  const ceiling = run && !run.impossible
+    ? 600 / run.rate.secondsPerSwing * run.rate.unitsPerSwing : 0;
 
   const part = (label, value, extra = '') => (value > 0 ? `
     <div class="bar-row"><span class="n">${esc(label)}${extra ? ` <small>${esc(extra)}</small>` : ''}</span>
@@ -2133,6 +2139,12 @@ export function openGatherSetup(forId = null) {
         density, travel, competition and live respawn are in no dump. Until you
         fill one in the app quotes the swing floor and says the hours are
         unknown, rather than inventing a number.</div>
+      ${ceiling > 0 ? `<div class="hint">Ten minutes of nothing but swinging, with
+        this kit, would be ${short(Math.floor(ceiling))} — so that is the ceiling and
+        yours will be under it, because some of the ten minutes is walking.${
+  measured && measured.per10min > ceiling
+    ? ` <b>Yours is above it</b>, which means the kit set here is not the kit
+        you measured with.` : ''}</div>` : ''}
     </div>
     ${measuredRows ? `<div class="card">${measuredRows}</div>` : ''}
 
