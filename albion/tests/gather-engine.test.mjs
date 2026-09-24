@@ -432,6 +432,61 @@ test('every way out of a pile of logs, costed the same way', () => {
   }
 });
 
+test('a two-step route is sized from the same pile as a one-step one', () => {
+  /* The bug this is here to keep out. Every row is sized by asking for one
+   * unit and reading what it ate, and a station takes whole crafts at every
+   * step - so on a two-step chain the rounding at the bottom is most of a
+   * unit, and the row came out a third short. A comparison between routes
+   * that started from different piles is not a comparison at all. */
+  const prices = {
+    T5_WOOD: 260, T5_WOOD_LEVEL1: 1900, T6_WOOD: 700,
+    T4_PLANKS: 700, T5_PLANKS: 1100, T4_PLANKS_LEVEL1: 2400, T5_PLANKS_LEVEL1: 6200,
+  };
+  const ctx = {
+    recipeOf, priceOf: (id) => prices[id] ?? 0,
+    settings: kit({ premium: true, gather: { toolTier: 8 } }),
+    cityId: 'fortsterling',
+  };
+  /* The floor is one whole craft: the station will not make three fifths of a
+   * plank, so a route can only land on a multiple of what one craft eats. That
+   * is 2% of a hundred-log pile and a fifth of a percent of a stack, and the
+   * test says so rather than pretending the rounding is not there. */
+  for (const [qty, tol] of [[100, 0.02], [999, 0.005], [5000, 0.005]]) {
+    const rows = resourceExits('T5_WOOD', ctx, { qty });
+    const two = rows.find((r) => r.key === 'enchantRefine');
+    const one = rows.find((r) => r.key === 'refine');
+    assert.ok(Math.abs(two.rawsUsed - qty) / qty < tol,
+      `two-step at ${qty} used ${two.rawsUsed}`);
+    assert.ok(Math.abs(one.rawsUsed - qty) / qty < tol,
+      `one-step at ${qty} used ${one.rawsUsed}`);
+    // And having started from the same pile, they cost the same swings.
+    assert.ok(Math.abs(two.swingSeconds / one.swingSeconds - 1) < tol * 2);
+  }
+  /* Before the correction the two-step route was sized off a single-unit probe
+   * and came back a third light, which made refining-after-transmuting look
+   * worse than it is for a reason that had nothing to do with refining. */
+  const stack = resourceExits('T5_WOOD', ctx, { qty: 999 });
+  assert.ok(stack.find((r) => r.key === 'enchantRefine').rawsUsed > 900);
+});
+
+test('the gathering board is the destiny board, not a second list', () => {
+  /* A gathering node is a board node like any other, so its levels live with
+   * the rest of your board. Keeping them anywhere else would mean filling the
+   * same number in twice and the two drifting apart. */
+  const viaBoard = kit({ nodeLevels: { GATHER_WOOD_T5: 100 } });
+  const viaKit = kit({ gather: { specLevels: { GATHER_WOOD_T5: 100 } } });
+  assert.equal(round(gatherYield('WOOD', 5, 0, viaBoard).spec), 0.5);
+  assert.equal(round(gatherYield('WOOD', 5, 0, viaKit).spec), 0.5);
+  assert.equal(gatherSpeed('WOOD', 5, viaBoard).raw, 0.5);
+  // A level on one family is no help on another, or at another tier.
+  assert.equal(gatherYield('ORE', 5, 0, viaBoard).spec, 0);
+  assert.equal(gatherYield('WOOD', 6, 0, viaBoard).spec, 0);
+  // And over the node's own cap is still the cap.
+  assert.equal(round(gatherYield('WOOD', 5, 0, kit({
+    nodeLevels: { GATHER_WOOD_T5: 400 },
+  })).spec), 0.5);
+});
+
 test('once a run is timed, the exits are worth silver an hour', () => {
   const prices = { T5_WOOD: 260, T4_PLANKS: 700, T5_PLANKS: 1100 };
   const rows = resourceExits('T5_WOOD', {
