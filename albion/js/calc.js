@@ -747,10 +747,12 @@ export function craftPnL(recipeId, {
   const missing = new Set();
   // What was gathered rather than bought, and what that cost in time.
   const gathered = {};
+  const byproducts = {};
   const assumed = new Set();
   let gatherSwingSeconds = 0;
   let gatherHours = 0;
   let gatherFame = 0;
+  let gatherWeight = 0;
   let focus = 0;
   let fees = 0;
   let buyCost = 0;
@@ -794,12 +796,31 @@ export function craftPnL(recipeId, {
          * hours in exactly the way a run with no price is honest about
          * costing unknown silver. */
         const run = gatherRun(itemId, { qty: units, settings });
-        if (run) {
-          gathered[itemId] = run;
+        /* A run the game would refuse - your tool is two tiers under the node,
+         * or you asked for a grade that node never rolls - is recorded so the
+         * screen can say why, and then priced as bought. Billing it at zero
+         * because it was impossible would be a free lunch. */
+        if (run) gathered[itemId] = run;
+        if (run && !run.impossible) {
           gatherSwingSeconds += run.swingSeconds;
           gatherHours = run.hours === null ? null
             : (gatherHours === null ? null : gatherHours + run.hours);
           gatherFame += run.fame;
+          gatherWeight += run.weight;
+          /* What the node handed you that you were not after. A twentieth of
+           * every plain harvest comes up enchanted, and an enchanted log is
+           * worth a multiple of a plain one, so this is real silver rather
+           * than a curiosity - it just is not silver from the recipe. */
+          for (const row of run.byproducts) {
+            const unit = sellPriceOf(row.id);
+            if (!unit) continue;
+            byproducts[row.id] = {
+              id: row.id,
+              qty: (byproducts[row.id]?.qty || 0) + row.qty,
+              unit,
+              value: (byproducts[row.id]?.value || 0) + row.qty * unit,
+            };
+          }
           for (const a of run.assumed) assumed.add(a);
           buy(itemId, units, perCraft, 0);
           return null;
@@ -885,7 +906,14 @@ export function craftPnL(recipeId, {
   if (!blend.plain) missing.add(outId);
   const tax = taxRate(settings, { instant: sellInstant });
   const gross = made * unitPrice;
-  const revenue = gross * (1 - tax);
+  /* The enchanted resources that fell out of the gathering, sold on the open
+   * market. Never at the Black Market, whatever the run's own sale is: it
+   * takes equipment and nothing else. Its own line, because it is not what
+   * the recipe earned and rolling it into the margin would flatter the
+   * recipe. */
+  const byproductValue = Object.values(byproducts).reduce((t, b) => t + b.value, 0);
+  const byproductRevenue = byproductValue * (1 - taxRate(settings));
+  const revenue = gross * (1 - tax) + byproductRevenue;
   const cost = buyCost + fees;
   const profit = revenue - cost;
 
@@ -918,9 +946,19 @@ export function craftPnL(recipeId, {
     gatherSwingSeconds,
     gatherHours: Object.keys(gathered).length ? gatherHours : 0,
     gatherFame,
+    gatherWeight,
+    // The enchanted resources the run picked up along the way, and what they
+    // fetch. Counted in revenue above, listed here so a screen can say so.
+    byproducts: Object.values(byproducts).sort((a, b) => b.value - a.value),
+    byproductValue,
+    byproductRevenue,
     // Everything in this answer that came from you rather than from the game.
     assumed: [...assumed],
-    gross, tax, taxPaid: gross - revenue, revenue, profit,
+    gross,
+    tax,
+    taxPaid: (gross + byproductValue) - revenue,
+    revenue,
+    profit,
     margin: revenue > 0 ? profit / revenue : 0,
     perItem: made > 0 ? profit / made : 0,
     silverPerFocus: focus > 0 ? profit / focus : null,

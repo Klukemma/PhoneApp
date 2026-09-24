@@ -13,26 +13,50 @@
 import { craftPnL, taxRate } from './calc.js';
 import { enchantUp, gatherRun, rawIdOf, refinedOf, tierUp } from './gather.js';
 
-/** Selling it exactly as it came out of the ground. */
+/**
+ * Selling it exactly as it came out of the ground.
+ *
+ * Shaped like a craftPnL so the rows below can be read the same way. The
+ * enchanted resources the run picked up on the way are credited here too -
+ * leaving them off only this row would make selling the logs look worse than
+ * refining them for a reason that has nothing to do with refining.
+ */
 function sellRaw(rawId, qty, ctx) {
+  const price = ctx.sellPriceOf || ctx.priceOf;
   const run = gatherRun(rawId, { qty, settings: ctx.settings });
-  const unit = (ctx.sellPriceOf || ctx.priceOf)(rawId);
+  const unit = price(rawId);
   const gross = qty * unit;
-  const revenue = gross * (1 - taxRate(ctx.settings));
+  const tax = taxRate(ctx.settings);
+  const byproducts = (run.byproducts || [])
+    .map((row) => ({ id: row.id, qty: row.qty, unit: price(row.id), value: row.qty * price(row.id) }))
+    .filter((row) => row.value > 0);
+  const byproductValue = byproducts.reduce((t, b) => t + b.value, 0);
+  const byproductRevenue = byproductValue * (1 - tax);
+  const revenue = gross * (1 - tax) + byproductRevenue;
   return {
     qty,
     made: qty,
     unitPrice: unit,
+    gross,
+    tax,
+    taxPaid: (gross + byproductValue) - revenue,
     revenue,
     buyCost: 0,
     fees: 0,
+    cost: 0,
     focus: 0,
     profit: revenue,
     missing: unit ? [] : [rawId],
+    steps: [],
+    buys: [],
     gathered: { [rawId]: run },
     gatherSwingSeconds: run.swingSeconds,
     gatherHours: run.hours,
     gatherFame: run.fame,
+    gatherWeight: run.weight,
+    byproducts,
+    byproductValue,
+    byproductRevenue,
     assumed: run.assumed,
   };
 }
@@ -118,6 +142,7 @@ export function resourceExits(rawId, ctx, { qty = 999 } = {}) {
       swingSeconds: seconds,
       hours: p.gatherHours,
       fame: p.gatherFame,
+      byproductRevenue: p.byproductRevenue || 0,
       missing: p.missing || [],
       assumed: p.assumed || [],
       silverPerSwingSecond: seconds > 0 ? p.profit / seconds : null,

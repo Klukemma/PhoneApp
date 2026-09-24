@@ -32,6 +32,12 @@ export const rawId = (family, tier, enchant = 0) =>
 /** Is this something you go out and gather, rather than buy or make? */
 export const isRaw = (itemId) => !!rawIdOf(itemId);
 
+/** What the game calls this sort of node, for a sentence about it. */
+const kindLabel = (settings, kind) =>
+  (settings?.gathering?.kindLabels?.[kind] || kind).toLowerCase();
+
+const pct = (frac) => `${(frac * 100).toFixed(frac < 0.01 ? 2 : 1)}%`;
+
 /* ---------------------------------------------------------- the kit --- */
 
 const DEFAULTS = {
@@ -63,6 +69,11 @@ export const kitOf = (settings) => ({
   ...DEFAULTS,
   ...(settings?.gather || {}),
   gear: { ...DEFAULTS.gear, ...(settings?.gather?.gear || {}) },
+  /* A gathering node is a destiny board node like any other, so the levels
+   * live with the rest of your board rather than in a second list you would
+   * have to remember to fill in twice. A caller can still hand them in
+   * directly, which is what the tests do. */
+  specLevels: settings?.gather?.specLevels || settings?.nodeLevels || {},
 });
 
 /** The key one measured rate is filed under. One per thing you actually farm. */
@@ -240,37 +251,75 @@ export function gatherRun(itemId, { qty = 999, settings }) {
   if (rate.impossible) {
     return {
       kind: 'gather', itemId, qty, impossible: true, rate,
-      assumed: [], hours: null, swingSeconds: 0,
+      why: `a T${tier} node needs at least a T${rate.needTool} tool`,
+      assumed: [], hours: null, swingSeconds: 0, mix: [], byproducts: [],
+      fame: 0, weight: 0, harvests: 0, swings: 0, nodes: 0,
     };
   }
 
-  const swings = qty / rate.unitsPerSwing;
+  /* What grade comes off the node, and so how many swings a pile of ONE grade
+   * really takes. Every harvest rolls: in a royal cluster 94.45% come up
+   * plain and the rest come up enchanted. That cuts both ways, and the
+   * direction everyone forgets is the second one. A stack of plain logs needs
+   * 5.9% more harvests than the yield maths alone says, because a twentieth
+   * of them turn out not to be plain. And a stack of T5.1 logs needs twenty
+   * times as many, because you cannot aim at one - they only fall out of
+   * ordinary gathering. That is the whole reason enchanted resources cost
+   * what they do, and an app that reported them as equally farmable would be
+   * wrong by a factor of twenty. */
+  const odds = settings.gathering?.rareOdds?.[kit.zone]
+    || settings.gathering?.rareOdds?.royal || [1, 0, 0, 0, 0];
+  const rolls = rate.node.rare || [];
+  const chance = { 0: 1 };
+  for (const g of rolls) {
+    chance[g] = odds[g] || 0;
+    chance[0] -= chance[g];
+  }
+  const share = chance[enchant] || 0;
+  if (!(share > 0)) {
+    /* Not a roll this node makes. T?.4 is the honest case: pristine exists
+     * only on a resource treasure and the published weights give it zero, so
+     * the app says it cannot be farmed rather than quoting a time for it. */
+    return {
+      kind: 'gather', itemId, qty, impossible: true, ungatherable: true, rate,
+      why: enchant
+        ? `a ${kindLabel(settings, kit.kind)} never rolls grade .${enchant}`
+        : 'this node gives nothing plain',
+      assumed: [], hours: null, swingSeconds: 0, mix: [], byproducts: [],
+      fame: 0, weight: 0, harvests: 0, swings: 0, nodes: 0,
+    };
+  }
+
+  // Everything the node hands you on the way to the pile you asked for.
+  const harvests = qty / share;
+  const swings = harvests / rate.unitsPerSwing;
   const swingSeconds = swings * rate.secondsPerSwing;
-  const nodes = qty / rate.unitsPerNode;
+  const nodes = harvests / rate.unitsPerNode;
 
   const perHour = measuredPerHour(family, tier, settings);
-  const hours = perHour > 0 ? qty / perHour : null;
+  const hours = perHour > 0 ? harvests / perHour : null;
   // What share of a real hour is spent actually swinging. Anything above a
   // few percent usually means the rate was measured somewhere very rich.
   const uptime = hours ? swingSeconds / (hours * 3600) : null;
 
-  /* What grade it comes back in. The odds are the game's, by cluster
-   * quality rather than by zone colour, and a pristine node is not a roll at
-   * all - it only exists on a resource treasure. */
-  const odds = settings.gathering?.rareOdds?.[kit.zone]
-    || settings.gathering?.rareOdds?.royal || [1, 0, 0, 0, 0];
-  const rolls = rate.node.rare || [];
-  const rare = rolls.reduce((t, g) => t + (odds[g] || 0), 0);
-  const mix = [{ grade: 0, share: 1 - rare }, ...rolls.map((g) => ({ grade: g, share: odds[g] || 0 }))]
+  const mix = Object.entries(chance)
+    .map(([g, sh]) => ({ grade: Number(g), share: sh }))
     .filter((row) => row.share > 0)
-    .map((row) => ({ ...row, id: rawId(family, tier, row.grade), qty: qty * row.share }));
+    .sort((a, b) => a.grade - b.grade)
+    .map((row) => ({ ...row, id: rawId(family, tier, row.grade), qty: harvests * row.share }));
+  // What you did not set out for and come home with anyway. Worth real silver:
+  // an enchanted log sells for a multiple of a plain one.
+  const byproducts = mix.filter((row) => row.grade !== enchant);
 
-  /* Fame. The zone factor is 1 everywhere but the deep black zones, and
-   * premium's half again on it is the one part of premium the game does
-   * publish plainly. */
+  /* Fame, over everything the run picks up rather than only the grade you
+   * were after - an enchanted log is worth double the fame of the plain one,
+   * and they are a twentieth of the run. The zone factor is 1 everywhere but
+   * the deep black zones, and premium's half again on fame is the one part of
+   * premium the game does publish plainly. */
   const fameFactor = settings.gathering?.fameFactor?.[kit.danger] ?? 1;
-  const famePerUnit = settings.gathering?.raws?.[itemId]?.fame || 0;
-  const fame = qty * famePerUnit * fameFactor * (settings.premium ? 1.5 : 1);
+  const raws = settings.gathering?.raws || {};
+  const fame = mix.reduce((t, row) => t + row.qty * (raws[row.id]?.fame || 0), 0)
+    * fameFactor * (settings.premium ? 1.5 : 1);
 
   const foodRow = settings.gathering?.food?.[kit.food]?.grades?.[String(kit.foodEnchant || 0)];
   const pies = hours && foodRow?.seconds
@@ -279,6 +328,10 @@ export function gatherRun(itemId, { qty = 999, settings }) {
   const assumed = [...rate.yield.assumed];
   if (hours === null) {
     assumed.push('how fast you actually gather — time a ten-minute run');
+  }
+  if (enchant) {
+    assumed.push(`a grade .${enchant} node is ${pct(share)} of harvests, so this `
+      + 'is what it takes to collect that many by gathering plain');
   }
   if (kit.wornSeconds != null && !rate.yield.ramped) {
     assumed.push('the set has not reached full charges yet');
@@ -290,10 +343,10 @@ export function gatherRun(itemId, { qty = 999, settings }) {
 
   return {
     kind: 'gather', itemId, qty, family, tier, enchant,
-    rate, swings, swingSeconds, nodes,
+    rate, harvests, share, swings, swingSeconds, nodes,
     hours, uptime, perHour,
-    mix, fame, pies,
-    weight: qty * (settings.gathering?.raws?.[itemId]?.weight ?? 0),
+    mix, byproducts, fame, pies,
+    weight: mix.reduce((t, row) => t + row.qty * (raws[row.id]?.weight || 0), 0),
     assumed,
   };
 }

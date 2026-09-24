@@ -106,6 +106,33 @@ function defaults() {
       haulSilverPerWeight: 0,
       // Do every step in one city, or each in the city that is best for it.
       craftWhere: 'one',
+      /* Your gathering kit: what you have on, where you swing it, and what
+       * you have actually measured. Nothing is switched on to begin with,
+       * because a bonus you do not have is not a rounding error - a full set
+       * and a pie is most of a second run's worth of resources, and assuming
+       * it would quietly double every answer on the screen.
+       *
+       * `measured` is the one thing here the game files cannot supply: how
+       * many a real hour gives you, keyed by what you farmed and where. Until
+       * you fill one in, the app reports the swing floor and says the hours
+       * are unknown rather than inventing a node density. */
+      gather: {
+        kind: 'static',          // which sort of node, from gathering.kindLabels
+        zone: 'royal',           // cluster quality, which sets the grade odds
+        danger: 'black',         // zone colour, which only changes fame
+        toolTier: 0,             // 0 = none set, and then nothing is assumed
+        toolAvalon: false,
+        gear: { head: 0, armor: 0, shoes: 0, backpack: false },
+        food: '',
+        foodEnchant: 0,
+        potion: '',
+        potionEnchant: 0,
+        // The two things no game file settles, kept where you can change them.
+        premiumMode: 'add',
+        gearCoversEnchanted: true,
+        // "WOOD:5:static:royal" -> { per10min }
+        measured: {},
+      },
       // What goes in the trough, per food category. The game will not let a
       // direwolf eat wheat, so one field could never cover all three.
       feedItemIds: { plants: 'T3_WHEAT', meat: 'T3_MEAT', mount: 'T8_FARM_OX_GROWN' },
@@ -158,6 +185,9 @@ function withConstants(state, data) {
   // And so does the feed table: which items each category accepts, and the
   // nutrition each carries.
   state.settings.feeds = data.feeds;
+  // And the gathering tables: what a node gives, how long a swing takes, and
+  // what every bonus in the game is worth. Game data, so always fresh.
+  state.settings.gathering = data.gathering;
   // The quality table is game data too, never a saved copy.
   if (data.quality) state.settings.quality = data.quality;
   // And so is what things weigh, which is what decides whether a farm bonus
@@ -199,6 +229,43 @@ const LAND_KINDS = new Set(['farm', 'herbgarden', 'pasture', 'kennel', 'plant', 
  */
 const LAND_SCHEMA = 2;
 const LEGACY_KIND = { farm: 'plant', pasture: 'animal' };
+
+/**
+ * A gathering kit, merged a level down and clamped.
+ *
+ * Merged because a save written before the gear slots existed must not lose
+ * the tool tier it did have. Clamped because this reaches the yield engine
+ * directly, and a hand-edited backup with a tier of 99 in it would read as a
+ * real bonus rather than as nonsense.
+ */
+function normalizeKit(rawKit = {}) {
+  const base = defaults().settings.gather;
+  const kit = {
+    ...base,
+    ...rawKit,
+    gear: { ...base.gear, ...(rawKit.gear || {}) },
+    measured: {},
+  };
+  // Tier 0 means "nothing set", and there is no gathering gear below T2.
+  const tier = (v) => {
+    const n = Math.round(Number(v) || 0);
+    return n >= 2 && n <= 8 ? n : 0;
+  };
+  kit.toolTier = tier(kit.toolTier);
+  for (const slot of ['head', 'armor', 'shoes']) kit.gear[slot] = tier(kit.gear[slot]);
+  kit.gear.backpack = !!kit.gear.backpack;
+  kit.toolAvalon = !!kit.toolAvalon;
+  kit.gearCoversEnchanted = !!kit.gearCoversEnchanted;
+  kit.premiumMode = kit.premiumMode === 'multiply' ? 'multiply' : 'add';
+  const grade = (v) => Math.min(3, Math.max(0, Math.round(Number(v) || 0)));
+  kit.foodEnchant = grade(kit.foodEnchant);
+  kit.potionEnchant = grade(kit.potionEnchant);
+  for (const [k, v] of Object.entries(rawKit.measured || {})) {
+    const per10 = Number(v?.per10min);
+    if (Number.isFinite(per10) && per10 > 0) kit.measured[k] = { per10min: Math.round(per10) };
+  }
+  return kit;
+}
 
 function normalize(raw) {
   const base = defaults();
@@ -273,6 +340,11 @@ function normalize(raw) {
       if (!Number.isFinite(n) || n < 0) delete map[k];
     }
   }
+  s.settings.gather = normalizeKit(raw.settings?.gather);
+  // The gathering tables are regenerated from the game files every boot, so a
+  // stale copy out of a backup must never be the one the engine reads.
+  delete s.settings.gathering;
+
   // One trough setting became three, one per food category. Whatever was in
   // the old single field was a plant, so that is where it goes.
   s.settings.feedItemIds = {
@@ -728,6 +800,33 @@ export function setSpec(recipeId, level) {
 }
 
 /** Your level on one destiny board node. */
+/* ------------------------------------------------------- gathering kit -- */
+
+/** Change part of the kit. Every road in goes through the same clamp. */
+export function setGather(patch) {
+  state.settings.gather = normalizeKit({ ...state.settings.gather, ...patch });
+  commit();
+}
+
+/** One slot of the gatherer set, by the tier of the piece you have on. */
+export const setGatherGear = (slot, tierOrOn) =>
+  setGather({ gear: { ...state.settings.gather.gear, [slot]: tierOrOn } });
+
+/**
+ * What you actually got in ten minutes, filed against what you were farming.
+ *
+ * The one number in the whole gathering model that no game file can supply,
+ * because node density, travel, competition and respawn are not in any dump.
+ * Zero clears it, and then the app goes back to saying the hours are unknown.
+ */
+export function setMeasured(key, per10min) {
+  const n = Number(per10min);
+  const measured = { ...state.settings.gather.measured };
+  if (!Number.isFinite(n) || n <= 0) delete measured[key];
+  else measured[key] = { per10min: Math.round(n) };
+  setGather({ measured });
+}
+
 export function setNodeLevel(nodeId, level) {
   const n = Number(level);
   if (!Number.isFinite(n) || n <= 0) delete state.nodeLevels[nodeId];

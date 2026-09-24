@@ -62,15 +62,18 @@ test('the tool, and only the tool, decides how long a swing takes', () => {
 });
 
 test('999 T5 logs, swing time only, by axe', () => {
-  // The floor the game files give exactly. Travel, respawn and competition
-  // are on top of this and are not in any dump.
+  /* The floor the game files give exactly. Travel, respawn and competition
+   * are on top of this and are not in any dump.
+   *
+   * It is 1058 harvests rather than 999 because a twentieth of them come up
+   * enchanted, and an enchanted log is not a plain one. */
   const floor = (toolTier) => MIN(
     gatherRun('T5_WOOD', { qty: 999, settings: kit({ gather: { toolTier } }) }).swingSeconds);
-  assert.equal(floor(4), 149.9);
-  assert.equal(floor(5), 99.9);
-  assert.equal(floor(6), 69.9);
-  assert.equal(floor(7), 50);
-  assert.equal(floor(8), 35);
+  assert.equal(floor(4), 158.7);
+  assert.equal(floor(5), 105.8);
+  assert.equal(floor(6), 74);
+  assert.equal(floor(7), 52.9);
+  assert.equal(floor(8), 37);
 });
 
 /* -------------------------------------------------------- the yield -- */
@@ -181,15 +184,16 @@ test('a full kit turns a two-hour stack into a quarter of an hour of swinging', 
     }),
   });
   assert.equal(round(run.rate.yield.multiplier), 3.125);
-  assert.equal(Math.round(run.swings), 320, '999 at 3.125 a swing');
+  assert.equal(Math.round(run.harvests), 1058, '999 plain means 1058 harvests');
+  assert.equal(Math.round(run.swings), 338, '1058 at 3.125 a swing');
   // The board pays in speed as well as yield, and at 100 its half a second
   // is clipped to the cap - so the swing itself is 6 x 0.35 / 1.4 = 1.5s.
   assert.equal(run.rate.speed.total, 0.4);
   assert.equal(round(run.rate.secondsPerSwing), 1.5);
-  assert.equal(MIN(run.swingSeconds), 8);
-  // Against 99.9 minutes with a matching axe and nothing else on.
+  assert.equal(MIN(run.swingSeconds), 8.5);
+  // Against 105.8 minutes with a matching axe and nothing else on.
   const bare = gatherRun('T5_WOOD', { qty: 999, settings: kit({}) });
-  assert.equal(MIN(bare.swingSeconds), 99.9);
+  assert.equal(MIN(bare.swingSeconds), 105.8);
 });
 
 test('the run refuses to quote hours it cannot know', () => {
@@ -204,7 +208,7 @@ test('the run refuses to quote hours it cannot know', () => {
   });
   assert.equal(measuredPerHour('WOOD', 5, timed), 540);
   const run = gatherRun('T5_WOOD', { qty: 999, settings: timed });
-  assert.equal(round(run.hours, 3), 1.85);
+  assert.equal(round(run.hours, 3), 1.959);
   assert.ok(run.uptime > 0 && run.uptime < 1, 'and what share of it is swinging');
   assert.ok(!run.assumed.some((a) => a.includes('ten-minute run')));
 });
@@ -212,7 +216,7 @@ test('the run refuses to quote hours it cannot know', () => {
 test('a node only holds so many charges, and the grades it rolls are the game\'s', () => {
   const run = gatherRun('T5_WOOD', { qty: 999, settings: kit({}) });
   assert.equal(run.rate.unitsPerNode, 5, 'five charges, one log each');
-  assert.equal(Math.ceil(run.nodes), 200, 'so a stack is two hundred trees');
+  assert.equal(Math.ceil(run.nodes), 212, 'so a stack is 212 trees');
   // Royal odds: one node in twenty is uncommon, one in two hundred rare.
   const shares = Object.fromEntries(run.mix.map((m) => [m.grade, round(m.share, 4)]));
   assert.deepEqual(shares, { 0: 0.9445, 1: 0.05, 2: 0.005, 3: 0.0005 });
@@ -227,11 +231,95 @@ test('fame follows the zone and premium, and weight follows the stack', () => {
   const run = gatherRun('T5_WOOD', {
     qty: 999, settings: kit({ premium: true, gather: { danger: 'black6' } }),
   });
-  // 22.5 fame a log, half again for the deepest black, half again for premium.
-  assert.equal(Math.round(run.fame), Math.round(999 * 22.5 * 1.5 * 1.5));
-  assert.equal(round(run.weight, 1), round(999 * 0.76, 1));
+  /* 22.5 fame a log, half again for the deepest black, half again for premium
+   * - over everything the run picks up, not only the plain logs. The 58
+   * enchanted ones are worth double, quadruple and eight times as much each,
+   * so they are 13% of the fame off 5.5% of the harvests. */
+  const naive = 999 * 22.5 * 1.5 * 1.5;
+  assert.equal(Math.round(run.fame), 57214);
+  assert.ok(run.fame > naive * 1.12 && run.fame < naive * 1.14);
+  assert.equal(round(run.weight, 1), round(1057.7 * 0.76, 1));
   const safe = gatherRun('T5_WOOD', { qty: 999, settings: kit({ gather: { danger: 'yellow' } }) });
-  assert.equal(Math.round(safe.fame), Math.round(999 * 22.5));
+  assert.equal(Math.round(safe.fame), 25428);
+});
+
+test('a stack of one grade takes the swings that grade really costs', () => {
+  /* The thing every gathering calculator gets wrong. You cannot aim at an
+   * enchanted node: it is a roll on an ordinary one. So a stack of T5.1 logs
+   * is not a stack of logs with a different label on it, it is twenty stacks
+   * of plain gathering with the plain ones kept aside. Thirty-three hours of
+   * swinging against one and three quarters, off the same tree. */
+  const plain = gatherRun('T5_WOOD', { qty: 999, settings: kit({}) });
+  const up = gatherRun('T5_WOOD_LEVEL1', { qty: 999, settings: kit({}) });
+  assert.equal(round(plain.share, 4), 0.9445);
+  assert.equal(up.share, 0.05);
+  assert.equal(Math.round(up.harvests), 19980);
+  assert.equal(round(up.swingSeconds / plain.swingSeconds), round(0.9445 / 0.05));
+  assert.ok(up.assumed.some((a) => a.includes('5.0% of harvests')));
+  // And the plain run says what the extra 5.5% of harvests left you holding.
+  assert.deepEqual(plain.byproducts.map((b) => b.id),
+    ['T5_WOOD_LEVEL1', 'T5_WOOD_LEVEL2', 'T5_WOOD_LEVEL3']);
+  assert.equal(Math.round(plain.byproducts[0].qty), 53);
+  // A better zone is four times the enchanted, for the same swings.
+  const rich = gatherRun('T5_WOOD_LEVEL1', {
+    qty: 999, settings: kit({ gather: { zone: 'outlandsHigh' } }),
+  });
+  assert.equal(round(rich.swingSeconds / up.swingSeconds, 3), 0.25);
+});
+
+test('a grade a node never rolls is refused, not quoted', () => {
+  // Pristine only exists on a resource treasure, and the published weights
+  // give it zero even there, so there is no honest number to print.
+  const run = gatherRun('T5_WOOD_LEVEL4', { qty: 10, settings: kit({}) });
+  assert.equal(run.impossible, true);
+  assert.equal(run.ungatherable, true);
+  assert.equal(run.swingSeconds, 0);
+  assert.match(run.why, /never rolls grade \.4/);
+  // As is a node two tiers over your tool, which the game will not let you hit.
+  const low = gatherRun('T5_WOOD', { qty: 10, settings: kit({ gather: { toolTier: 3 } }) });
+  assert.equal(low.impossible, true);
+  assert.equal(low.ungatherable, undefined);
+  assert.match(low.why, /at least a T4 tool/);
+});
+
+test('what fell out of the gathering is counted, and counted separately', () => {
+  const prices = {
+    T5_WOOD: 260, T4_PLANKS: 700, T5_PLANKS: 1100,
+    T5_WOOD_LEVEL1: 900, T5_WOOD_LEVEL2: 3000, T5_WOOD_LEVEL3: 9000,
+  };
+  const base = {
+    recipeOf, qty: 999, priceOf: (id) => prices[id] ?? 0,
+    settings: kit({ gather: { toolTier: 8 } }), cityId: 'fortsterling',
+  };
+  const run = craftPnL('T5_PLANKS', { ...base, gather: new Set(['T5_WOOD']) });
+  const ids = run.byproducts.map((b) => b.id);
+  assert.deepEqual(ids.sort(), ['T5_WOOD_LEVEL1', 'T5_WOOD_LEVEL2', 'T5_WOOD_LEVEL3']);
+  assert.ok(run.byproductValue > 0);
+  // In the revenue, and never in the recipe's own gross.
+  assert.equal(round(run.revenue), round(run.gross * (1 - run.tax) + run.byproductRevenue));
+  assert.ok(run.gross > 0 && run.byproductRevenue > 0);
+  // Tax is paid on both sides of it.
+  assert.ok(run.taxPaid > 0);
+  assert.equal(round(run.taxPaid),
+    round((run.gross + run.byproductValue) - run.revenue));
+  // Nothing gathered, nothing on the side.
+  const bought = craftPnL('T5_PLANKS', base);
+  assert.deepEqual(bought.byproducts, []);
+  assert.equal(bought.byproductValue, 0);
+});
+
+test('a gather the game would refuse is bought instead of being free', () => {
+  const prices = { T5_WOOD: 260, T4_PLANKS: 700, T5_PLANKS: 1100 };
+  const base = {
+    recipeOf, qty: 100, priceOf: (id) => prices[id] ?? 0,
+    settings: kit({ gather: { toolTier: 3 } }), cityId: 'fortsterling',
+  };
+  const run = craftPnL('T5_PLANKS', { ...base, gather: new Set(['T5_WOOD']) });
+  const bought = craftPnL('T5_PLANKS', base);
+  assert.equal(run.gathered.T5_WOOD.impossible, true, 'recorded, so the screen can say why');
+  assert.equal(run.gatherSwingSeconds, 0);
+  assert.equal(round(run.buyCost), round(bought.buyCost), 'and paid for at the market');
+  assert.equal(round(run.profit), round(bought.profit));
 });
 
 /* --------------------------------------------------------- the exits -- */
