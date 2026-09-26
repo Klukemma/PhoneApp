@@ -226,6 +226,33 @@ game files, including market tax: `gamedata.xml` gives a 2.5% setup fee and an
 8% transaction tax, and premium halves the transaction half — 6.5% against
 10.5%.
 
+### Two ways to an enchanted item
+
+A T5.1 sword can be crafted out of enchanted bars and leather, or made by
+putting 288 runes into a plain one you already own. Which is cheaper moves with
+the rune price, so both sit in the same list under **Enchanting with runes** and
+the prices decide.
+
+The ladder is a rune for .1, a soul for .2 and a relic for .3, always at the
+item's own tier, and each rung climbs from the one below. Nothing upgrades into
+a pristine one — a .4 is crafted or not had. The upgrade costs no focus and has
+no published return rate, so nothing is assumed to come back.
+
+### What you carry
+
+The gatherer's backpack is a third kind of bonus: not yield, not capacity, but
+**30% off the weight** of every resource it covers, from the first swing — it
+does not ramp the way the cap, garb and boots do. Tier buys reach and never
+depth, so a T4 pack is worth nothing on a T5 log, and a pack is made for one
+resource: a Lumberjack's does nothing for ore.
+
+The pie's Max Load is the other half: a published percentage on the capacity you
+type, so a pork pie turns 1,000 kg into 1,300.
+
+The kilos themselves stay yours. The game publishes a base load and a
+progression but nothing that turns them into a number, and a mount's capacity is
+a different figure again.
+
 ### Journals
 
 A gathering run earns fame, and that fame fills journals: you buy them empty at
@@ -418,7 +445,7 @@ actually pay on the buy side.
 
 ```bash
 npm start      # http://localhost:8080/albion/
-npm test       # 303 tests over the profit engine and the extracted data
+npm test       # 307 tests over the profit engine and the extracted data
 npm run gamedata
 ```
 
