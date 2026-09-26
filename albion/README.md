@@ -226,6 +226,51 @@ game files, including market tax: `gamedata.xml` gives a 2.5% setup fee and an
 8% transaction tax, and premium halves the transaction half — 6.5% against
 10.5%.
 
+### Journals
+
+A gathering run earns fame, and that fame fills journals: you buy them empty at
+a station, gather as you were going to anyway, and sell them full. It is worth
+about 8% of a run and the app used to report it as zero. On 999 T5 logs it is
+78k of full books against 35k of empty ones.
+
+The whole economy is published — the station's price for an empty one, what a
+full one holds, and which tiers count towards it. Two things in the file catch
+people out and both are handled: the journal families are named for the
+profession while the resources are named for the material, so a stone gatherer
+fills a **Stonecutter's** journal off **rock**; and an empty journal and a full
+one are not separate entries in items.xml at all, though they are separate items
+on the market, so both ids are emitted for pricing.
+
+One thing the files do not settle, and the app says so on screen: a journal
+carries two fame numbers — `maxfame` and a mission value exactly two thirds of
+it — and nothing says which fills the book. The app counts with `maxfame`, the
+one that names a capacity.
+
+### Quality, and rerolling it
+
+The repair station's Reroll Quality action is published in full, and two facts
+in that table are worth knowing. Every below-diagonal weight is zero, so a
+reroll can only ever move an item **up**. And from Normal the stay-weight is
+zero too — so rerolling a plain item **always** improves it, four times in five
+to Good and one in two thousand straight to Masterpiece.
+
+What the station charges is in no game file. So the app does not quote a fee: it
+works out what the reroll is *worth* from your own per-quality prices and gives
+you the threshold — "worth doing if the fee is under 43,431". The unknown number
+stays unknown and becomes the thing you check at the station, where it is
+written down anyway.
+
+### How old is that price?
+
+Every price records when the market last **saw** it — the data project's own
+observation date, not when you pressed fetch. Prices older than your threshold
+(24 hours by default) are flagged on the Market list and warned about in the
+price sheet.
+
+Age is a label and never an adjustment. Nothing in any game file says when a
+quote goes off, so no number is silently discounted by it. Prices saved before
+the app recorded dates read "age unknown", because that is what they are.
+
 ### Where you farm
 
 A royal city pays **+10%** yield on the handful of crops, herbs and animal
@@ -373,7 +418,7 @@ actually pay on the buy side.
 
 ```bash
 npm start      # http://localhost:8080/albion/
-npm test       # 299 tests over the profit engine and the extracted data
+npm test       # 303 tests over the profit engine and the extracted data
 npm run gamedata
 ```
 
