@@ -849,8 +849,93 @@ def build_gather_raws(items):
     return out
 
 
+def build_gather_journals(items, raws):
+    """Gathering journals: the silver a run earns that is not the resources.
+
+    You buy a journal empty at a station, it fills with the gathering fame you
+    were earning anyway, and a full one sells. The whole economy is published:
+    `craftingrequirements/@silver` is what the station charges, `@maxfame` is
+    the capacity, and `famefillingmissions/gatherfame/@mintier` says which
+    tiers count towards it.
+
+    Two things the file makes you look twice at. The journal families are named
+    for the profession and the resources are named for the material, so the
+    stone journal's loot is T4_ROCK - the id the rest of the app uses - and the
+    two words have to be mapped rather than assumed equal. And an empty journal
+    and a full one are not `uniquename`s here at all: the file keys the base and
+    localization.xml carries the two states, which IS how the market lists them,
+    so both ids are emitted for pricing.
+
+    Every number is identical across the five families at a given tier; only
+    the loot list differs, and the build asserts that rather than trusting it.
+    """
+    FAMILY_WORD = {"WOOD": "WOOD", "ORE": "ORE", "ROCK": "STONE",
+                   "FIBER": "FIBER", "HIDE": "HIDE"}
+    by_tier = {}
+    for tier in range(2, 9):
+        seen = {}
+        for family, word in FAMILY_WORD.items():
+            el = next((j for j in items.iter("journalitem")
+                       if j.get("uniquename") == f"T{tier}_JOURNAL_{word}"), None)
+            if el is None:
+                raise SystemExit(f"no T{tier}_JOURNAL_{word} in items.xml")
+            gf = el.find("famefillingmissions/gatherfame")
+            req = el.find("craftingrequirements")
+            if gf is None or req is None:
+                raise SystemExit(f"T{tier}_JOURNAL_{word} lost its fame or its price")
+            if int(gf.get("mintier")) != tier:
+                raise SystemExit(f"T{tier}_JOURNAL_{word} fills from tier {gf.get('mintier')}")
+            seen[family] = {
+                # What it holds, and the other fame number the file carries.
+                # Which of the two actually fills the book is not settled here:
+                # maxfame is the one that names a capacity and is exactly 1.5x
+                # the mission value at every single tier, so that is what the
+                # app counts with, out loud.
+                "fame": float(el.get("maxfame")),
+                "missionFame": float(gf.get("value")),
+                # A station price, like a seed's. Not a market quote.
+                "silver": int(float(req.get("silver", 0))),
+                "weight": float(el.get("weight") or 0),
+            }
+            for loot in el.findall("lootlist/loot"):
+                name = loot.get("itemname")
+                if name not in raws:
+                    raise SystemExit(f"T{tier}_JOURNAL_{word} loots unknown {name}")
+        first = next(iter(seen.values()))
+        if any(row != first for row in seen.values()):
+            raise SystemExit(f"T{tier} journals differ between families: {seen}")
+        by_tier[str(tier)] = first
+    return {
+        "tiers": by_tier,
+        # family -> the word the journal is filed under, for building the id.
+        "words": FAMILY_WORD,
+    }
+
+
+def journal_items():
+    """The 70 ids a market will actually quote, with the names it shows them by.
+
+    An empty journal and a full one are the two things that change hands, and
+    neither is a `uniquename` in items.xml - the file keys the base book and
+    localization.xml carries the two states. That is also how the market lists
+    them, so these are the ids the app has to price, and they need names or
+    every price row would read as a raw id.
+    """
+    out = {}
+    for tier in range(2, 9):
+        for word in ("WOOD", "ORE", "STONE", "FIBER", "HIDE"):
+            for state in ("EMPTY", "FULL"):
+                unique = f"T{tier}_JOURNAL_{word}_{state}"
+                name = NAMES_BY_ID.get(unique)
+                if not name:
+                    raise SystemExit(f"localization has no name for {unique}")
+                out[unique] = {"name": name, "tier": tier, "cat": "journal"}
+    return out
+
+
 def build_gathering(gd, items, spells):
     """Everything the app needs to cost an hour in the open world."""
+    raws = build_gather_raws(items)
     nodes, kind_labels, factors = build_harvestables()
     gear, interval, tool, tool_min, consumable = build_gather_buffs(spells)
 
@@ -883,7 +968,8 @@ def build_gathering(gd, items, spells):
 
     return {
         "families": list(FAMILIES),
-        "raws": build_gather_raws(items),
+        "raws": raws,
+        "journals": build_gather_journals(items, raws),
         "nodes": nodes,
         "kindLabels": kind_labels,
         "toolTimeFactor": factors,
@@ -1412,6 +1498,12 @@ def main() -> None:
     # refining tables only fill the gaps.
     for rid, row in resource_items.items():
         item_meta.setdefault(rid, row)
+    # The books a gathering run fills, so the Market screen can name and price
+    # them. Seventy ids on top of the resources' 245 - a rounding error next to
+    # the 794 the boot payload already carries.
+    journals = journal_items()
+    for jid, row in journals.items():
+        item_meta.setdefault(jid, row)
 
     data = {
         "source": "ao-data/ao-bin-dumps (items.xml, loot.xml, gamedata.xml)",
@@ -1495,6 +1587,8 @@ def main() -> None:
         # It is 240-odd short rows against a two-megabyte download, so the
         # duplication is cheaper than the wait.
         "resources": resource_ids,
+        # The journal ids a gathering run can fill, for the price list.
+        "journalIds": sorted(journals),
         # Everything about going out and gathering the raws above: what a
         # node gives, how long a swing takes, and every bonus that changes
         # either. Small enough to ride in the file that loads at boot,

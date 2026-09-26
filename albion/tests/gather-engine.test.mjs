@@ -593,8 +593,10 @@ test('the kit is not free once you have timed a run', () => {
   assert.equal(pie.qty, fed.gathered.T5_WOOD.pies);
   assert.equal(pot.qty, fed.gathered.T5_WOOD.potions);
   assert.equal(round(fed.kitCost), round(pie.qty * 4000 + pot.qty * 900));
-  // It is a cost, so it lands in cost and comes off the profit.
-  assert.equal(round(fed.cost), round(fed.buyCost + fed.fees + fed.kitCost));
+  // It is a cost, so it lands in cost and comes off the profit — alongside
+  // the empty journals the run's own fame filled.
+  assert.equal(round(fed.cost),
+    round(fed.buyCost + fed.fees + fed.kitCost + fed.journalCost));
   assert.equal(round(fed.profit), round(fed.revenue - fed.cost));
   // The potions are the surprise: far more silver than the pies.
   assert.ok(pot.cost > pie.cost);
@@ -616,6 +618,67 @@ test('the kit is not free once you have timed a run', () => {
     cityId: 'fortsterling', gather: new Set(['T5_WOOD']),
   });
   assert.equal(untimed.kitCost, 0);
+});
+
+test('a gathering run fills journals, and they are worth silver', () => {
+  /* The fame a run earns was already on the screen doing nothing. It fills
+   * books you buy empty and sell full, which is silver a gathering trip earns
+   * that has nothing to do with the resources — and the app reported it as
+   * zero. */
+  const prices = {
+    T5_WOOD: 260, T4_PLANKS: 700, T5_PLANKS: 1100,
+    T5_JOURNAL_WOOD_FULL: 9000, T5_JOURNAL_WOOD_EMPTY: 4500,
+  };
+  const run = craftPnL('T5_PLANKS', {
+    recipeOf, qty: 999, priceOf: (id) => prices[id] ?? 0,
+    settings: kit({ gather: { toolTier: 8 } }),
+    cityId: 'fortsterling', gather: new Set(['T5_WOOD']),
+  });
+  assert.equal(run.journals.length, 1);
+  const book = run.journals[0];
+  assert.equal(book.fullId, 'T5_JOURNAL_WOOD_FULL');
+  assert.equal(book.emptyId, 'T5_JOURNAL_WOOD_EMPTY');
+  // Filled by the run's own fame, at the journal's published capacity.
+  assert.equal(round(book.filled, 4),
+    round(run.gatherFame / data.gathering.journals.tiers['5'].fame, 4));
+  /* The empty has a published station price, so it has a floor even with no
+   * market quote — and the market one only counts when it undercuts it. The
+   * file says 4,000 and this test's market says 4,500, so 4,000 wins. */
+  assert.equal(book.unitCost, 4000);
+  assert.equal(data.gathering.journals.tiers['5'].silver, 4000);
+  // Both sides land in the run: the empties in cost, the fulls in revenue.
+  assert.equal(round(run.journalCost), round(book.filled * 4000));
+  assert.equal(round(run.journalValue), round(book.filled * 9000));
+  assert.ok(run.journalRevenue > 0 && run.journalRevenue < run.journalValue,
+    'taxed like any other sale');
+  assert.equal(round(run.revenue),
+    round(run.gross * (1 - run.tax) + run.byproductRevenue + run.journalRevenue));
+
+  // Stone journals are filed under the profession's word, not the material's.
+  const rock = craftPnL('T5_STONEBLOCK', {
+    recipeOf, qty: 100, priceOf: (id) => ({ T5_ROCK: 60, T5_STONEBLOCK: 180, T4_STONEBLOCK: 90 }[id] ?? 0),
+    settings: kit({ gather: { toolTier: 8 } }),
+    cityId: 'fortsterling', gather: new Set(['T5_ROCK']),
+  });
+  assert.equal(rock.journals[0].fullId, 'T5_JOURNAL_STONE_FULL');
+
+  // Unpriced, a full journal is a gap rather than a zero.
+  const blind = craftPnL('T5_PLANKS', {
+    recipeOf, qty: 999, priceOf: (id) => ({ T5_WOOD: 260, T4_PLANKS: 700, T5_PLANKS: 1100 }[id] ?? 0),
+    settings: kit({ gather: { toolTier: 8 } }),
+    cityId: 'fortsterling', gather: new Set(['T5_WOOD']),
+  });
+  assert.ok(blind.missing.includes('T5_JOURNAL_WOOD_FULL'));
+  assert.equal(blind.journalValue, 0);
+  assert.ok(blind.journalCost > 0, 'but the empties still cost what they cost');
+
+  // A run that gathers nothing has no books.
+  const bought = craftPnL('T5_PLANKS', {
+    recipeOf, qty: 999, priceOf: (id) => prices[id] ?? 0,
+    settings: kit({}), cityId: 'fortsterling',
+  });
+  assert.deepEqual(bought.journals, []);
+  assert.equal(bought.journalCost, 0);
 });
 
 test('two gathered materials: hours only once every one of them is timed', () => {

@@ -161,6 +161,9 @@ function act(el) {
     openGatherSetup();
   } else if (d.act === 'gather-board') {
     openBoard(GATHER_BRANCH);
+  } else if (d.act === 'journal-prices') {
+    // The books this run fills, so a full one can be given a price.
+    go('prices');
   } else if (d.act === 'gather-prices') {
     runPriceFetch(gatherMissingIds());
   } else if (d.act === 'craft-pick') {

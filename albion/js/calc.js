@@ -763,6 +763,8 @@ export function craftPnL(recipeId, {
   const byproducts = {};
   // The pies and potions the run had to keep up to earn the yield it claimed.
   const kit = {};
+  // And the journals its fame filled along the way.
+  const journals = {};
   const assumed = new Set();
   let gatherSwingSeconds = 0;
   let gatherHours = 0;
@@ -942,9 +944,34 @@ export function craftPnL(recipeId, {
         cost: (kit[id]?.cost || 0) + qty * unit,
       };
     }
+    /* The journals the run filled. Silver a gathering trip earns that has
+     * nothing to do with the resources: you buy the books empty, the fame you
+     * were earning anyway fills them, and full ones sell. The empty has a
+     * published station price, so it has a floor cost even with no market
+     * quote - the same rule seeds already live by. The full one is a market
+     * item like any other, and unpriced it is a gap rather than a zero. */
+    const j = run.journal;
+    if (j && j.filled > 0.001) {
+      const station = j.silver;
+      const listed = costOf(j.emptyId);
+      const unitCost = listed > 0 ? Math.min(listed, station) : station;
+      const sells = sellPriceOf(j.fullId);
+      if (!sells) missing.add(j.fullId);
+      journals[j.fullId] = {
+        emptyId: j.emptyId,
+        fullId: j.fullId,
+        filled: (journals[j.fullId]?.filled || 0) + j.filled,
+        unitCost,
+        unitPrice: sells,
+        cost: (journals[j.fullId]?.cost || 0) + j.filled * unitCost,
+        value: (journals[j.fullId]?.value || 0) + j.filled * sells,
+      };
+    }
     for (const a of run.assumed) assumed.add(a);
   }
   const kitCost = Object.values(kit).reduce((t, k) => t + k.cost, 0);
+  const journalCost = Object.values(journals).reduce((t, x) => t + x.cost, 0);
+  const journalValue = Object.values(journals).reduce((t, x) => t + x.value, 0);
 
   /* What one is worth. With a quality mix that is the average across the
    * levels the run actually produces, which on equipment is most of the
@@ -968,8 +995,11 @@ export function craftPnL(recipeId, {
    * recipe. */
   const byproductValue = Object.values(byproducts).reduce((t, b) => t + b.value, 0);
   const byproductRevenue = byproductValue * (1 - taxRate(settings));
-  const revenue = gross * (1 - tax) + byproductRevenue;
-  const cost = buyCost + fees + kitCost;
+  // A full journal is sold on the open market like the enchanted resources,
+  // and never at the Black Market, which takes equipment and nothing else.
+  const journalRevenue = journalValue * (1 - taxRate(settings));
+  const revenue = gross * (1 - tax) + byproductRevenue + journalRevenue;
+  const cost = buyCost + fees + kitCost + journalCost;
   const profit = revenue - cost;
 
   return {
@@ -1010,11 +1040,17 @@ export function craftPnL(recipeId, {
     // What holding the kit's bonuses cost, and what it was spent on.
     kitItems: Object.values(kit).sort((a, b) => b.cost - a.cost),
     kitCost,
+    // The books the run's own fame filled, what the empties cost and what the
+    // full ones fetch. Both sides are in the profit above.
+    journals: Object.values(journals),
+    journalCost,
+    journalValue,
+    journalRevenue,
     // Everything in this answer that came from you rather than from the game.
     assumed: [...assumed],
     gross,
     tax,
-    taxPaid: (gross + byproductValue) - revenue,
+    taxPaid: (gross + byproductValue + journalValue) - revenue,
     revenue,
     profit,
     /* Margin is the whole activity's: profit over everything that came in,
@@ -1023,7 +1059,8 @@ export function craftPnL(recipeId, {
      * enchanted log turned up on the way to it, and quoting it as if it were
      * would flatter the recipe to anyone comparing two of them. */
     margin: revenue > 0 ? profit / revenue : 0,
-    perItem: made > 0 ? (profit - byproductRevenue) / made : 0,
+    perItem: made > 0
+      ? (profit - byproductRevenue - journalRevenue + journalCost) / made : 0,
     silverPerFocus: focus > 0 ? profit / focus : null,
     // A missing price reads as free on the way in and worthless on the way
     // out, so a run with any of these is not a number, it is a gap.

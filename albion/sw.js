@@ -1,7 +1,7 @@
 // Cache-first shell so the app opens instantly and works with no signal.
 // Bump CACHE when the shell or the game data changes.
 
-const CACHE = 'albionfarm-v39';  // v39: roads guardians, guild territory, the kit costs silver
+const CACHE = 'albionfarm-v40';  // v40: journals — the silver a gathering run earns that is not resources
 const SHELL = [
   './', './index.html', './manifest.webmanifest',
   './css/app.css',

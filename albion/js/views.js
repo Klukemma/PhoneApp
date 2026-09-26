@@ -1351,7 +1351,7 @@ export function priceListHTML() {
     groups.get(cat).push(id);
   }
   const ORDER = ['crop', 'herb', 'seed', 'product', 'baby', 'animal',
-    'raw', 'refined', 'potion', 'food', 'material', 'other'];
+    'raw', 'refined', 'journal', 'potion', 'food', 'material', 'other'];
   const sorted = [...groups.entries()]
     .sort((a, b) => ORDER.indexOf(a[0]) - ORDER.indexOf(b[0]));
 
@@ -1418,7 +1418,7 @@ const CAT_LABELS = {
   crop: 'Crops', herb: 'Herbs', seed: 'Seeds', product: 'Eggs & milk',
   baby: 'Baby animals', animal: 'Grown animals', potion: 'Potions',
   food: 'Food', raw: 'Gathered resources', refined: 'Refined materials',
-  material: 'Other materials', other: 'Other',
+  journal: 'Journals', material: 'Other materials', other: 'Other',
 };
 const catLabel = (c) => CAT_LABELS[c] || c;
 

@@ -18966,6 +18966,356 @@
    "tier": 8,
    "cat": "raw",
    "weight": 2.56
+  },
+  "T2_JOURNAL_WOOD_EMPTY": {
+   "name": "Novice Lumberjack's Journal (Empty)",
+   "tier": 2,
+   "cat": "journal"
+  },
+  "T2_JOURNAL_WOOD_FULL": {
+   "name": "Novice Lumberjack's Journal (Full)",
+   "tier": 2,
+   "cat": "journal"
+  },
+  "T2_JOURNAL_ORE_EMPTY": {
+   "name": "Novice Prospector's Journal (Empty)",
+   "tier": 2,
+   "cat": "journal"
+  },
+  "T2_JOURNAL_ORE_FULL": {
+   "name": "Novice Prospector's Journal (Full)",
+   "tier": 2,
+   "cat": "journal"
+  },
+  "T2_JOURNAL_STONE_EMPTY": {
+   "name": "Novice Stonecutter's Journal (Empty)",
+   "tier": 2,
+   "cat": "journal"
+  },
+  "T2_JOURNAL_STONE_FULL": {
+   "name": "Novice Stonecutter's Journal (Full)",
+   "tier": 2,
+   "cat": "journal"
+  },
+  "T2_JOURNAL_FIBER_EMPTY": {
+   "name": "Novice Cropper's Journal (Empty)",
+   "tier": 2,
+   "cat": "journal"
+  },
+  "T2_JOURNAL_FIBER_FULL": {
+   "name": "Novice Cropper's Journal (Full)",
+   "tier": 2,
+   "cat": "journal"
+  },
+  "T2_JOURNAL_HIDE_EMPTY": {
+   "name": "Novice Gamekeeper's Journal (Empty)",
+   "tier": 2,
+   "cat": "journal"
+  },
+  "T2_JOURNAL_HIDE_FULL": {
+   "name": "Novice Gamekeeper's Journal (Full)",
+   "tier": 2,
+   "cat": "journal"
+  },
+  "T3_JOURNAL_WOOD_EMPTY": {
+   "name": "Journeyman Lumberjack's Journal (Empty)",
+   "tier": 3,
+   "cat": "journal"
+  },
+  "T3_JOURNAL_WOOD_FULL": {
+   "name": "Journeyman Lumberjack's Journal (Full)",
+   "tier": 3,
+   "cat": "journal"
+  },
+  "T3_JOURNAL_ORE_EMPTY": {
+   "name": "Journeyman Prospector's Journal (Empty)",
+   "tier": 3,
+   "cat": "journal"
+  },
+  "T3_JOURNAL_ORE_FULL": {
+   "name": "Journeyman Prospector's Journal (Full)",
+   "tier": 3,
+   "cat": "journal"
+  },
+  "T3_JOURNAL_STONE_EMPTY": {
+   "name": "Journeyman Stonecutter's Journal (Empty)",
+   "tier": 3,
+   "cat": "journal"
+  },
+  "T3_JOURNAL_STONE_FULL": {
+   "name": "Journeyman Stonecutter's Journal (Full)",
+   "tier": 3,
+   "cat": "journal"
+  },
+  "T3_JOURNAL_FIBER_EMPTY": {
+   "name": "Journeyman Cropper's Journal (Empty)",
+   "tier": 3,
+   "cat": "journal"
+  },
+  "T3_JOURNAL_FIBER_FULL": {
+   "name": "Journeyman Cropper's Journal (Full)",
+   "tier": 3,
+   "cat": "journal"
+  },
+  "T3_JOURNAL_HIDE_EMPTY": {
+   "name": "Journeyman Gamekeeper's Journal (Empty)",
+   "tier": 3,
+   "cat": "journal"
+  },
+  "T3_JOURNAL_HIDE_FULL": {
+   "name": "Journeyman Gamekeeper's Journal (Full)",
+   "tier": 3,
+   "cat": "journal"
+  },
+  "T4_JOURNAL_WOOD_EMPTY": {
+   "name": "Adept Lumberjack's Journal (Empty)",
+   "tier": 4,
+   "cat": "journal"
+  },
+  "T4_JOURNAL_WOOD_FULL": {
+   "name": "Adept Lumberjack's Journal (Full)",
+   "tier": 4,
+   "cat": "journal"
+  },
+  "T4_JOURNAL_ORE_EMPTY": {
+   "name": "Adept Prospector's Journal (Empty)",
+   "tier": 4,
+   "cat": "journal"
+  },
+  "T4_JOURNAL_ORE_FULL": {
+   "name": "Adept Prospector's Journal (Full)",
+   "tier": 4,
+   "cat": "journal"
+  },
+  "T4_JOURNAL_STONE_EMPTY": {
+   "name": "Adept Stonecutter's Journal (Empty)",
+   "tier": 4,
+   "cat": "journal"
+  },
+  "T4_JOURNAL_STONE_FULL": {
+   "name": "Adept Stonecutter's Journal (Full)",
+   "tier": 4,
+   "cat": "journal"
+  },
+  "T4_JOURNAL_FIBER_EMPTY": {
+   "name": "Adept Cropper's Journal (Empty)",
+   "tier": 4,
+   "cat": "journal"
+  },
+  "T4_JOURNAL_FIBER_FULL": {
+   "name": "Adept Cropper's Journal (Full)",
+   "tier": 4,
+   "cat": "journal"
+  },
+  "T4_JOURNAL_HIDE_EMPTY": {
+   "name": "Adept Gamekeeper's Journal (Empty)",
+   "tier": 4,
+   "cat": "journal"
+  },
+  "T4_JOURNAL_HIDE_FULL": {
+   "name": "Adept Gamekeeper's Journal (Full)",
+   "tier": 4,
+   "cat": "journal"
+  },
+  "T5_JOURNAL_WOOD_EMPTY": {
+   "name": "Expert Lumberjack's Journal (Empty)",
+   "tier": 5,
+   "cat": "journal"
+  },
+  "T5_JOURNAL_WOOD_FULL": {
+   "name": "Expert Lumberjack's Journal (Full)",
+   "tier": 5,
+   "cat": "journal"
+  },
+  "T5_JOURNAL_ORE_EMPTY": {
+   "name": "Expert Prospector's Journal (Empty)",
+   "tier": 5,
+   "cat": "journal"
+  },
+  "T5_JOURNAL_ORE_FULL": {
+   "name": "Expert Prospector's Journal (Full)",
+   "tier": 5,
+   "cat": "journal"
+  },
+  "T5_JOURNAL_STONE_EMPTY": {
+   "name": "Expert Stonecutter's Journal (Empty)",
+   "tier": 5,
+   "cat": "journal"
+  },
+  "T5_JOURNAL_STONE_FULL": {
+   "name": "Expert Stonecutter's Journal (Full)",
+   "tier": 5,
+   "cat": "journal"
+  },
+  "T5_JOURNAL_FIBER_EMPTY": {
+   "name": "Expert Cropper's Journal (Empty)",
+   "tier": 5,
+   "cat": "journal"
+  },
+  "T5_JOURNAL_FIBER_FULL": {
+   "name": "Expert Cropper's Journal (Full)",
+   "tier": 5,
+   "cat": "journal"
+  },
+  "T5_JOURNAL_HIDE_EMPTY": {
+   "name": "Expert Gamekeeper's Journal (Empty)",
+   "tier": 5,
+   "cat": "journal"
+  },
+  "T5_JOURNAL_HIDE_FULL": {
+   "name": "Expert Gamekeeper's Journal (Full)",
+   "tier": 5,
+   "cat": "journal"
+  },
+  "T6_JOURNAL_WOOD_EMPTY": {
+   "name": "Master Lumberjack's Journal (Empty)",
+   "tier": 6,
+   "cat": "journal"
+  },
+  "T6_JOURNAL_WOOD_FULL": {
+   "name": "Master Lumberjack's Journal (Full)",
+   "tier": 6,
+   "cat": "journal"
+  },
+  "T6_JOURNAL_ORE_EMPTY": {
+   "name": "Master Prospector's Journal (Empty)",
+   "tier": 6,
+   "cat": "journal"
+  },
+  "T6_JOURNAL_ORE_FULL": {
+   "name": "Master Prospector's Journal (Full)",
+   "tier": 6,
+   "cat": "journal"
+  },
+  "T6_JOURNAL_STONE_EMPTY": {
+   "name": "Master Stonecutter's Journal (Empty)",
+   "tier": 6,
+   "cat": "journal"
+  },
+  "T6_JOURNAL_STONE_FULL": {
+   "name": "Master Stonecutter's Journal (Full)",
+   "tier": 6,
+   "cat": "journal"
+  },
+  "T6_JOURNAL_FIBER_EMPTY": {
+   "name": "Master Cropper's Journal (Empty)",
+   "tier": 6,
+   "cat": "journal"
+  },
+  "T6_JOURNAL_FIBER_FULL": {
+   "name": "Master Cropper's Journal (Full)",
+   "tier": 6,
+   "cat": "journal"
+  },
+  "T6_JOURNAL_HIDE_EMPTY": {
+   "name": "Master Gamekeeper's Journal (Empty)",
+   "tier": 6,
+   "cat": "journal"
+  },
+  "T6_JOURNAL_HIDE_FULL": {
+   "name": "Master Gamekeeper's Journal (Full)",
+   "tier": 6,
+   "cat": "journal"
+  },
+  "T7_JOURNAL_WOOD_EMPTY": {
+   "name": "Grandmaster Lumberjack's Journal (Empty)",
+   "tier": 7,
+   "cat": "journal"
+  },
+  "T7_JOURNAL_WOOD_FULL": {
+   "name": "Grandmaster Lumberjack's Journal (Full)",
+   "tier": 7,
+   "cat": "journal"
+  },
+  "T7_JOURNAL_ORE_EMPTY": {
+   "name": "Grandmaster Prospector's Journal (Empty)",
+   "tier": 7,
+   "cat": "journal"
+  },
+  "T7_JOURNAL_ORE_FULL": {
+   "name": "Grandmaster Prospector's Journal (Full)",
+   "tier": 7,
+   "cat": "journal"
+  },
+  "T7_JOURNAL_STONE_EMPTY": {
+   "name": "Grandmaster Stonecutter's Journal (Empty)",
+   "tier": 7,
+   "cat": "journal"
+  },
+  "T7_JOURNAL_STONE_FULL": {
+   "name": "Grandmaster Stonecutter's Journal (Full)",
+   "tier": 7,
+   "cat": "journal"
+  },
+  "T7_JOURNAL_FIBER_EMPTY": {
+   "name": "Grandmaster Cropper's Journal (Empty)",
+   "tier": 7,
+   "cat": "journal"
+  },
+  "T7_JOURNAL_FIBER_FULL": {
+   "name": "Grandmaster Cropper's Journal (Full)",
+   "tier": 7,
+   "cat": "journal"
+  },
+  "T7_JOURNAL_HIDE_EMPTY": {
+   "name": "Grandmaster Gamekeeper's Journal (Empty)",
+   "tier": 7,
+   "cat": "journal"
+  },
+  "T7_JOURNAL_HIDE_FULL": {
+   "name": "Grandmaster Gamekeeper's Journal (Full)",
+   "tier": 7,
+   "cat": "journal"
+  },
+  "T8_JOURNAL_WOOD_EMPTY": {
+   "name": "Elder Lumberjack's Journal (Empty)",
+   "tier": 8,
+   "cat": "journal"
+  },
+  "T8_JOURNAL_WOOD_FULL": {
+   "name": "Elder Lumberjack's Journal (Full)",
+   "tier": 8,
+   "cat": "journal"
+  },
+  "T8_JOURNAL_ORE_EMPTY": {
+   "name": "Elder Prospector's Journal (Empty)",
+   "tier": 8,
+   "cat": "journal"
+  },
+  "T8_JOURNAL_ORE_FULL": {
+   "name": "Elder Prospector's Journal (Full)",
+   "tier": 8,
+   "cat": "journal"
+  },
+  "T8_JOURNAL_STONE_EMPTY": {
+   "name": "Elder Stonecutter's Journal (Empty)",
+   "tier": 8,
+   "cat": "journal"
+  },
+  "T8_JOURNAL_STONE_FULL": {
+   "name": "Elder Stonecutter's Journal (Full)",
+   "tier": 8,
+   "cat": "journal"
+  },
+  "T8_JOURNAL_FIBER_EMPTY": {
+   "name": "Elder Cropper's Journal (Empty)",
+   "tier": 8,
+   "cat": "journal"
+  },
+  "T8_JOURNAL_FIBER_FULL": {
+   "name": "Elder Cropper's Journal (Full)",
+   "tier": 8,
+   "cat": "journal"
+  },
+  "T8_JOURNAL_HIDE_EMPTY": {
+   "name": "Elder Gamekeeper's Journal (Empty)",
+   "tier": 8,
+   "cat": "journal"
+  },
+  "T8_JOURNAL_HIDE_FULL": {
+   "name": "Elder Gamekeeper's Journal (Full)",
+   "tier": 8,
+   "cat": "journal"
   }
  },
  "resources": [
@@ -19214,6 +19564,78 @@
   "T8_WOOD_LEVEL2",
   "T8_WOOD_LEVEL3",
   "T8_WOOD_LEVEL4"
+ ],
+ "journalIds": [
+  "T2_JOURNAL_FIBER_EMPTY",
+  "T2_JOURNAL_FIBER_FULL",
+  "T2_JOURNAL_HIDE_EMPTY",
+  "T2_JOURNAL_HIDE_FULL",
+  "T2_JOURNAL_ORE_EMPTY",
+  "T2_JOURNAL_ORE_FULL",
+  "T2_JOURNAL_STONE_EMPTY",
+  "T2_JOURNAL_STONE_FULL",
+  "T2_JOURNAL_WOOD_EMPTY",
+  "T2_JOURNAL_WOOD_FULL",
+  "T3_JOURNAL_FIBER_EMPTY",
+  "T3_JOURNAL_FIBER_FULL",
+  "T3_JOURNAL_HIDE_EMPTY",
+  "T3_JOURNAL_HIDE_FULL",
+  "T3_JOURNAL_ORE_EMPTY",
+  "T3_JOURNAL_ORE_FULL",
+  "T3_JOURNAL_STONE_EMPTY",
+  "T3_JOURNAL_STONE_FULL",
+  "T3_JOURNAL_WOOD_EMPTY",
+  "T3_JOURNAL_WOOD_FULL",
+  "T4_JOURNAL_FIBER_EMPTY",
+  "T4_JOURNAL_FIBER_FULL",
+  "T4_JOURNAL_HIDE_EMPTY",
+  "T4_JOURNAL_HIDE_FULL",
+  "T4_JOURNAL_ORE_EMPTY",
+  "T4_JOURNAL_ORE_FULL",
+  "T4_JOURNAL_STONE_EMPTY",
+  "T4_JOURNAL_STONE_FULL",
+  "T4_JOURNAL_WOOD_EMPTY",
+  "T4_JOURNAL_WOOD_FULL",
+  "T5_JOURNAL_FIBER_EMPTY",
+  "T5_JOURNAL_FIBER_FULL",
+  "T5_JOURNAL_HIDE_EMPTY",
+  "T5_JOURNAL_HIDE_FULL",
+  "T5_JOURNAL_ORE_EMPTY",
+  "T5_JOURNAL_ORE_FULL",
+  "T5_JOURNAL_STONE_EMPTY",
+  "T5_JOURNAL_STONE_FULL",
+  "T5_JOURNAL_WOOD_EMPTY",
+  "T5_JOURNAL_WOOD_FULL",
+  "T6_JOURNAL_FIBER_EMPTY",
+  "T6_JOURNAL_FIBER_FULL",
+  "T6_JOURNAL_HIDE_EMPTY",
+  "T6_JOURNAL_HIDE_FULL",
+  "T6_JOURNAL_ORE_EMPTY",
+  "T6_JOURNAL_ORE_FULL",
+  "T6_JOURNAL_STONE_EMPTY",
+  "T6_JOURNAL_STONE_FULL",
+  "T6_JOURNAL_WOOD_EMPTY",
+  "T6_JOURNAL_WOOD_FULL",
+  "T7_JOURNAL_FIBER_EMPTY",
+  "T7_JOURNAL_FIBER_FULL",
+  "T7_JOURNAL_HIDE_EMPTY",
+  "T7_JOURNAL_HIDE_FULL",
+  "T7_JOURNAL_ORE_EMPTY",
+  "T7_JOURNAL_ORE_FULL",
+  "T7_JOURNAL_STONE_EMPTY",
+  "T7_JOURNAL_STONE_FULL",
+  "T7_JOURNAL_WOOD_EMPTY",
+  "T7_JOURNAL_WOOD_FULL",
+  "T8_JOURNAL_FIBER_EMPTY",
+  "T8_JOURNAL_FIBER_FULL",
+  "T8_JOURNAL_HIDE_EMPTY",
+  "T8_JOURNAL_HIDE_FULL",
+  "T8_JOURNAL_ORE_EMPTY",
+  "T8_JOURNAL_ORE_FULL",
+  "T8_JOURNAL_STONE_EMPTY",
+  "T8_JOURNAL_STONE_FULL",
+  "T8_JOURNAL_WOOD_EMPTY",
+  "T8_JOURNAL_WOOD_FULL"
  ],
  "gathering": {
   "families": [
@@ -19752,6 +20174,59 @@
    "T8_FIBER_LEVEL4": {
     "fame": 2400.0,
     "weight": 2.56
+   }
+  },
+  "journals": {
+   "tiers": {
+    "2": {
+     "fame": 450.0,
+     "missionFame": 300.0,
+     "silver": 500,
+     "weight": 0.15
+    },
+    "3": {
+     "fame": 900.0,
+     "missionFame": 600.0,
+     "silver": 1000,
+     "weight": 0.23
+    },
+    "4": {
+     "fame": 1800.0,
+     "missionFame": 1200.0,
+     "silver": 2000,
+     "weight": 0.34
+    },
+    "5": {
+     "fame": 3600.0,
+     "missionFame": 2400.0,
+     "silver": 4000,
+     "weight": 0.51
+    },
+    "6": {
+     "fame": 7200.0,
+     "missionFame": 4800.0,
+     "silver": 8000,
+     "weight": 0.76
+    },
+    "7": {
+     "fame": 14400.0,
+     "missionFame": 9600.0,
+     "silver": 16000,
+     "weight": 1.14
+    },
+    "8": {
+     "fame": 28800.0,
+     "missionFame": 19200.0,
+     "silver": 32000,
+     "weight": 1.71
+    }
+   },
+   "words": {
+    "WOOD": "WOOD",
+    "ORE": "ORE",
+    "ROCK": "STONE",
+    "FIBER": "FIBER",
+    "HIDE": "HIDE"
    }
   },
   "nodes": {

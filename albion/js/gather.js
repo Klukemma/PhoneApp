@@ -391,7 +391,37 @@ export function gatherRun(itemId, { qty = 999, settings }) {
   const foodId = gradeId(kit.food, kit.foodEnchant);
   const potionId = gradeId(kit.potion, kit.potionEnchant);
 
+  /* The books the run fills. You buy a journal empty at a station, it fills
+   * with the gathering fame you were earning anyway, and a full one sells -
+   * so it is silver a gathering run earns that has nothing to do with the
+   * resources, and the app was reporting it as zero.
+   *
+   * Which of the journal's two fame numbers fills it is the one thing here the
+   * files do not settle: `maxfame` names a capacity and `famefillingmissions`
+   * carries a value exactly two thirds of it, at every tier of every family.
+   * The app counts with maxfame and says so. */
+  const book = settings.gathering?.journals;
+  const bookTier = book?.tiers?.[String(tier)];
+  const word = book?.words?.[family];
+  const journal = bookTier && word ? {
+    tier,
+    emptyId: `T${tier}_JOURNAL_${word}_EMPTY`,
+    fullId: `T${tier}_JOURNAL_${word}_FULL`,
+    // Fame is what fills them, and this run's fame is already worked out.
+    fame: bookTier.fame,
+    filled: fame / bookTier.fame,
+    // The station's own price for an empty one, which is published, so this
+    // has a floor cost even before anybody looks at a market.
+    silver: bookTier.silver,
+    weight: bookTier.weight,
+  } : null;
+
   const assumed = [...rate.yield.assumed];
+  if (journal && journal.filled > 0.01) {
+    assumed.push('a journal is filled by its `maxfame`, which is the attribute '
+      + 'that names a capacity — the file carries a second fame number two '
+      + 'thirds of it and does not say which one fills the book');
+  }
   if (hours === null) {
     assumed.push('how fast you actually gather — time a ten-minute run');
   }
@@ -418,7 +448,7 @@ export function gatherRun(itemId, { qty = 999, settings }) {
     kind: 'gather', itemId, qty, family, tier, enchant,
     rate, harvests, share, swings, swingSeconds, nodes, nodeVisits,
     hours, uptime, perHour,
-    mix, byproducts, fame, pies, potions, foodId, potionId,
+    mix, byproducts, fame, pies, potions, foodId, potionId, journal,
     weight: mix.reduce((t, row) => t + row.qty * (raws[row.id]?.weight || 0), 0),
     assumed,
   };

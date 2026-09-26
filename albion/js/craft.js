@@ -551,6 +551,19 @@ function gatherSection(run) {
     right: amt(run.byproductRevenue, { sign: true }),
   }) : '';
 
+  /* The books the run's own fame filled. Both sides on one row, because the
+   * empties are a real cost and quoting only the sale would flatter it. */
+  const books = (run.journals || []).length ? run.journals.map((b) => rowHTML({
+    act: 'journal-prices', icon: ICON.journal, cls: 'wrap',
+    title: `${b.filled.toFixed(1)} × ${esc(nameOf(b.fullId))}`,
+    meta: esc(b.unitPrice
+      ? `filled by this run's fame · ${silver(b.unitCost)} empty, ${silver(b.unitPrice)} full`
+      : `filled by this run's fame · ${silver(b.unitCost)} an empty one · no price set for a full one`),
+    right: b.unitPrice
+      ? amt(run.journalRevenue - run.journalCost, { sign: true })
+      : tag('Set price'),
+  })).join('') : '';
+
   const fame = run.gatherFame > 0 ? rowHTML({
     tagName: 'div', icon: ICON.board, cls: 'wrap',
     title: `${short(run.gatherFame)} gathering fame`,
@@ -604,7 +617,7 @@ function gatherSection(run) {
       <div class="section-head"><h2>Gather · what to go and get</h2>
         <span class="right num">${run.gatherSwingSeconds > 0
       ? `${timeText(run.gatherSwingSeconds)} swinging` : ''}</span></div>
-      ${rows.join('')}${extra}${fame}${weight}${upkeep}${assumed}
+      ${rows.join('')}${extra}${books}${fame}${weight}${upkeep}${assumed}
     </section>`;
 }
 
@@ -624,10 +637,14 @@ function moneyHTML(run) {
       ${run.byproductValue > 0.5 ? line(
     `Enchanted ${run.byproducts.length === 1 ? 'resource' : 'resources'} that fell out of the gathering`,
     short(run.byproductValue), 'good') : ''}
+      ${run.journalValue > 0.5 ? line('Journals the run filled',
+    short(run.journalValue), 'good') : ''}
       ${line('Materials bought', short(-run.buyCost), 'bad')}
       ${run.kitCost > 0.5 ? line(
     run.kitItems.map((k) => `${short(k.qty)} × ${esc(nameOf(k.id))}`).join(' and '),
     short(-run.kitCost), 'bad') : ''}
+      ${run.journalCost > 0.5 ? line('Empty journals to carry',
+    short(-run.journalCost), 'bad') : ''}
       ${run.fees > 0.5 ? line('Station fees', short(-run.fees), 'bad') : ''}
       <div class="bar-row total"><span class="n">Profit</span>
         <span class="v num ${toneOf(run.profit)}">${short(run.profit)}</span></div>

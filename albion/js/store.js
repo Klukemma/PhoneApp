@@ -546,6 +546,12 @@ export function pricedItemIds(data = DATA) {
    * thousand weapons stay out of it: the Best tab fetches the slice it is
    * looking at, because nobody prices all of them at once. */
   for (const id of data.resources || []) ids.add(id);
+  /* The books a gathering run fills. Seventy ids, empty and full, and both
+   * sides are needed: the empty because a market can undercut the station's
+   * price, the full because that is the sale. Without these the Market screen
+   * could never quote the one number the journal line needs, and the run
+   * would only ever be able to subtract the cost of the empties. */
+  for (const id of data.journalIds || []) ids.add(id);
   return [...ids];
 }
 
