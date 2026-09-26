@@ -385,6 +385,11 @@ export function gatherRun(itemId, { qty = 999, settings }) {
     ?.grades?.[String(kit.potionEnchant || 0)];
   const potions = hours && potionRow?.seconds
     ? Math.ceil((hours * 3600) / potionRow.seconds) : 0;
+  /* And what they are, so somebody can put a price on them. The game writes
+   * an enchanted consumable with the same suffix it gives everything else. */
+  const gradeId = (base, grade) => (base ? `${base}${grade ? `@${grade}` : ''}` : '');
+  const foodId = gradeId(kit.food, kit.foodEnchant);
+  const potionId = gradeId(kit.potion, kit.potionEnchant);
 
   const assumed = [...rate.yield.assumed];
   if (hours === null) {
@@ -413,7 +418,7 @@ export function gatherRun(itemId, { qty = 999, settings }) {
     kind: 'gather', itemId, qty, family, tier, enchant,
     rate, harvests, share, swings, swingSeconds, nodes, nodeVisits,
     hours, uptime, perHour,
-    mix, byproducts, fame, pies, potions,
+    mix, byproducts, fame, pies, potions, foodId, potionId,
     weight: mix.reduce((t, row) => t + row.qty * (raws[row.id]?.weight || 0), 0),
     assumed,
   };

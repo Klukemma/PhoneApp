@@ -31,6 +31,14 @@ function sellRaw(rawId, qty, run, ctx) {
     .filter((row) => row.value > 0);
   const byproductValue = byproducts.reduce((t, b) => t + b.value, 0);
   const byproductRevenue = byproductValue * (1 - tax);
+  /* And the kit this run assumed you were holding up, charged the same way
+   * craftPnL charges it — otherwise selling the logs would look better than
+   * refining them by exactly the price of the pies. */
+  const cost = ctx.costOf || price;
+  const kitItems = [[run.foodId, run.pies], [run.potionId, run.potions]]
+    .filter(([id, qty]) => id && qty > 0 && cost(id))
+    .map(([id, qty]) => ({ id, qty, unit: cost(id), cost: qty * cost(id) }));
+  const kitCost = kitItems.reduce((t, k) => t + k.cost, 0);
   const revenue = gross * (1 - tax) + byproductRevenue;
   return {
     qty,
@@ -42,9 +50,9 @@ function sellRaw(rawId, qty, run, ctx) {
     revenue,
     buyCost: 0,
     fees: 0,
-    cost: 0,
+    cost: kitCost,
     focus: 0,
-    profit: revenue,
+    profit: revenue - kitCost,
     missing: unit ? [] : [rawId],
     steps: [],
     buys: [],
@@ -56,6 +64,8 @@ function sellRaw(rawId, qty, run, ctx) {
     byproducts,
     byproductValue,
     byproductRevenue,
+    kitItems,
+    kitCost,
     assumed: run.assumed,
   };
 }

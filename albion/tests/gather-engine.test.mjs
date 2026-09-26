@@ -566,6 +566,58 @@ test('gathering a material costs no silver and does cost time', () => {
   assert.ok(gathered.assumed.length > 0);
 });
 
+test('the kit is not free once you have timed a run', () => {
+  /* The app tells you to drink 131 potions over a two-hour run and used to
+   * charge you for none of them. Those potions are what makes the +8.5% yield
+   * on the screen above true, so they belong in the same P&L as the yield. */
+  const prices = {
+    T5_WOOD: 260, T4_PLANKS: 700, T5_PLANKS: 1100,
+    T7_MEAL_PIE: 4000, T8_POTION_GATHER: 900,
+  };
+  const timed = { 'WOOD:5:static:royal': { per10min: 90 } };
+  const at = (over) => craftPnL('T5_PLANKS', {
+    recipeOf, qty: 999, priceOf: (id) => prices[id] ?? 0,
+    settings: kit({ gather: { toolTier: 8, measured: timed, ...over } }),
+    cityId: 'fortsterling', gather: new Set(['T5_WOOD']),
+  });
+
+  const bare = at({});
+  assert.equal(bare.kitCost, 0, 'nothing on, nothing to charge');
+  assert.deepEqual(bare.kitItems, []);
+
+  const fed = at({ food: 'T7_MEAL_PIE', potion: 'T8_POTION_GATHER' });
+  const ids = fed.kitItems.map((k) => k.id).sort();
+  assert.deepEqual(ids, ['T7_MEAL_PIE', 'T8_POTION_GATHER']);
+  const pie = fed.kitItems.find((k) => k.id === 'T7_MEAL_PIE');
+  const pot = fed.kitItems.find((k) => k.id === 'T8_POTION_GATHER');
+  assert.equal(pie.qty, fed.gathered.T5_WOOD.pies);
+  assert.equal(pot.qty, fed.gathered.T5_WOOD.potions);
+  assert.equal(round(fed.kitCost), round(pie.qty * 4000 + pot.qty * 900));
+  // It is a cost, so it lands in cost and comes off the profit.
+  assert.equal(round(fed.cost), round(fed.buyCost + fed.fees + fed.kitCost));
+  assert.equal(round(fed.profit), round(fed.revenue - fed.cost));
+  // The potions are the surprise: far more silver than the pies.
+  assert.ok(pot.cost > pie.cost);
+
+  /* An enchanted pie is a different item with a different id, so a price on
+   * the plain one does not cover it. Unpriced, it is reported as a gap rather
+   * than quietly charged at nothing - the same rule every other material in
+   * the run lives by. */
+  const sharp = at({ food: 'T7_MEAL_PIE', foodEnchant: 3 });
+  assert.deepEqual(sharp.kitItems, []);
+  assert.equal(sharp.kitCost, 0);
+  assert.ok(sharp.missing.includes('T7_MEAL_PIE@3'));
+  assert.ok(!fed.missing.includes('T7_MEAL_PIE'), 'while the priced one is fine');
+
+  // Untimed, there are no hours to spread a pie over, so nothing is charged.
+  const untimed = craftPnL('T5_PLANKS', {
+    recipeOf, qty: 999, priceOf: (id) => prices[id] ?? 0,
+    settings: kit({ gather: { toolTier: 8, food: 'T7_MEAL_PIE' } }),
+    cityId: 'fortsterling', gather: new Set(['T5_WOOD']),
+  });
+  assert.equal(untimed.kitCost, 0);
+});
+
 test('two gathered materials: hours only once every one of them is timed', () => {
   /* Half a run is not a run. A rate is filed per family, tier, node kind and
    * zone, so having timed T5 wood and not T4 wood is the ordinary state of

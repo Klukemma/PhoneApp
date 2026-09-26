@@ -761,6 +761,8 @@ export function craftPnL(recipeId, {
   const gathered = {};
   const gatherWant = {};
   const byproducts = {};
+  // The pies and potions the run had to keep up to earn the yield it claimed.
+  const kit = {};
   const assumed = new Set();
   let gatherSwingSeconds = 0;
   let gatherHours = 0;
@@ -922,8 +924,27 @@ export function craftPnL(recipeId, {
         value: (byproducts[row.id]?.value || 0) + row.qty * unit,
       };
     }
+    /* The kit is not free. A pie lasts half an hour and a gathering potion
+     * under a minute, so an afternoon of holding the bonuses this run assumed
+     * is four pies and a hundred and thirty one potions - real silver, spent
+     * to make the yield figures above true. Only countable once a run has
+     * been timed, because it is a question about wall-clock and not swings;
+     * before that it is zero and the screen says the kit is uncosted rather
+     * than pretending it was free. */
+    for (const [id, qty] of [[run.foodId, run.pies], [run.potionId, run.potions]]) {
+      if (!id || !(qty > 0)) continue;
+      const unit = costOf(id);
+      if (!unit) { missing.add(id); continue; }
+      kit[id] = {
+        id,
+        qty: (kit[id]?.qty || 0) + qty,
+        unit,
+        cost: (kit[id]?.cost || 0) + qty * unit,
+      };
+    }
     for (const a of run.assumed) assumed.add(a);
   }
+  const kitCost = Object.values(kit).reduce((t, k) => t + k.cost, 0);
 
   /* What one is worth. With a quality mix that is the average across the
    * levels the run actually produces, which on equipment is most of the
@@ -948,7 +969,7 @@ export function craftPnL(recipeId, {
   const byproductValue = Object.values(byproducts).reduce((t, b) => t + b.value, 0);
   const byproductRevenue = byproductValue * (1 - taxRate(settings));
   const revenue = gross * (1 - tax) + byproductRevenue;
-  const cost = buyCost + fees;
+  const cost = buyCost + fees + kitCost;
   const profit = revenue - cost;
 
   return {
@@ -986,6 +1007,9 @@ export function craftPnL(recipeId, {
     byproducts: Object.values(byproducts).sort((a, b) => b.value - a.value),
     byproductValue,
     byproductRevenue,
+    // What holding the kit's bonuses cost, and what it was spent on.
+    kitItems: Object.values(kit).sort((a, b) => b.cost - a.cost),
+    kitCost,
     // Everything in this answer that came from you rather than from the game.
     assumed: [...assumed],
     gross,

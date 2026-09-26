@@ -581,11 +581,15 @@ function gatherSection(run) {
       pies ? `${short(pies)} ${pies === 1 ? 'pie' : 'pies'}` : '',
       potions ? `${short(potions)} ${potions === 1 ? 'potion' : 'potions'}` : '',
     ].filter(Boolean).join(' and ')}`,
-    meta: potions
-      ? 'a gathering potion lasts under a minute and comes off cooldown as it '
-        + 'ends, so holding it all run is one a minute'
-      : 'over the hours you measured, not over the swings',
-    right: '',
+    meta: esc([
+      potions
+        ? 'a gathering potion lasts under a minute and comes off cooldown as it '
+          + 'ends, so holding it all run is one a minute'
+        : 'over the hours you measured, not over the swings',
+      run.kitCost > 0.5 ? 'charged against the profit above'
+        : 'no price set, so this run got them free',
+    ].join(' · ')),
+    right: run.kitCost > 0.5 ? amt(-run.kitCost) : tag('Set prices'),
   }) : '';
 
   const assumed = (run.assumed || []).length ? rowHTML({
@@ -621,6 +625,9 @@ function moneyHTML(run) {
     `Enchanted ${run.byproducts.length === 1 ? 'resource' : 'resources'} that fell out of the gathering`,
     short(run.byproductValue), 'good') : ''}
       ${line('Materials bought', short(-run.buyCost), 'bad')}
+      ${run.kitCost > 0.5 ? line(
+    run.kitItems.map((k) => `${short(k.qty)} × ${esc(nameOf(k.id))}`).join(' and '),
+    short(-run.kitCost), 'bad') : ''}
       ${run.fees > 0.5 ? line('Station fees', short(-run.fees), 'bad') : ''}
       <div class="bar-row total"><span class="n">Profit</span>
         <span class="v num ${toneOf(run.profit)}">${short(run.profit)}</span></div>
