@@ -19,7 +19,7 @@ import { esc } from './ui.js';
 import {
   ICON, amt, askLine, askStrip, go, heroHTML, moreHTML, note, rowHTML, slimRow, tag, tick,
 } from './html.js';
-import { isRaw, kitOf, rateKey } from './gather.js';
+import { carryCapacity, isRaw, kitOf, rateKey } from './gather.js';
 import {
   enchantOf, hours as hoursText, pct, short, silver, tierText, toneOf,
 } from './util.js';
@@ -574,12 +574,21 @@ function gatherSection(run) {
     right: '',
   }) : '';
 
+  const cap = carryCapacity(s);
   const weight = run.gatherWeight > 0 ? rowHTML({
     act: 'me', icon: ICON.carry, cls: 'wrap',
     title: `${short(run.gatherWeight)} kg to carry home`,
-    meta: s.carryWeight > 0
-      ? `${Math.ceil(run.gatherWeight / s.carryWeight)} trips at ${short(s.carryWeight)} kg`
-      : 'set what you can carry on Me to count trips',
+    meta: esc([
+      run.gatherWeightSaved > 0.5
+        ? `${short(run.gatherWeightSaved)} kg of that left behind by the backpack` : '',
+      cap.total > 0
+        ? `${(() => {
+          const n = Math.ceil(run.gatherWeight / cap.total);
+          return `${n} ${n === 1 ? 'trip' : 'trips'}`;
+        })()} at ${short(cap.total)} kg${
+          cap.bonus ? ` — your ${short(cap.typed)} plus ${pct(cap.bonus, 0)} from the pie` : ''}`
+        : 'set what you can carry on Me to count trips',
+    ].filter(Boolean).join(' · ')),
     right: go(),
   }) : '';
 

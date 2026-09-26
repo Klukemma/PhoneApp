@@ -51,7 +51,7 @@ test('a brand new install assumes no gathering kit at all', () => {
   // A full set and a pork pie is most of a second run's worth of resources.
   // Assuming any of it would double every figure for someone who owns none.
   assert.equal(kit.toolTier, 0);
-  assert.deepEqual(kit.gear, { head: 0, armor: 0, shoes: 0, backpack: false });
+  assert.deepEqual(kit.gear, { head: 0, armor: 0, shoes: 0, backpack: 0 });
   assert.equal(kit.food, '');
   assert.equal(kit.potion, '');
   assert.deepEqual(kit.measured, {});
@@ -91,7 +91,7 @@ test('a save written half way through keeps what it had and fills the rest', () 
   });
   assert.equal(s.settings.gather.toolTier, 7);
   assert.equal(s.settings.gather.toolAvalon, true);
-  assert.deepEqual(s.settings.gather.gear, { head: 0, armor: 0, shoes: 0, backpack: false });
+  assert.deepEqual(s.settings.gather.gear, { head: 0, armor: 0, shoes: 0, backpack: 0 });
   assert.equal(s.settings.gather.kind, 'static');
 });
 
@@ -133,7 +133,10 @@ test('a hand-edited backup cannot smuggle nonsense into the yield engine', () =>
   // And T1, which is a real tool for the tiers you can take bare-handed.
   assert.equal(reopen({ schema: 2, settings: { gather: { toolTier: 1 } } })
     .settings.gather.toolTier, 1);
-  assert.equal(kit.gear.backpack, true);
+  /* The backpack is a tier now, not a yes/no: which tier decides how far up
+    * the pack reaches, and "yes" never said. A save that only said yes becomes
+    * "not set" and asks, rather than being handed a T8 pack it may not own. */
+  assert.equal(kit.gear.backpack, 0);
   assert.equal(kit.foodEnchant, 3, 'clamped to the grades that exist');
   assert.equal(kit.potionEnchant, 0);
   assert.equal(kit.premiumMode, 'add', 'one of the two readings, or the default');
@@ -162,7 +165,7 @@ test('game data never comes back out of a save', () => {
 
 test('changing one part of the kit keeps the rest of it', () => {
   wipe();
-  setGather({ toolTier: 8, gear: { head: 8, armor: 8, shoes: 8, backpack: false } });
+  setGather({ toolTier: 8, gear: { head: 8, armor: 8, shoes: 8, backpack: 0 } });
   setGather({ food: 'T7_MEAL_PIE' });
   const kit = state.settings.gather;
   assert.equal(kit.toolTier, 8, 'setting the pie did not drop the tool');
@@ -253,7 +256,7 @@ test('a backup taken now opens as itself', () => {
   setGather({
     toolTier: 6, toolAvalon: true, kind: 'critter', zone: 'outlandsHigh',
     danger: 'black3', food: 'T5_MEAL_PIE', foodEnchant: 2,
-    gear: { head: 6, armor: 5, shoes: 6, backpack: true },
+    gear: { head: 6, armor: 5, shoes: 6, backpack: 7 },
     premiumMode: 'multiply', gearCoversEnchanted: false,
   });
   setMeasured('WOOD:6:critter:outlandsHigh', 140);

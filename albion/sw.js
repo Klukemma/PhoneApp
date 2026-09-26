@@ -1,7 +1,7 @@
 // Cache-first shell so the app opens instantly and works with no signal.
 // Bump CACHE when the shell or the game data changes.
 
-const CACHE = 'albionfarm-v41';  // v41: journals, the reroll table, and how old every price is
+const CACHE = 'albionfarm-v42';  // v42: the gatherer backpack, which the app promised and never had
 const SHELL = [
   './', './index.html', './manifest.webmanifest',
   './css/app.css',

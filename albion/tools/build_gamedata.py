@@ -733,6 +733,71 @@ def build_gather_buffs(spells):
     return gear, interval, tool, tool_min or 2, consumable
 
 
+def build_gather_backpack(spells, raws):
+    """The gatherer's backpack: a weight cut on what it is made to carry.
+
+    Not a yield bonus and not a capacity bonus - a third thing. Each tier
+    carries a `weightbonus` row PER ITEM ID it covers, so the file states its
+    coverage rather than implying it, and this checks that the covered set is
+    exactly "every raw of that family at or below the backpack's own tier"
+    before collapsing 700 rows into five numbers.
+
+    Three readings this pins down, because each was a plausible mistake:
+
+      - It is a PROPORTION, not kilos. The T4 pack covers T1_WOOD, which
+        weighs 0.15 kg, so a flat 0.3 kg would make a log weigh less than
+        nothing.
+      - It is the size of the REDUCTION, not the surviving fraction. The
+        fishing pack is the only one whose value moves with tier and it RISES,
+        0.20 to 0.40 - under the other reading the T8 pack would be worse than
+        the T4, which no progression in this file does.
+      - It is not a ramp. Every gatherer-set passive carries `maxcharges` and
+        none of these do, so it is worth its full value on the first swing.
+
+    FISH is deliberately not in FAMILIES, and it is the one family whose value
+    is not 0.3. Whoever adds fishing has to come back here first.
+    """
+    idx = _spell_index(spells)
+    out = {}
+    for tier in range(4, 9):
+        seen = {}
+        for family in FAMILIES:
+            name = f"PASSIVE_BACKPACK_{family}_T{tier}"
+            el = idx.get(name)
+            if el is None:
+                raise SystemExit(f"no {name} in spells.xml")
+            if el.get("maxcharges"):
+                raise SystemExit(f"{name} has become a charge ramp")
+            rows = el.findall("weightbonus")
+            values = {float(b.get("value")) for b in rows}
+            if len(values) != 1:
+                raise SystemExit(f"{name} cuts by several amounts: {values}")
+            dummy = el.find("dummypassive")
+            if dummy is None or int(dummy.get("value")) != tier:
+                raise SystemExit(f"{name} does not cap at its own tier")
+            # What it says it covers, against what the app can actually
+            # gather. One-directional on purpose: the pack may name ids this
+            # app has no node for - it covers T1_ORE and the game has no T1
+            # ore node - but it must not MISS anything gatherable at or below
+            # its tier, because that is what the engine is about to assume.
+            covers = {b.get("item") for b in rows}
+            wrong = {rid for rid in covers
+                     if rid.split("_")[1] != family or int(rid[1]) > tier}
+            if wrong:
+                raise SystemExit(f"{name} covers {sorted(wrong)}, "
+                                 f"which is not its family or is over its tier")
+            missing = {rid for rid in raws
+                       if rid.split("_")[1] == family
+                       and int(rid[1]) <= tier} - covers
+            if missing:
+                raise SystemExit(f"{name} misses {sorted(missing)}")
+            seen[family] = next(iter(values))
+        if len(set(seen.values())) != 1:
+            raise SystemExit(f"T{tier} backpacks differ between families: {seen}")
+        out[str(tier)] = {"value": next(iter(seen.values())), "maxTier": tier}
+    return out
+
+
 def build_gather_food(items, consumable):
     """The pies, and what each grade of them is worth.
 
@@ -974,6 +1039,7 @@ def build_gathering(gd, items, spells):
         "kindLabels": kind_labels,
         "toolTimeFactor": factors,
         "gear": gear,
+        "backpack": build_gather_backpack(spells, raws),
         "gearInterval": interval,
         "toolYield": tool,
         "toolYieldMinTier": tool_min,

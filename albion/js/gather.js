@@ -46,7 +46,7 @@ const DEFAULTS = {
   danger: 'black',
   toolTier: 0,
   toolAvalon: false,
-  gear: { head: 0, armor: 0, shoes: 0, backpack: false },
+  gear: { head: 0, armor: 0, shoes: 0, backpack: 0 },
   food: '',
   foodEnchant: 0,
   potion: '',
@@ -79,6 +79,47 @@ export const kitOf = (settings) => ({
 /** The key one measured rate is filed under. One per thing you actually farm. */
 export const rateKey = (family, tier, kit) =>
   `${family}:${tier}:${kit.kind}:${kit.zone}`;
+
+/* ------------------------------------------------------- what it weighs -- */
+
+/**
+ * What the gatherer's backpack takes off one resource's weight.
+ *
+ * A third kind of bonus, and not the two the kit already has: not yield, not
+ * capacity, but a straight cut in what the thing weighs in your bags. The file
+ * names every item id each tier covers, and it is 30% flat for all five
+ * gathering families - only the reach moves with tier, never the depth.
+ *
+ * It is family-specific in game: a Lumberjack's pack does nothing for ore. The
+ * kit carries one tier and the app reads it as the right pack for whatever the
+ * run is gathering, which is exactly true for a one-family run and optimistic
+ * for a plan that gathers two. A run that does gather two says so.
+ */
+export function backpackCut(itemId, settings) {
+  const at = rawIdOf(itemId);
+  const kit = kitOf(settings);
+  const tier = Number(kit.gear.backpack) || 0;
+  if (!at || !tier) return 0;
+  const row = settings.gathering?.backpack?.[String(tier)];
+  if (!row || at.tier > row.maxTier) return 0;
+  return row.value;
+}
+
+/**
+ * What one trip can carry, once the pie is counted.
+ *
+ * The kilos are yours - the game publishes a base load and a progression but
+ * nothing that turns them into a number, and a mount's own capacity is a
+ * different figure again - so the app starts from what you typed. A pie's Max
+ * Load is a published percentage on top of it.
+ */
+export function carryCapacity(settings) {
+  const kit = kitOf(settings);
+  const typed = Math.max(0, Number(settings.carryWeight) || 0);
+  const row = settings.gathering?.food?.[kit.food]?.grades?.[String(kit.foodEnchant || 0)];
+  const bonus = row?.maxloadbonus || 0;
+  return { typed, bonus, total: typed * (1 + bonus) };
+}
 
 /* --------------------------------------------------------- the yield -- */
 
@@ -449,7 +490,13 @@ export function gatherRun(itemId, { qty = 999, settings }) {
     rate, harvests, share, swings, swingSeconds, nodes, nodeVisits,
     hours, uptime, perHour,
     mix, byproducts, fame, pies, potions, foodId, potionId, journal,
-    weight: mix.reduce((t, row) => t + row.qty * (raws[row.id]?.weight || 0), 0),
+    /* What you actually carry home, which is not what it weighs on paper: a
+     * gatherer's backpack takes 30% off every resource it covers. The cut is
+     * worked out per resource rather than over the total, because the pack
+     * covers one family up to one tier and a pile is not uniform. */
+    weight: mix.reduce((t, row) => t + row.qty * (raws[row.id]?.weight || 0)
+      * (1 - backpackCut(row.id, settings)), 0),
+    weightFull: mix.reduce((t, row) => t + row.qty * (raws[row.id]?.weight || 0), 0),
     assumed,
   };
 }

@@ -825,6 +825,9 @@ export function craftPnL(recipeId, {
   let gatherHours = 0;
   let gatherFame = 0;
   let gatherWeight = 0;
+  let gatherWeightSaved = 0;
+  // Which families the run goes out for, because one backpack covers one.
+  const gatherFamilies = new Set();
   let focus = 0;
   let fees = 0;
   let buyCost = 0;
@@ -963,6 +966,8 @@ export function craftPnL(recipeId, {
       : (gatherHours === null ? null : gatherHours + run.hours);
     gatherFame += run.fame;
     gatherWeight += run.weight;
+    gatherWeightSaved += (run.weightFull || run.weight) - run.weight;
+    gatherFamilies.add(run.family);
     /* What the node handed you that you were not after. A twentieth of every
      * plain harvest comes up enchanted, and an enchanted log is worth a
      * multiple of a plain one, so this is real silver rather than a curiosity
@@ -1023,6 +1028,14 @@ export function craftPnL(recipeId, {
       };
     }
     for (const a of run.assumed) assumed.add(a);
+  }
+  /* A gatherer's backpack is made for one resource: a Lumberjack's pack does
+   * nothing for ore. A run that goes out for two families has been costed as
+   * though one pack covered both, which is the optimistic reading, so it says
+   * so rather than quietly under-reporting the kilos. */
+  if (gatherWeightSaved > 0 && gatherFamilies.size > 1) {
+    assumed.add(`one backpack covering all ${gatherFamilies.size} resources — `
+      + 'in game a pack is made for one of them');
   }
   const kitCost = Object.values(kit).reduce((t, k) => t + k.cost, 0);
   const journalCost = Object.values(journals).reduce((t, x) => t + x.cost, 0);
@@ -1087,6 +1100,8 @@ export function craftPnL(recipeId, {
     gatherHours: Object.keys(gathered).length ? gatherHours : 0,
     gatherFame,
     gatherWeight,
+    // What the backpack took off it, which is the only visible sign it works.
+    gatherWeightSaved,
     // The enchanted resources the run picked up along the way, and what they
     // fetch. Counted in revenue above, listed here so a screen can say so.
     byproducts: Object.values(byproducts).sort((a, b) => b.value - a.value),

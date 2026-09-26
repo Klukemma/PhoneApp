@@ -1955,7 +1955,8 @@ const DANGERS = [
   ['black3', 'Deep black (3)'], ['black6', 'Deepest black (6)'],
 ];
 
-const GATHER_SLOTS = [['head', 'Cap'], ['armor', 'Garb'], ['shoes', 'Workboots']];
+const GATHER_SLOTS = [['head', 'Cap'], ['armor', 'Garb'], ['shoes', 'Workboots'],
+  ['backpack', 'Backpack']];
 
 /** Which resource the preview is about. Not saved: it is a question, not a plan. */
 let gatherPeek = { family: 'WOOD', tier: 5 };
@@ -2104,11 +2105,16 @@ export function openGatherSetup(forId = null, keepPeek = false) {
           ${tiers(`gear-${slot}`, kit.gear[slot], { min: 4 })}
         </div>`).join('')}
     </div>
-    <div class="hint">Every piece is hard tier-gated: a T5 set on a T6 node is
-      worth exactly nothing. It also ramps — a little every 30 seconds up to ten
-      stacks, so the number on the tooltip is what you have after five minutes.
-      The gatherer backpack is weight only and carries no yield, so it changes
-      how many trips you make and not how much you come back with.</div>
+    <div class="hint">The cap, garb and boots are hard tier-gated: a T5 set on a
+      T6 node is worth exactly nothing. They also ramp — a little every 30
+      seconds up to ten stacks, so the number on the tooltip is what you have
+      after five minutes.
+      <br><br>The backpack is the odd one out. It carries no yield at all and
+      does not ramp: it takes ${pct(G.backpack?.['8']?.value || 0.3, 0)} off the
+      weight of every resource it covers, from the first swing, which changes
+      how many trips you make and not how much you come back with. Only its
+      reach moves with tier, never its depth — and it is made for one resource,
+      so a Lumberjack's pack does nothing for ore.</div>
 
     <div class="section-head" style="margin-top:16px"><h2>Where you swing</h2></div>
     <div class="field">

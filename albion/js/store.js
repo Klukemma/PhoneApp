@@ -122,7 +122,7 @@ function defaults() {
         danger: 'black',         // zone colour, which only changes fame
         toolTier: 0,             // 0 = none set, and then nothing is assumed
         toolAvalon: false,
-        gear: { head: 0, armor: 0, shoes: 0, backpack: false },
+        gear: { head: 0, armor: 0, shoes: 0, backpack: 0 },
         food: '',
         foodEnchant: 0,
         potion: '',
@@ -272,7 +272,11 @@ function normalizeKit(rawKit = {}) {
   for (const slot of ['head', 'armor', 'shoes']) kit.gear[slot] = tier(kit.gear[slot], 4);
   // And an Avalonian tool is a T4-and-up thing, so the flag goes with it.
   if (kit.toolTier < 4) kit.toolAvalon = false;
-  kit.gear.backpack = !!kit.gear.backpack;
+  /* The backpack was a yes/no before it did anything, and its tier is what
+   * decides how far up it reaches. A save that only said "yes" never knew the
+   * tier, so it becomes "not set" and asks - inventing a T8 pack would hand
+   * the user 30% off a pile they may not own the bag for. */
+  kit.gear.backpack = tier(kit.gear.backpack, 4);
   kit.toolAvalon = !!kit.toolAvalon;
   kit.gearCoversEnchanted = !!kit.gearCoversEnchanted;
   kit.premiumMode = kit.premiumMode === 'multiply' ? 'multiply' : 'add';

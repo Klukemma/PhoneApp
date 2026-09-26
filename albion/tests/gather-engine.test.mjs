@@ -7,8 +7,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
-  gatherRate, gatherRun, gatherSpeed, gatherYield, rawIdOf, rawId,
-  refinedOf, enchantUp, tierUp, measuredPerHour,
+  carryCapacity, gatherRate, gatherRun, gatherSpeed, gatherYield, rawIdOf,
+  rawId, refinedOf, enchantUp, tierUp, measuredPerHour,
 } from '../js/gather.js';
 import { craftPnL } from '../js/calc.js';
 import { resourceExits } from '../js/exits.js';
@@ -564,6 +564,72 @@ test('gathering a material costs no silver and does cost time', () => {
   assert.ok(gathered.gatherFame > 0);
   assert.ok(gathered.gathered.T5_WOOD.qty > 1381, 'the logs the run really needs');
   assert.ok(gathered.assumed.length > 0);
+});
+
+test('the backpack takes weight off what it covers, and only that', () => {
+  /* Not a yield bonus and not a capacity bonus - a third thing the app had a
+   * switch for and no code behind. 30% off every resource it covers, from the
+   * first swing, and its tier buys reach rather than depth. */
+  const at = (backpack) => gatherRun('T5_WOOD', {
+    qty: 999, settings: kit({ carryWeight: 1000, gather: { toolTier: 8, gear: { backpack } } }),
+  });
+  const bare = at(0);
+  assert.equal(round(bare.weight), round(bare.weightFull), 'nothing on, nothing off');
+
+  const big = at(8);
+  assert.equal(round(big.weightFull), round(bare.weightFull), 'the pile is the pile');
+  assert.equal(round(big.weight), round(bare.weightFull * 0.7));
+  // The cut is per resource, never over the total: the pack covers one family
+  // up to one tier and a pile of enchanted logs is not uniform.
+  assert.equal(round(big.weight), round(big.mix.reduce((t, row) =>
+    t + row.qty * data.gathering.raws[row.id].weight * 0.7, 0)));
+
+  // Tier buys reach. A T4 pack is worth nothing on a T5 log.
+  assert.equal(round(at(4).weight), round(bare.weightFull));
+  assert.equal(round(at(5).weight), round(bare.weightFull * 0.7));
+  // And it does not ramp: no wornSeconds anywhere changes it.
+  const cold = gatherRun('T5_WOOD', {
+    qty: 999,
+    settings: kit({ gather: { toolTier: 8, gear: { backpack: 8 }, wornSeconds: 0 } }),
+  });
+  assert.equal(round(cold.weight), round(big.weight));
+});
+
+test('what one trip holds counts the pie, and says it is your number', () => {
+  const cap = (over) => carryCapacity(kit({ carryWeight: 1000, gather: { toolTier: 8, ...over } }));
+  assert.deepEqual(cap({}), { typed: 1000, bonus: 0, total: 1000 });
+  const fed = cap({ food: 'T7_MEAL_PIE' });
+  assert.equal(fed.bonus, 0.3, 'Max Load is a published percentage');
+  assert.equal(fed.total, 1300);
+  // An enchanted pie carries more.
+  assert.equal(cap({ food: 'T7_MEAL_PIE', foodEnchant: 3 }).bonus, 0.45);
+  // With no capacity typed there is nothing to boost, and no trips to quote.
+  assert.equal(carryCapacity(kit({ carryWeight: 0, gather: { food: 'T7_MEAL_PIE' } })).total, 0);
+});
+
+test('one backpack cannot cover two families, and the run says so', () => {
+  /* A Lumberjack's pack does nothing for ore. The kit carries one tier and the
+   * app reads it as the right pack for whatever is being gathered - exactly
+   * true for one family, optimistic for two. */
+  const prices = { T5_WOOD: 260, T5_ORE: 240, T5_PLANKS: 1100, T4_PLANKS: 700 };
+  const one = craftPnL('T5_PLANKS', {
+    recipeOf, qty: 300, priceOf: (id) => prices[id] ?? 0,
+    settings: kit({ gather: { toolTier: 8, gear: { backpack: 8 } } }),
+    cityId: 'fortsterling', gather: new Set(['T5_WOOD']),
+  });
+  assert.ok(one.gatherWeightSaved > 0);
+  assert.ok(!one.assumed.some((a) => a.includes('one backpack')),
+    'one family needs no caveat');
+
+  const two = craftPnL('T5_PLANKS', {
+    recipeOf, qty: 300, priceOf: (id) => prices[id] ?? 0,
+    make: new Set(['T4_PLANKS']),
+    settings: kit({ gather: { toolTier: 8, gear: { backpack: 8 } } }),
+    cityId: 'fortsterling', gather: new Set(['T5_WOOD', 'T4_WOOD']),
+  });
+  assert.equal(Object.keys(two.gathered).length, 2);
+  // Same family twice is still one pack, so still no caveat.
+  assert.ok(!two.assumed.some((a) => a.includes('one backpack')));
 });
 
 test('the kit is not free once you have timed a run', () => {
