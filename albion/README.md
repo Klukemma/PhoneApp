@@ -226,6 +226,19 @@ game files, including market tax: `gamedata.xml` gives a 2.5% setup fee and an
 8% transaction tax, and premium halves the transaction half — 6.5% against
 10.5%.
 
+### Where you farm
+
+A royal city pays **+10%** yield on the handful of crops, herbs and animal
+products it specialises in, and every island carries the full bonus of the city
+it is bound to.
+
+Guild territory in the Outlands pays **+200%** — twenty times that — on fifteen
+crops and herbs. Three things about it the file says and nobody expects: it
+covers plants only, so eggs and milk earn nothing out there while Martlock pays
+on cow milk; an island in the Outlands earns **no** bonus at all, the exact
+opposite of a royal island; and it has no station, so it is offered as a place
+to farm and never as a place to craft.
+
 ### Gathering
 
 The other half of the same question: what an hour in the open world is worth.
@@ -259,9 +272,22 @@ hours are unknown until you have. It tells you the ceiling for that
 measurement — ten minutes of nothing but swinging with the kit you have set —
 so you can check your own count against it.
 
-Node counts come as a range. A static tree sits at one charge of five and fills
-up over time, so a stack of T5 logs is 212 trees if you find every one full and
-1,058 if you find every one fresh.
+Node counts come as a range, where the file gives one. A static tree spawns on
+one charge of five and fills up over time, so a stack of T5 logs is 212 trees if
+you find every one full and 1,058 if every one is fresh. For 36 of the 216 node
+rows the file gives no spawn count at all — the T7 and T8 statics say only that
+it is randomised — and there the app shows one figure and says why, rather than
+inventing the spread.
+
+The respawn number in the file is a **tick**, not a return: on each one the node
+rolls to regain `chargeupchance` charges, and that collapses with tier. T6, T7
+and T8 all show the same 900 seconds, but a T2 tree refills before you have
+walked away and a T8 tree puts back one log every four and three quarter hours.
+
+**The kit is not free.** A pie lasts half an hour and a gathering potion under a
+minute, so holding the bonuses through a two-hour run is four pies and 131
+potions — charged against the profit, once you have timed a run. On T5 planks
+that is a 29% haircut that used to be invisible.
 
 **Best → Gather** ranks every resource at a tier by the best thing to do with
 it, and tapping one lays out all five routes side by side: sell it, refine it,
@@ -347,7 +373,7 @@ actually pay on the buy side.
 
 ```bash
 npm start      # http://localhost:8080/albion/
-npm test       # 292 tests over the profit engine and the extracted data
+npm test       # 299 tests over the profit engine and the extracted data
 npm run gamedata
 ```
 
