@@ -327,8 +327,20 @@ export function cityById(settings, cityId, fallbackKey = 'craftCity') {
   return list.find((c) => c.id === (cityId || settings[fallbackKey])) || list[0] || null;
 }
 
+/* Two places in the game are not the other kind of place. Your own island has
+ * a bench and no fields worth the name; a guild territory in the Outlands has
+ * fields worth twenty times a city's and no station anybody can post a fee
+ * for. So each picker asks the one question that applies to it. */
+export const canFarmIn = (city) => !!city && !city.craftOnly;
+export const canCraftIn = (city) => !!city && !city.farmOnly;
+
 /** Where you craft. */
-export const cityFor = (settings, cityId) => cityById(settings, cityId, 'craftCity');
+export function cityFor(settings, cityId) {
+  const found = cityById(settings, cityId, 'craftCity');
+  if (canCraftIn(found)) return found;
+  return (settings.cities || []).find((c) => c.id === settings.craftCity && canCraftIn(c))
+    || (settings.cities || []).find(canCraftIn) || found || null;
+}
 
 /**
  * Where your farm is.
@@ -340,11 +352,10 @@ export const cityFor = (settings, cityId) => cityById(settings, cityId, 'craftCi
  */
 export function farmCityFor(settings, cityId) {
   const found = cityById(settings, cityId, 'farmCity');
-  if (found && !found.craftOnly) return found;
+  if (canFarmIn(found)) return found;
   const fallback = (settings.cities || []).find((c) => c.id === settings.farmCity);
-  return (fallback && !fallback.craftOnly ? fallback : null)
-    || (settings.cities || []).find((c) => !c.craftOnly)
-    || found || null;
+  return (canFarmIn(fallback) ? fallback : null)
+    || (settings.cities || []).find(canFarmIn) || found || null;
 }
 
 /**
@@ -623,6 +634,7 @@ export function bestCityFor(category, settings) {
   const cities = settings.cities || [];
   let best = null;
   for (const c of cities) {
+    if (!canCraftIn(c)) continue;
     if (c.craftOnly === true && !c.craftSpecialties) continue;
     const b = cityBonus(c, category, settings);
     if (!best || b.total > best.total) best = { city: c, total: b.total };

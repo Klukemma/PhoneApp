@@ -1,7 +1,8 @@
 // Bottom sheets: pickers, editors, settings.
 
 import {
-  bestCityFor, cityBonus, cityFor, craftBatch, farmBonus, farmCityFor, feedFor,
+  bestCityFor, canCraftIn, canFarmIn, cityBonus, cityFor, craftBatch, farmBonus,
+  farmCityFor, feedFor,
   focusCostAt, focusEfficiency, mixFor, perPeriod, QUALITY_LEVELS,
   qualityMix, qualityPoints, simulateCycle, specFor, TILES_PER_PLOT,
 } from './calc.js';
@@ -503,22 +504,30 @@ export function openFarmCity() {
     <h2>Where is your farm?</h2>
     <p class="muted">A private island carries the farming bonus of the city it is
       bound to, so pick that city. Each plot can override it.</p>
-    ${(s.cities || []).filter((c) => !c.craftOnly).map((c) => {
+    ${(s.cities || []).filter(canFarmIn).map((c) => {
       const items = Object.keys(c.farmBonus || {});
+      const top = items.length ? Math.max(...Object.values(c.farmBonus)) : 0;
+      /* A city boosts three or four things and can name them all. A guild
+       * territory boosts fifteen, and fifteen crop names is not a row, it is a
+       * paragraph - so past a point it counts them instead. */
+      const what = items.length > 6
+        ? `${items.length} crops and herbs — no animals, and nothing on an island out there`
+        : items.map((k) => nameOf(bonusItemOf(k))).join(', ');
       return `
-        <button class="row ${c.id === s.farmCity ? 'selected' : ''}" data-farm-city="${esc(c.id)}">
+        <button class="row wrap ${c.id === s.farmCity ? 'selected' : ''}" data-farm-city="${esc(c.id)}">
           <span class="ico">\u{1F33E}</span>
           <span class="body"><span class="title">${esc(c.name)}</span>
             <span class="meta">${items.length
-              ? `+10% on ${items.map((k) => nameOf(bonusItemOf(k))).join(', ')}`
-              : 'no farming bonus'}</span></span>
+              ? `+${top}% on ${esc(what)}` : 'no farming bonus'}</span></span>
           <span class="amt">${c.id === s.farmCity ? '\u2713' : ''}</span>
         </button>`;
     }).join('')}
     <p class="muted small" style="margin-top:12px">
-      The bonus is +10% yield on a few named crops, herbs and animal products.
-      An animal's favourite food deliberately grows better somewhere else, so no
-      one city is best at everything.</p>
+      A royal city is +10% yield on a few named crops, herbs and animal
+      products, and an animal's favourite food deliberately grows better
+      somewhere else, so no one city is best at everything. Guild territory in
+      the Outlands is twenty times that on plants — and nothing at all on
+      animals, or on an island out there.</p>
   `, {
     onMount(root) {
       root.onclick = (e) => {
@@ -673,7 +682,7 @@ export function openCraft(job) {
 
 /** City <option>s, flagging the ones that actually boost this category. */
 function cityOptions(selected, category) {
-  return (state.settings.cities || []).map((c) => {
+  return (state.settings.cities || []).filter(canCraftIn).map((c) => {
     const boosts = c.specialties?.includes(category);
     return `<option value="${esc(c.id)}" ${c.id === selected ? 'selected' : ''}>
       ${esc(c.name)}${boosts ? ' \u2014 bonus' : ''}</option>`;
@@ -709,7 +718,8 @@ export function openCraftCity() {
   const recipe = craftTarget() ? recipeOf(craftTarget()) : null;
   const deltas = state.plan.crafts.length && lastSim ? cityDeltas(lastSim) : [];
   const byCity = new Map(deltas.map((d) => [d.city.id, d]));
-  const shown = deltas.length ? deltas.map((d) => d.city) : (s.cities || []);
+  const shown = (deltas.length ? deltas.map((d) => d.city) : (s.cities || []))
+    .filter(canCraftIn);
 
   const rowFor = (c) => {
     const d = byCity.get(c.id);
@@ -1206,7 +1216,7 @@ export function openAdvanced() {
     <div class="field">
       <label>Station usage fee, per 100 nutrition</label>
       <div class="two">
-        ${(s.cities || []).filter((c) => !c.craftOnly).slice(0, 8).map((c) => `
+        ${(s.cities || []).filter((c) => !c.craftOnly && !c.farmOnly).slice(0, 8).map((c) => `
           <div class="field" style="margin:0">
             <label style="font-size:11px">${esc(c.name)}</label>
             <input type="number" inputmode="numeric" min="0" max="${s.maxUsageFee || 1000}"

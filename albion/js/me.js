@@ -65,6 +65,19 @@ export function setupGaps() {
   return gaps;
 }
 
+/* What farming there is worth. A royal city is +10% on the handful of crops,
+ * herbs and produce it specialises in; a guild territory in the Outlands is
+ * twenty times that, on plants only. Reading "+10%" onto both was the app
+ * quoting one city's number as if it were the rule. */
+function farmWords(city) {
+  const bonuses = Object.values(city?.farmBonus || {});
+  if (!bonuses.length) return 'No posted bonus on anything you grow';
+  const top = Math.max(...bonuses);
+  const n = bonuses.length;
+  return `+${top}% on ${n} ${n === 1 ? 'thing' : 'things'} it grows best${
+    city?.farmOnly ? ' — plants only, and nothing on an island out there' : ''}`;
+}
+
 /** What you have on, in a phrase, or an invitation if you have said nothing. */
 function kitWords() {
   const s = state.settings;
@@ -130,7 +143,7 @@ export function me() {
         ${row('land', '\u{1F5FA}\u{FE0F}', landBits.length ? esc(landBits.join(' · ')) : 'No land yet',
     landBits.length ? `${esc(landWhere)} · tap to change` : 'Say what you own and the plans stop guessing')}
         ${row('farm-city', '\u{1F33E}', `Farm in ${esc(farmCityFor(s)?.name || 'a city')}`,
-    "+10% on its crops, herbs and produce")}
+    esc(farmWords(farmCityFor(s))))}
         ${row('craft-city', '\u{1F3EF}', s.craftWhere === 'best' ? 'Craft in the best city per step'
     : `Craft in ${esc(cityFor(s)?.name || 'a city')}`,
   s.craftWhere === 'best' ? 'Ride between them' : 'Every job, unless a job says otherwise')}

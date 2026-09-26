@@ -285,10 +285,13 @@ def build_cities() -> list:
     rows to a hundred and forty and each one would need a name the game does
     not give it. The ten that ARE named carry their real refining figure.
 
-    (The same file also holds 450 Outlands rows at value 2.0, islandvalue 0.0:
-    the +200% guild territory farms. Those are keyed by biome and cluster
-    quality rather than by city, and this app does not model them, so they are
-    dropped here rather than silently mixed in with the city bonuses.)
+    The same file also holds 450 Outlands rows at value 2.0, islandvalue 0.0:
+    guild territory farming, at twenty times the royal cities' +10%. They are
+    keyed by biome and cluster quality rather than by city - but all thirty of
+    those combinations carry the SAME fifteen seeds at the same 2.0, so the
+    whole block collapses to one entry rather than thirty. It is offered as a
+    place to farm and not as a place to craft, and it covers plants only: no
+    _GROWN animal appears in the list, so eggs and milk earn nothing there.
     """
     craft_root = parse("craftingmodifiers.xml")
     farm_root = parse("farmingmodifiers.xml")
@@ -318,11 +321,24 @@ def build_cities() -> list:
         }
 
     farm = {}
+    outlands = {}
+    outlands_island = {}
     for loc in farm_root.findall("location"):
-        farm[loc.get("clusterid")] = {
-            m.get("farmable"): round(float(m.get("value")) * 100, 2)
-            for m in loc.findall("farmingyieldmodifier")
-        }
+        mods = {m.get("farmable"): round(float(m.get("value")) * 100, 2)
+                for m in loc.findall("farmingyieldmodifier")}
+        cluster = loc.get("clusterid")
+        if cluster is not None:
+            farm[cluster] = mods
+            continue
+        # A guild territory: keyed by biome and cluster quality instead. Every
+        # one of the thirty combinations is identical, so they fold into one -
+        # and the build refuses rather than guesses if a patch ever makes them
+        # disagree, because then "the Outlands" stops being one answer.
+        if outlands and outlands != mods:
+            raise SystemExit("Outlands farming bonuses are no longer uniform")
+        outlands = mods
+        outlands_island = {m.get("farmable"): round(float(m.get("islandvalue", 0)) * 100, 2)
+                           for m in loc.findall("farmingyieldmodifier")}
 
     out = []
     for cluster, (cid, name) in CITY_IDS.items():
@@ -339,6 +355,18 @@ def build_cities() -> list:
             else (c.get("base") or 0),
             "craftSpecialties": c.get("specialties", {}),
             "farmBonus": farm.get(cluster, {}),
+        })
+    # Guild territory in the Outlands. Twenty times a royal city's bonus on the
+    # fifteen crops and herbs it covers, nothing at all on animals, and - the
+    # part that catches people - nothing on an island out there either, where
+    # a royal island farms with its city's full bonus.
+    if outlands:
+        out.append({
+            "id": "outlands", "name": "Guild territory (Outlands)", "cluster": None,
+            "farmOnly": True,
+            "craftBase": 0, "refineBase": 0, "craftSpecialties": {},
+            "farmBonus": outlands,
+            "farmIslandBonus": outlands_island,
         })
     # Crafting at your own island's station earns no city bonus: islandvalue is
     # 0 for every craftingbonus in craftingmodifiers.xml. Farming is the other

@@ -743,7 +743,9 @@ export function carryStockIn(rows, focus) {
 }
 
 export function setCraftCity(cityId) {
-  if (!(state.settings.cities || []).some((c) => c.id === cityId)) return;
+  // A guild territory is somewhere to farm, not somewhere to craft: it has no
+  // station and the file posts no crafting bonus for it.
+  if (!(state.settings.cities || []).some((c) => c.id === cityId && !c.farmOnly)) return;
   state.settings.craftCity = cityId;
   state.settings.craftCityPicked = true;
   for (const job of state.plan.crafts) delete job.cityId;

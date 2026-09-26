@@ -4,7 +4,8 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
 import {
-  animalCycle, cityBonus, cityFor, craftBatch, craftNutrition, farmBonus,
+  animalCycle, bestCityFor, canCraftIn, canFarmIn, cityBonus, cityFor,
+  craftBatch, craftNutrition, farmBonus,
   farmCityFor, farmDayCount, feedFor, focusCostAt, focusEfficiency,
   focusLedger, focusPerDayOf, harvestsFor, isFarmDay, perPeriod, plantCycle,
   planTotals, productCycle, rankRecipes, returnRate, ruleCovers,
@@ -636,13 +637,54 @@ test('each plot on a plan is farmed in its own city', () => {
 
 /* --------------------------------------------------- the city data set - */
 
+test('a guild territory farms and does not craft; an island crafts and does not farm', () => {
+  const cities = data.cities;
+  const s = { ...data.constants, cities, spec: {}, nodeLevels: {} };
+  const outlands = cities.find((c) => c.id === 'outlands');
+  const island = cities.find((c) => c.id === 'island');
+
+  // Fifteen crops and herbs at +200%, and not one animal: no _GROWN id is in
+  // the list, so eggs and milk earn nothing out there.
+  assert.equal(Object.keys(outlands.farmBonus).length, 15);
+  assert.ok(Object.keys(outlands.farmBonus).every((k) => k.endsWith('_SEED')));
+  assert.equal(outlands.farmBonus.T6_FARM_POTATO_SEED, 200);
+  /* And a royal city is +10% on the handful it specialises in — animals among
+   * them, which is the contrast: Martlock pays on cow milk and the Outlands
+   * pays on no animal at all, however good the territory. */
+  const martlock = cities.find((c) => c.id === 'martlock');
+  assert.equal(Object.keys(martlock.farmBonus).length, 4);
+  assert.equal(martlock.farmBonus.T8_FARM_COW_GROWN, 10);
+  assert.equal(outlands.farmBonus.T8_FARM_COW_GROWN, undefined);
+
+  // The catch nobody expects: an island in the Outlands earns nothing, while
+  // a royal island farms with its city's full bonus.
+  assert.equal(outlands.farmIslandBonus.T6_FARM_POTATO_SEED, 0);
+
+  // Neither picker offers the other's answer.
+  assert.equal(canFarmIn(outlands), true);
+  assert.equal(canCraftIn(outlands), false);
+  assert.equal(canFarmIn(island), false);
+  assert.equal(canCraftIn(island), true);
+  // So asking to craft in a guild territory lands you somewhere you can.
+  assert.notEqual(cityFor({ ...s, craftCity: 'outlands' }).id, 'outlands');
+  assert.equal(farmCityFor({ ...s, farmCity: 'outlands' }).id, 'outlands');
+  // And the best city for a refine is never one with no bench in it.
+  assert.notEqual(bestCityFor('wood', s).id, 'outlands');
+});
+
 test('the city table came out of the game files intact', () => {
   const cities = data.cities;
-  assert.equal(cities.length, 11);                  // 10 locations plus island
+  assert.equal(cities.length, 12);   // 10 cities, plus an island and the Outlands
   // The island is a crafting location only. Farming there is not a thing the
   // game has: every island sits in a city and farms with its bonus.
   assert.equal(cities.filter((c) => c.craftOnly).length, 1);
   assert.equal(cities.find((c) => c.craftOnly).id, 'island');
+  /* And a guild territory is the other way round: fields worth twenty times a
+   * city's, and no station anybody can post a fee for. Each picker asks the
+   * one question that applies to it, so neither shows up in the other's list. */
+  assert.equal(cities.filter((c) => c.farmOnly).length, 1);
+  assert.equal(cities.find((c) => c.farmOnly).id, 'outlands');
+  assert.equal(cities.find((c) => c.farmOnly).craftBase, 0);
   for (const c of cities.filter((c) => !c.craftOnly)) {
     assert.ok(!c.craftOnly, 'every real location can be farmed in');
   }
@@ -666,7 +708,9 @@ test('the city table came out of the game files intact', () => {
   for (const c of cities) {
     for (const [key, pct] of Object.entries(c.farmBonus)) {
       assert.ok(known.has(key), `${c.id} boosts unknown ${key}`);
-      assert.equal(pct, 10, `${c.id} ${key}`);
+      // A royal city posts +10%. A guild territory posts +200% — the single
+      // biggest lever in farming, and one the app used to drop on the floor.
+      assert.equal(pct, c.farmOnly ? 200 : 10, `${c.id} ${key}`);
     }
   }
 });
