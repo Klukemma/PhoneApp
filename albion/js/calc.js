@@ -620,6 +620,61 @@ export function blendedPrice(itemId, mix, priceAt) {
   return { value, guessed, plain };
 }
 
+/**
+ * What one reroll at the repair station is worth, in silver.
+ *
+ * The game publishes the whole outcome table and the app was ignoring it. Two
+ * things in it are worth knowing before you ever look at a price. Every
+ * below-diagonal weight is zero, so a reroll can only move an item UP. And
+ * from Normal the stay-weight is zero as well, which means rerolling a plain
+ * item ALWAYS improves it - four times in five to Good, and one in two
+ * thousand straight to Masterpiece.
+ *
+ * What the station charges for it is published nowhere: no rerollable item
+ * carries an itemvalue and <RepairBuilding> gives only a time. So this never
+ * quotes a fee. It works out what the reroll is WORTH from your own
+ * per-quality prices and hands you the number to hold the station's price
+ * against - which is the honest shape for a cost the files do not carry.
+ */
+export function rerollQuality(itemId, quality, { settings, priceAt, instant = false }) {
+  const table = settings?.quality?.rerollWeights?.[String(quality)];
+  // A Masterpiece has no row, because a Masterpiece cannot be rerolled.
+  if (!table) return null;
+  const total = Object.values(table).reduce((t, w) => t + Number(w), 0);
+  if (!(total > 0)) return null;
+
+  const now = priceAt(itemId, quality);
+  const missing = [];
+  const outcomes = [];
+  let expected = 0;
+  for (const q of QUALITY_LEVELS) {
+    const share = (Number(table[String(q)]) || 0) / total;
+    if (share <= 0) continue;
+    const at = priceAt(itemId, q);
+    if (!at) missing.push(q);
+    outcomes.push({ quality: q, share, price: at });
+    expected += share * at;
+  }
+  // The fee is paid in silver whatever happens, so the gain it has to beat is
+  // what actually reaches you after the market takes its cut.
+  const keep = 1 - taxRate(settings, { instant });
+  return {
+    quality,
+    outcomes,
+    now,
+    expected,
+    // What one reroll adds to the sale, after tax. Also the most the station
+    // can charge before it stops being worth doing.
+    uplift: (expected - now) * keep,
+    // Never negative by construction, but a missing price can hide that.
+    missing,
+    // The odds alone, for a screen that wants to say what happens rather than
+    // what it is worth.
+    improves: outcomes.filter((o) => o.quality > quality)
+      .reduce((t, o) => t + o.share, 0),
+  };
+}
+
 /* -------------------------------------------------------- the haul ----- */
 
 /**

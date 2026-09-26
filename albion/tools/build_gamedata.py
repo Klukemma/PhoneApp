@@ -1562,6 +1562,25 @@ def main() -> None:
                 for q in gd.findall(".//QualityLevels/qualitylevel")
             },
             "names": QUALITY_NAMES,
+            # The repair station's Reroll Quality action, which the game
+            # publishes in full: four starting qualities, five outcomes each.
+            # Every below-diagonal weight is zero, so a reroll can only ever
+            # move an item UP - and from Normal the stay-weight is zero too,
+            # which means rerolling a plain item ALWAYS improves it. There is
+            # no row for Masterpiece, because one cannot be rerolled.
+            #
+            # What the station charges is published nowhere: no rerollable
+            # item carries an itemvalue and <RepairBuilding> gives only a
+            # time. So the app never quotes a fee - it works out what the
+            # reroll is WORTH from your own per-quality prices and leaves the
+            # comparison with the station's number to you.
+            "rerollWeights": {
+                iq.get("level"): {
+                    rq.get("level"): float(rq.get("weight"))
+                    for rq in iq.findall("ResultQuality")
+                }
+                for iq in gd.findall(".//RerollQualityChances/InitialQuality")
+            },
         },
         "cities": cities,
         "focusNodes": focus_nodes,

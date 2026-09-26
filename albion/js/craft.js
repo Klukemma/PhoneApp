@@ -9,7 +9,7 @@
 
 import {
   bestCityFor, cityBonus, cityFor, craftPnL, focusEfficiency, mixFor,
-  outputOf, QUALITY_LEVELS, specFor,
+  outputOf, QUALITY_LEVELS, rerollQuality, specFor,
 } from './calc.js';
 import {
   DATA, GEAR, bmPriceOf, costOf, loadEquipment, priceOf, qBmPriceOf, qPriceOf,
@@ -444,6 +444,7 @@ function qualityTable(run) {
   }).join('')}
       <div class="bar-row total"><span class="n">Average, per item</span>
         <span class="v num good">${silver(run.unitPrice)}</span></div>
+      ${rerollLine(run)}
       ${note(`${Math.round(points)} quality points from your board and your focus.${
     run.qualityGuessed.length ? ` No price yet for ${run.qualityGuessed.map((q) => esc(names[q] || q)).join(', ')}, so ${
       run.qualityGuessed.length === 1 ? 'it is' : 'they are'} counted at the plain price, which understates this.` : ''}`)}
@@ -619,6 +620,38 @@ function gatherSection(run) {
       ? `${timeText(run.gatherSwingSeconds)} swinging` : ''}</span></div>
       ${rows.join('')}${extra}${books}${fame}${weight}${upkeep}${assumed}
     </section>`;
+}
+
+/**
+ * What the repair station's reroll is worth on a plain one.
+ *
+ * The game publishes the whole outcome table and two facts in it are worth
+ * more than most of this screen: a reroll can only ever move an item up, and
+ * from Normal it can never stay - so rerolling a plain one always improves it.
+ * What the station charges is published nowhere, so the app does not quote a
+ * fee. It says what the reroll is worth and lets you hold the station's own
+ * number against it.
+ */
+function rerollLine(run) {
+  const outId = outputOf(run.recipe);
+  const r = rerollQuality(outId, 1, {
+    settings: state.settings,
+    priceAt: run.sell.priceAt || ((id) => run.sell.priceOf(id)),
+    instant: run.sellInstant,
+  });
+  if (!r || r.missing.length || !(r.uplift > 0.5)) return '';
+  const names = state.settings.quality?.names || {};
+  const odds = r.outcomes.filter((o) => o.quality > 1)
+    .map((o) => `${pct(o.share, o.share < 0.01 ? 2 : 0)} ${esc(names[o.quality] || o.quality)}`)
+    .join(', ');
+  return `
+    <div class="bar-row"><span class="n">Reroll a ${esc(names[1] || 'Normal')} one
+      <small>${esc(odds)}</small></span>
+      <span class="v num good">+${silver(r.uplift)}</span></div>
+    ${note(`A reroll can only move an item up, and off ${esc(names[1] || 'Normal')}
+      it can never stay — so it always improves. What the station charges is in
+      no game file, so that is what the reroll is worth to you: worth doing if
+      the fee is under ${silver(r.uplift)}.`)}`;
 }
 
 function moneyHTML(run) {

@@ -9,7 +9,8 @@ import {
   farmCityFor, farmDayCount, feedFor, focusCostAt, focusEfficiency,
   focusLedger, focusPerDayOf, harvestsFor, isFarmDay, perPeriod, plantCycle,
   planTotals, productCycle, rankRecipes, returnRate, ruleCovers,
-  scheduleFrom, scheduleOf, shapeOf, simulateCycle, specFor, taxRate,
+  rerollQuality, scheduleFrom, scheduleOf, shapeOf, simulateCycle, specFor,
+  taxRate,
   TILES_PER_PLOT, usageFeeFor,
 } from '../js/calc.js';
 
@@ -670,6 +671,50 @@ test('a guild territory farms and does not craft; an island crafts and does not 
   assert.equal(farmCityFor({ ...s, farmCity: 'outlands' }).id, 'outlands');
   // And the best city for a refine is never one with no bench in it.
   assert.notEqual(bestCityFor('wood', s).id, 'outlands');
+});
+
+test('a reroll can only move an item up, and off plain it always does', () => {
+  const round = (n) => Math.round(n * 1e4) / 1e4;
+  /* The game publishes the whole table and the app used to ignore it. Every
+   * below-diagonal weight is zero, and the Normal row's stay-weight is zero
+   * too — so a reroll off plain is a free ride upward, four times in five to
+   * Good and one in two thousand straight to Masterpiece. */
+  const w = data.quality.rerollWeights;
+  assert.deepEqual(Object.keys(w).sort(), ['1', '2', '3', '4']);
+  assert.equal(w['5'], undefined, 'a Masterpiece cannot be rerolled');
+  for (const [from, row] of Object.entries(w)) {
+    for (const [to, weight] of Object.entries(row)) {
+      if (Number(to) < Number(from)) {
+        assert.equal(weight, 0, `Q${from} must never fall to Q${to}`);
+      }
+    }
+  }
+  assert.equal(w['1']['1'], 0, 'and off plain it cannot even stay put');
+
+  const s = { ...data.constants, quality: data.quality, premium: false };
+  const P = { 1: 100000, 2: 130000, 3: 180000, 4: 300000, 5: 1200000 };
+  const priceAt = (id, q) => P[q] || 0;
+  const at = (q) => rerollQuality('T5_MAIN_SWORD', q, { settings: s, priceAt });
+
+  assert.equal(at(5), null);
+  assert.equal(at(1).improves, 1, 'a plain one improves every single time');
+  assert.equal(round(at(1).expected), round(
+    0.8 * P[2] + 0.15 * P[3] + 0.0495 * P[4] + 0.0005 * P[5]));
+  // The uplift is what reaches you after the market's cut, because the fee is
+  // paid in silver either way — that is the number a station price beats.
+  assert.equal(round(at(1).uplift),
+    round((at(1).expected - P[1]) * (1 - taxRate(s))));
+  // It never goes backwards, at any starting quality.
+  for (const q of [1, 2, 3, 4]) assert.ok(at(q).uplift > 0, `Q${q}`);
+  // And it thins out as you climb: an Excellent one is nearly always kept.
+  assert.ok(at(4).improves < 0.01);
+  assert.ok(at(4).uplift < at(1).uplift);
+
+  // A price it cannot see is reported rather than counted as zero.
+  const blind = rerollQuality('T5_MAIN_SWORD', 1, {
+    settings: s, priceAt: (id, q) => (q >= 4 ? 0 : P[q]),
+  });
+  assert.deepEqual(blind.missing, [4, 5]);
 });
 
 test('the city table came out of the game files intact', () => {
