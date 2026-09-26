@@ -148,6 +148,7 @@ export const GROUPS = [
   ['butcher', 'Butchering', '\u{1F969}'],
   ['refined', 'Refining', '\u{1F9F1}'],
   ['transmute', 'Transmuting', '\u2B06\uFE0F'],
+  ['upgrade', 'Enchanting with runes', '\u{1F48E}'],
   ['weapon', 'Weapons', '\u{2694}\u{FE0F}'],
   ['armor', 'Armour', '\u{1F6E1}\u{FE0F}'],
   ['gear', 'Bags, capes and tools', '\u{1F392}'],
@@ -766,15 +767,22 @@ function stepsSection(run) {
      * not the same place for all of them. When it is somewhere that does
      * not specialise in it, the row names the city that does. */
     const here = (s.cities || []).find((c) => c.id === st.cityId);
-    const better = !bonus.specialises
+    /* A step whose every input is unreturnable gets nothing from a return
+     * rate and nothing from a city that boosts one. Putting a rune into a
+     * sword is the case: quoting "43.5% of materials come back" over a step
+     * where none of it does, and then naming a better city for it, was two
+     * true-sounding sentences about a thing that does not happen. */
+    const returns = (st.recipe.inputs || []).some((i) => !i.noReturn);
+    const better = returns && !bonus.specialises
       ? (s.cities || []).find((c) => cityBonus(c, st.recipe.category, s).specialises) : null;
     return rowHTML({
       tagName: 'div', icon: groupIcon(groupOf(st.recipe)),
       title: `${short(st.crafts)} ${st.crafts === 1 ? 'craft' : 'crafts'} → ${short(st.made)} ${
         tierText(st.recipe.tier, st.recipe.enchant)} ${esc(st.recipe.name)}`,
       meta: esc([
-        `${pct(st.batch.rrr)} of materials come back`,
-        bonus.specialises ? "this city's specialty" : '',
+        returns ? `${pct(st.batch.rrr)} of materials come back`
+          : 'nothing comes back from this one',
+        returns && bonus.specialises ? "this city's specialty" : '',
         st.focus > 0 ? `${short(st.focus)} focus at ${Math.round(eff)} mastery` : '',
         st.fee > 0.5 ? `${short(st.fee)} in fees` : '',
         s.craftWhere === 'best' && here ? `in ${here.name}` : '',

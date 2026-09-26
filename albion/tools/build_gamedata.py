@@ -1059,6 +1059,12 @@ def build_gathering(gd, items, spells):
     }
 
 
+# What each rung of the rune ladder eats. Level 4 is absent on purpose: no
+# item in the file carries an <upgraderequirements> for it, so a .4 can only
+# be crafted from .4 materials and never upgraded into.
+UPGRADE_MATS = {1: "RUNE", 2: "SOUL", 3: "RELIC"}
+
+
 def build_equipment(items, item_value, weights):
     """Weapons, armour, gear and the refining that feeds them.
 
@@ -1069,6 +1075,8 @@ def build_equipment(items, item_value, weights):
     specialty where a crafting bench pays +15%.
     """
     recipes = []
+    # item id -> how many runes/souls/relics one rung of its ladder costs.
+    upgrades = {}
     meta = {}
 
     def register(unique, group, name=None):
@@ -1245,10 +1253,48 @@ def build_equipment(items, item_value, weights):
                 continue
             add(f"{unique}@{level}", ereq, level)
 
+        # The OTHER way to get an enchanted item, which the app could not see
+        # at all: take the plain one you already own and put runes into it.
+        #
+        # The table is perfectly regular across all 1,285 items that have it -
+        # a rune for .1, a soul for .2, a relic for .3, always at the item's
+        # own tier, and always the same count at all three levels - so one
+        # number per item is the whole of it. Writing it out as 3,855 recipe
+        # rows cost a megabyte on a file phones fetch over mobile data and
+        # re-fetch whenever the shell version moves; js/store.js builds the
+        # rows from this on load instead. Every one of those regularities is
+        # asserted below, so a patch that breaks one breaks the build rather
+        # than quietly making the app lie.
+        ladder = {}
+        for ench in el.findall("./enchantments/enchantment"):
+            ureq = ench.find("upgraderequirements")
+            level = int(ench.get("enchantmentlevel", 0))
+            if ureq is None or not level:
+                continue
+            mats = ureq.findall("upgraderesource")
+            if len(mats) != 1:
+                raise SystemExit(f"{unique}@{level} upgrades with {len(mats)} things")
+            want = f"{unique.split('_')[0]}_{UPGRADE_MATS[level]}"
+            if mats[0].get("uniquename") != want:
+                raise SystemExit(
+                    f"{unique}@{level} wants {mats[0].get('uniquename')}, not {want}")
+            ladder[level] = int(mats[0].get("count"))
+        if ladder:
+            if sorted(ladder) != [1, 2, 3]:
+                raise SystemExit(f"{unique} upgrades at levels {sorted(ladder)}")
+            if len(set(ladder.values())) != 1:
+                raise SystemExit(f"{unique} upgrade cost varies by level: {ladder}")
+            upgrades[unique] = ladder[1]
+            for level in (1, 2, 3):
+                register(f"{unique.split('_')[0]}_{UPGRADE_MATS[level]}", "material")
+
+    # Sorted by what a row MAKES, not by the id it is filed under: a variant
+    # row carries `out` and has no item entry of its own.
     recipes.sort(key=lambda x: (GROUP_OF[x["category"]], x["category"],
-                                tier_of(x["id"]), meta[x["id"]]["name"],
+                                tier_of(x.get("out") or x["id"]),
+                                meta[x.get("out") or x["id"]]["name"],
                                 x.get("enchant", 0)))
-    return recipes, meta
+    return recipes, meta, upgrades
 
 
 def resource_meta(equip_recipes, equip_items):
@@ -1557,7 +1603,8 @@ def main() -> None:
 
     # Built here rather than after the farming file is written, because the
     # raws and refined materials it knows about are listed in that file too.
-    equip_recipes, equip_items = build_equipment(items, item_value, weights)
+    equip_recipes, equip_items, equip_upgrades = build_equipment(
+        items, item_value, weights)
     resource_ids, resource_items = resource_meta(equip_recipes, equip_items)
     gathering = build_gathering(gd, items, parse("spells.xml"))
     # A resource the farming tables already describe keeps their row; the
@@ -1692,6 +1739,9 @@ def main() -> None:
         "source": OUT.name + " companion (items.xml, achievements.xml)",
         "generated": data["generated"],
         "recipes": equip_recipes,
+        # One number per item: what a rune, a soul or a relic costs to put
+        # into it. js/store.js turns each into three recipe rows on load.
+        "upgrades": equip_upgrades,
         # Which list a category belongs under, so 6,600 rows do not each
         # carry the same word.
         "groups": GROUP_OF,

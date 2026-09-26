@@ -32,6 +32,56 @@ export async function loadGameData() {
  * they are put back together here, once, rather than at every read site.
  */
 let gearLoading = null;
+/** What each rung of the rune ladder eats. There is no .4: nothing upgrades
+ * into a pristine item, so a .4 can only ever be crafted from .4 materials. */
+const UPGRADE_MATS = { 1: 'RUNE', 2: 'SOUL', 3: 'RELIC' };
+
+/**
+ * The second route to every enchanted item, built from one number each.
+ *
+ * Take the plain one you already own and put runes into it. The game's table
+ * is perfectly regular - a rune for .1, a soul for .2, a relic for .3, always
+ * at the item's own tier and always the same count at all three levels - so
+ * the payload carries one number per item and the three rows are made here.
+ * Writing them out instead cost a megabyte on a file phones fetch over mobile
+ * data and re-fetch whenever the shell version moves.
+ *
+ * No focus and no return rate: the element carries neither, so nothing is
+ * assumed to come back and every input is flagged unreturnable. That is the
+ * reading that cannot flatter the route against crafting one outright.
+ */
+export function upgradeRows(raw, built, nameOf = (id) => raw.items[id]?.name || id) {
+  const byId = new Map(built.map((r) => [r.id, r]));
+  const rows = [];
+  for (const [base, count] of Object.entries(raw.upgrades || {})) {
+    const tier = base.split('_')[0];
+    const plain = byId.get(base);
+    for (const level of [1, 2, 3]) {
+      rows.push({
+        id: `${base}@${level}#upgrade`,
+        out: `${base}@${level}`,
+        name: nameOf(base),
+        tier: raw.items[base]?.tier ?? 0,
+        category: plain?.category || '',
+        group: 'upgrade',
+        kind: 'upgrade',
+        enchant: level,
+        amount: 1,
+        silver: 0,
+        refine: false,
+        focus: 0,
+        maxQuality: plain?.maxQuality ?? 5,
+        inputs: [
+          // Each rung climbs from the one below, so a .2 wants a .1.
+          { id: level === 1 ? base : `${base}@${level - 1}`, count: 1, noReturn: true },
+          { id: `${tier}_${UPGRADE_MATS[level]}`, count, noReturn: true },
+        ],
+      });
+    }
+  }
+  return rows;
+}
+
 export function loadEquipment() {
   if (GEAR) return Promise.resolve(GEAR);
   if (gearLoading) return gearLoading;
@@ -40,17 +90,19 @@ export function loadEquipment() {
     if (!res.ok) throw new Error(`Could not load the equipment data (${res.status})`);
     const raw = await res.json();
     const nameOf = (id) => raw.items[id]?.name || id;
-    GEAR = {
-      ...raw,
-      recipes: raw.recipes.map((r) => ({
+    const built = raw.recipes.map((r) => ({
         enchant: 0, amount: 1, silver: 0, refine: false, ...r,
-        name: nameOf(r.id),
-        tier: raw.items[r.id]?.tier ?? 0,
+        /* A variant row makes the thing `out` names, so that is where its
+         * name and tier come from. Repeating them in `items` for every one of
+         * the 3,855 rune upgrades would have been a megabyte of the same
+         * strings the file already carries once. */
+        name: nameOf(r.out || r.id),
+        tier: raw.items[r.out || r.id]?.tier ?? 0,
         // A transmutation names its own list: it is neither refining nor
         // crafting, and filing it under the planks would bury it.
         group: r.group || raw.groups[r.category] || 'gear',
-      })),
-    };
+      }));
+    GEAR = { ...raw, recipes: built.concat(upgradeRows(raw, built, nameOf)) };
     /* The destiny board is one board. Once the weapon and armour half is
      * here, every focus cost in the app is worked out from all 371 nodes
      * rather than from the 54 a farmer sees, so a sword quoted before and

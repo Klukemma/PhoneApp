@@ -12,7 +12,7 @@ import {
 } from '../js/calc.js';
 import { enchantOf, tierText } from '../js/util.js';
 import { sellsToBlackMarket } from '../js/craft.js';
-import { pricedItemIds } from '../js/store.js';
+import { pricedItemIds, upgradeRows } from '../js/store.js';
 
 const data = JSON.parse(
   readFileSync(new URL('../data/gamedata.json', import.meta.url), 'utf8'));
@@ -20,12 +20,16 @@ const raw = JSON.parse(
   readFileSync(new URL('../data/equipment.json', import.meta.url), 'utf8'));
 
 // The app rebuilds the stripped rows on load; the tests use the same shape.
-const gear = raw.recipes.map((r) => ({
+const built = raw.recipes.map((r) => ({
   enchant: 0, amount: 1, silver: 0, refine: false, ...r,
-  name: raw.items[r.id]?.name || r.id,
-  tier: raw.items[r.id]?.tier ?? 0,
+  // A variant row makes what `out` names, so that is where its name comes from.
+  name: raw.items[r.out || r.id]?.name || r.out || r.id,
+  tier: raw.items[r.out || r.id]?.tier ?? 0,
   group: r.group || raw.groups[r.category] || 'gear',
 }));
+// The rune ladder is one number per item in the payload and three rows in the
+// app, built by the same function the app uses rather than a copy of it.
+const gear = built.concat(upgradeRows(raw, built));
 const all = new Map([...data.recipes, ...gear].map((r) => [r.id, r]));
 const recipeOf = (id) => all.get(id) || null;
 
@@ -56,6 +60,53 @@ const ctx = (over = {}) => ({
 });
 
 /* ------------------------------------------------- the recipes exist --- */
+
+test('there are two ways to an enchanted item, and the app knows both', () => {
+  /* The app only ever saw one: craft it from enchanted materials. The other is
+   * to take the plain one you own and put runes into it, and which is cheaper
+   * moves with the rune price — so it is a comparison, not a fact. */
+  const up = raw.upgrades;
+  assert.equal(Object.keys(up).length, 1285);
+  assert.equal(up.T5_MAIN_SWORD, 288);
+
+  const rows = gear.filter((r) => r.kind === 'upgrade');
+  assert.equal(rows.length, 1285 * 3, 'three rungs each, built at load');
+
+  const ladder = ['T5_MAIN_SWORD@1', 'T5_MAIN_SWORD@2', 'T5_MAIN_SWORD@3']
+    .map((out) => gear.find((r) => r.id === `${out}#upgrade`));
+  assert.deepEqual(ladder.map((r) => r.inputs[1].id),
+    ['T5_RUNE', 'T5_SOUL', 'T5_RELIC'], 'rune, soul, relic, in that order');
+  assert.deepEqual(ladder.map((r) => r.inputs[1].count), [288, 288, 288]);
+  // Each rung climbs from the one below it, not from plain every time.
+  assert.deepEqual(ladder.map((r) => r.inputs[0].id),
+    ['T5_MAIN_SWORD', 'T5_MAIN_SWORD@1', 'T5_MAIN_SWORD@2']);
+  // The material is always at the item's own tier.
+  assert.equal(gear.find((r) => r.id === 'T8_MAIN_SWORD@1#upgrade').inputs[1].id, 'T8_RUNE');
+
+  /* No focus and no return rate: the element carries neither, so every input
+   * is unreturnable. That is the reading that cannot flatter this route
+   * against crafting the item outright. */
+  for (const r of ladder) {
+    assert.equal(r.focus, 0);
+    assert.ok(r.inputs.every((i) => i.noReturn === true));
+  }
+  // It makes the thing `out` names and carries that item's name and tier.
+  assert.equal(ladder[0].out, 'T5_MAIN_SWORD@1');
+  assert.equal(ladder[0].tier, 5);
+  assert.ok(ladder[0].name && !ladder[0].name.includes('#'));
+  // And nothing upgrades into a pristine one: .4 is crafted or not had.
+  assert.equal(gear.find((r) => r.id === 'T5_MAIN_SWORD@4#upgrade'), undefined);
+  assert.ok(gear.find((r) => r.id === 'T5_MAIN_SWORD@4'), 'but it can be crafted');
+
+  // The rune ids are real, named items a market can quote.
+  assert.ok(raw.items.T5_RUNE?.name);
+  assert.equal(raw.items.T5_RUNE.tier, 5);
+
+  /* The payload stays one number per item. Writing the rows out cost a
+   * megabyte on a file phones fetch over mobile data and re-fetch whenever
+   * the shell version moves. */
+  assert.equal(raw.recipes.filter((r) => r.kind === 'upgrade').length, 0);
+});
 
 test('weapons and armour are in the list, with the materials the game names', () => {
   const sword = recipeOf('T4_MAIN_SWORD');
