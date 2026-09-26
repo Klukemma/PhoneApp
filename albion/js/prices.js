@@ -56,6 +56,7 @@ export async function fetchPrices(ids, { server = 'americas', city = 'Caerleon',
 
   const batches = chunk([...new Set(ids)], BATCH);
   const prices = {};
+  const seenAt = {};
   let stale = 0;
   const cutoff = maxAgeHours > 0 ? Date.now() - maxAgeHours * 3600_000 : null;
 
@@ -78,10 +79,13 @@ export async function fetchPrices(ids, { server = 'americas', city = 'Caerleon',
     for (const row of rows) {
       const value = Number(row?.[key]);
       if (!Number.isFinite(value) || value <= 0) continue;
-      if (cutoff) {
-        const seen = Date.parse(row[`${key}_date`] || '');
-        if (Number.isFinite(seen) && seen < cutoff) { stale++; continue; }
-      }
+      /* When the data project last SAW this, which is the only honest age for
+       * it. A quote somebody observed three weeks ago is three weeks old
+       * however long ago you pressed the button, and the app used to parse
+       * this date inside a branch no caller could reach and then throw it
+       * away. */
+      const seen = Date.parse(row[`${key}_date`] || '');
+      if (cutoff && Number.isFinite(seen) && seen < cutoff) { stale++; continue; }
       /* Several rows can come back per item. On the shelf you want the
        * cheapest; on a buy order you want the best price anyone is offering,
        * which is the highest. Quality keeps them apart: a masterpiece and a
@@ -90,9 +94,12 @@ export async function fetchPrices(ids, { server = 'americas', city = 'Caerleon',
       const id = row.item_id;
       const q = Number(row.quality) || 1;
       const at = (prices[id] ||= {});
+      const took = !at[q] || (field === 'buy' ? value > at[q] : value < at[q]);
       at[q] = at[q]
         ? (field === 'buy' ? Math.max(at[q], value) : Math.min(at[q], value))
         : value;
+      // The date belongs to whichever row won, not to whichever came last.
+      if (took && Number.isFinite(seen)) seenAt[id] = seen;
     }
     onProgress?.(i + 1, batches.length);
   }
@@ -107,6 +114,10 @@ export async function fetchPrices(ids, { server = 'americas', city = 'Caerleon',
     found,
     missing: [...new Set(ids)].filter((id) => !(id in prices)),
     stale,
+    // When the market itself last saw each of these, in ms. The app stores
+    // this rather than the moment of the fetch, because they are not the
+    // same thing and only one of them is the price's real age.
+    seenAt,
   };
 }
 

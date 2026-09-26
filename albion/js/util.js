@@ -49,7 +49,7 @@ export const byId = (list) => Object.fromEntries(list.map((x) => [x.id, x]));
 
 /** "3h ago" — how stale a market quote is, at a glance. */
 export function ago(ms) {
-  if (!Number.isFinite(ms)) return 'no date';
+  if (!Number.isFinite(ms) || ms <= 0) return 'age unknown';
   const mins = Math.round((Date.now() - ms) / 60000);
   if (mins < 1) return 'just now';
   if (mins < 60) return `${mins}m ago`;

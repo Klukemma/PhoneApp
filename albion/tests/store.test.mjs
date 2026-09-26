@@ -189,6 +189,63 @@ test('a measured rate is kept, corrected and cleared through one door', () => {
   assert.equal(state.settings.gather.measured['ORE:6:critter:outlandsHigh'].per10min, 40);
 });
 
+/* ------------------------------------------------------- price age ----- */
+
+test('a price remembers when it was last a real observation', () => {
+  wipe();
+  const { setPrice, setPrices, priceSeenAt } = store;
+  assert.equal(priceSeenAt('T5_WOOD'), 0, 'nothing known yet');
+
+  setPrice('T5_WOOD', 260);
+  const first = priceSeenAt('T5_WOOD');
+  assert.ok(first > 0 && Math.abs(Date.now() - first) < 120000, 'typed just now');
+
+  /* The price sheet saves on every open, on Enter in three boxes and before
+   * every fetch. Re-saving the SAME number must not mark it fresh, or the
+   * staleness warning could never fire for anyone who opened the sheet. */
+  setPrice('T5_WOOD', 260);
+  assert.equal(priceSeenAt('T5_WOOD'), first, 'unchanged means unobserved');
+
+  // A different number is a new observation.
+  setPrice('T5_WOOD', 280);
+  assert.ok(priceSeenAt('T5_WOOD') >= first);
+
+  /* A fetch carries the market's OWN date, not the moment of the fetch. A
+   * quote the data project saw three weeks ago is three weeks old however
+   * long ago you pressed the button. */
+  const threeWeeks = Date.now() - 21 * 24 * 3600e3;
+  setPrices({ T5_PLANKS: 1100 }, { T5_PLANKS: threeWeeks });
+  const aged = priceSeenAt('T5_PLANKS');
+  assert.ok(Math.abs(aged - threeWeeks) < 120000, 'kept the market\'s date');
+  assert.ok(Date.now() - aged > 20 * 24 * 3600e3);
+
+  // Clearing a price forgets its date too.
+  setPrice('T5_WOOD', 0);
+  assert.equal(priceSeenAt('T5_WOOD'), 0);
+});
+
+test('prices saved before dates existed are unknown, not fresh', () => {
+  /* Back-dating them to the moment of the upgrade would be inventing a
+   * number, and calling them fresh would be worse: it would silence the one
+   * warning that exists to catch them. */
+  const s = reopen({
+    schema: 2,
+    settings: {},
+    prices: { T5_WOOD: 260, T5_PLANKS: 1100 },
+  });
+  assert.equal(s.prices.T5_WOOD, 260, 'the price itself survives');
+  assert.deepEqual(s.priceSeen, {});
+  assert.equal(store.priceSeenAt('T5_WOOD'), 0);
+  // And a hand-edited date that is not a number is dropped, not trusted.
+  const junk = reopen({
+    schema: 2,
+    prices: { T5_WOOD: 260, T5_ORE: 240 },
+    priceSeen: { T5_WOOD: 'yesterday', T5_ORE: 29000000 },
+  });
+  assert.equal(junk.priceSeen.T5_WOOD, undefined);
+  assert.equal(junk.priceSeen.T5_ORE, 29000000);
+});
+
 /* ----------------------------------------------------- round tripping -- */
 
 test('a backup taken now opens as itself', () => {

@@ -13,7 +13,7 @@ import {
   addCraft, addPlot, addSpare, applySolution, bmPriceOf, carryStockIn,
   clearLand, clearStock, commit, costOf, DATA, exportJSON, importJSON, itemMeta,
   landSummary, plotsOwned, pricedItemIds, priceOf, qBmPriceOf, qPriceOf,
-  removeCraft, removePlot, scheduleDays, setBmPrice, setBuyPrice,
+  priceSeenAt, removeCraft, removePlot, scheduleDays, setBmPrice, setBuyPrice,
   setCraftCity, setDayMode, setGather, setGoal, setGoalStamp, setHolding,
   setMeasured, setNodeLevel, setPrice, setPrices, setQualityPrice,
   setQualityPrices, setSchedule, setScheduleLength, setSettings, setSpec,
@@ -832,9 +832,20 @@ export function openPrice(id, market = null, busy = false, err = null) {
   const instant = (market || []).filter((r) => r.buyMax)
     .sort((a, b) => b.buyMax - a.buyMax);
 
+  /* How old the number already in the box is. The app used to have no idea:
+   * a quote fetched three weeks ago looked exactly like one from a minute
+   * ago, and drove every screen just as confidently. */
+  const seen = priceSeenAt(id);
+  const maxAge = (Number(state.settings.priceMaxAgeHours) || 24) * 3600e3;
+  const old = seen > 0 && Date.now() - seen > maxAge;
+
   openSheet(`
     <h2>${esc(name)}</h2>
-    ${note(`${tierText(itemMeta(id)?.tier || 0, itemMeta(id)?.enchant || 0)} \u00b7 ${esc(itemMeta(id)?.cat || 'item')}`)}
+    ${note(`${tierText(itemMeta(id)?.tier || 0, itemMeta(id)?.enchant || 0)} \u00b7 ${esc(itemMeta(id)?.cat || 'item')}${
+    sell ? ` \u00b7 ${esc(seen ? `last seen ${ago(seen)}` : 'age unknown')}` : ''}`)}
+    ${old ? `<div class="warn-note">The market last saw this ${esc(ago(seen))},
+      and every screen in the app is resting on it. Fetch it again, or type
+      what you can see in game.</div>` : ''}
 
     <div class="two">
       <div class="field"><label>You sell it for</label>
@@ -1075,7 +1086,7 @@ export async function runPriceFetch(ids = pricedItemIds()) {
         if (st) st.textContent = `Batch ${done} of ${total}…`;
       },
     });
-    setPrices(out.plain);
+    setPrices(out.plain, out.seenAt);
     closeSheet();
     toast(out.missing.length
       ? `${out.found.length} prices updated, ${out.missing.length} had no market data`
@@ -2546,7 +2557,7 @@ export async function runCraftPriceFetch() {
       qualities: QUALITIES,
       signal: controller.signal,
     });
-    setQualityPrices(out.prices);
+    setQualityPrices(out.prices, false, out.seenAt);
 
     let bmFound = 0;
     if (bmIds.length) {
@@ -2559,7 +2570,7 @@ export async function runCraftPriceFetch() {
         qualities: QUALITIES,
         signal: controller.signal,
       });
-      setQualityPrices(bm.prices, true);
+      setQualityPrices(bm.prices, true, bm.seenAt);
       bmFound = bm.found.length;
     }
     closeSheet();
@@ -2614,7 +2625,7 @@ export async function runScanPriceFetch() {
         if (st) st.textContent = `Market batch ${done} of ${total}…`;
       },
     });
-    setQualityPrices(out.prices);
+    setQualityPrices(out.prices, false, out.seenAt);
 
     let bmFound = 0;
     if (bmIds.length) {
@@ -2631,7 +2642,7 @@ export async function runScanPriceFetch() {
           if (bar) bar.style.width = `${70 + (done / total) * 30}%`;
         },
       });
-      setQualityPrices(bm.prices, true);
+      setQualityPrices(bm.prices, true, bm.seenAt);
       bmFound = bm.found.length;
     }
     closeSheet();

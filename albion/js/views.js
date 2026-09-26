@@ -7,7 +7,7 @@ import {
 } from './calc.js';
 import {
   costOf, DATA, hasOwnCost, itemMeta, landSummary, plotsOwned, pricedItemIds,
-  priceOf, scheduleDays, state,
+  priceOf, priceSeenAt, scheduleDays, state,
 } from './store.js';
 import { serverName } from './prices.js';
 import {
@@ -21,7 +21,7 @@ import {
   note, rowHTML, slimRow, tag,
 } from './html.js';
 import { esc } from './ui.js';
-import { enchantOf, hours, pct, short, silver, tierText, toneOf } from './util.js';
+import { ago, enchantOf, hours, pct, short, silver, tierText, toneOf } from './util.js';
 
 export let rankTab = 'farm';
 export const setRankTab = (t) => { rankTab = t; };
@@ -1335,6 +1335,23 @@ export let priceQuery = '';
 export const setPriceQuery = (v) => { priceQuery = v; };
 
 /** The rows of the Market list, on their own so a search can redraw just them. */
+/* How old a price is, in the words the rest of the app uses for staleness. A
+ * price saved before the app recorded dates has none, and says so rather than
+ * being back-dated to the moment the user upgraded. */
+const priceAge = (id) => {
+  const at = priceSeenAt(id);
+  return at ? ago(at) : 'age unknown';
+};
+
+/* Old enough to be worth a second look. Your number, not the game's: Albion
+ * publishes nothing about when a quote goes off. A price with no date at all
+ * is not called stale - it is called unknown, which is a different problem. */
+const isStale = (id) => {
+  const at = priceSeenAt(id);
+  const hours = Number(state.settings.priceMaxAgeHours) || 24;
+  return at > 0 && Date.now() - at > hours * 3600e3;
+};
+
 export function priceListHTML() {
   const all = pricedIds();
   const used = new Set(planItemIds());
@@ -1365,7 +1382,10 @@ export function priceListHTML() {
     .map((id) => rowHTML({
       attrs: `data-price="${esc(id)}"`, icon: iconFor(itemMeta(id)?.cat),
       title: esc(label(id)),
-      meta: `${esc(catLabel(cat).replace(/s$/, ''))} · ${tierText(tierOf(id), enchantOf(id))}${hasOwnCost(id) ? ` · you pay ${silver(costOf(id))}` : ''}`,
+      meta: `${esc(catLabel(cat).replace(/s$/, ''))} · ${tierText(tierOf(id), enchantOf(id))}${
+        hasOwnCost(id) ? ` · you pay ${silver(costOf(id))}` : ''}${
+        priceOf(id) ? ` · ${esc(priceAge(id))}` : ''}`,
+      cls: priceOf(id) && isStale(id) ? 'warn' : '',
       right: priceOf(id) ? amt(silver(priceOf(id)), { tone: '' }) : tag('Set price'),
     })).join('')}
     </section>`).join('')

@@ -138,6 +138,10 @@ function defaults() {
       feedItemIds: { plants: 'T3_WHEAT', meat: 'T3_MEAT', mount: 'T8_FARM_OX_GROWN' },
       server: 'americas',      // Albion Americas, Asia or Europe
       priceCity: 'Caerleon',
+      // How old a quote has to be before the app says so. Your call: Albion
+      // publishes nothing about when a market price goes off, so this is a
+      // judgement and the app labels it rather than adjusting any number by it.
+      priceMaxAgeHours: 24,
       // These come from gamedata.json constants at first run; kept here so
       // they stay editable when a patch changes them.
       ...{},
@@ -154,6 +158,17 @@ function defaults() {
      * only ever has one price anyway. */
     qPrices: {},
     qBmPrices: {},
+    /* When each price was last a real observation, in whole minutes since the
+     * epoch. Two maps, not five: the five price maps are written in two
+     * moments, because a market fetch writes `prices` and `qPrices` together
+     * and a Black Market fetch writes the other two together. What you pay is
+     * your own number and carries the market side's stamp when you type it.
+     *
+     * Minutes rather than milliseconds because this rides in localStorage
+     * beside a few hundred prices and nobody needs a quote timed to the
+     * second. */
+    priceSeen: {},
+    bmSeen: {},
     spec: {},                  // recipe id -> a flat efficiency override
     nodeLevels: {},            // destiny board node id -> level
     // What you are trying to make, and how much land you have to do it with.
@@ -286,6 +301,12 @@ function normalize(raw) {
     bmPrices: { ...(raw.bmPrices || {}) },
     qPrices: { ...(raw.qPrices || {}) },
     qBmPrices: { ...(raw.qBmPrices || {}) },
+    /* A save written before the app recorded these has no dates at all, and
+     * that is the honest state: those prices ARE of unknown age, and the
+     * screen says so rather than back-dating them to the moment you
+     * upgraded. */
+    priceSeen: { ...(raw.priceSeen || {}) },
+    bmSeen: { ...(raw.bmSeen || {}) },
     spec: { ...(raw.spec || {}) },
     nodeLevels: { ...(raw.nodeLevels || {}) },
     goal: { ...base.goal, ...(raw.goal || {}) },
@@ -330,6 +351,12 @@ function normalize(raw) {
         if (!Number.isFinite(n) || n <= 0) delete at[q];
       }
       if (!Object.keys(at).length) delete map[id];
+    }
+  }
+  for (const map of [s.priceSeen, s.bmSeen]) {
+    for (const [k, v] of Object.entries(map)) {
+      const n = Number(v);
+      if (!Number.isFinite(n) || n <= 0) delete map[k];
     }
   }
   for (const map of [s.prices, s.buyPrices, s.bmPrices]) {
@@ -438,17 +465,52 @@ export const hasOwnCost = (id) => Number(state.buyPrices[id]) > 0;
 /** What the Black Market is offering for one, right now. */
 export const bmPriceOf = (id) => Number(state.bmPrices[id]) || 0;
 
-export function setBmPrice(id, value) {
+const nowMinutes = () => Math.round(Date.now() / 60000);
+
+/**
+ * Stamp when a price was last a real observation.
+ *
+ * Only when the number actually MOVED, or when a fetch brings a date newer
+ * than the one on file. The price sheet's save runs on every open, on Enter in
+ * three boxes and before every fetch, so stamping unconditionally would mark
+ * every price you merely glanced at as fresh - the exact failure this exists
+ * to prevent, wearing the costume of a fix for it.
+ *
+ * `seen` is the market's own observation date where a fetch supplies one. A
+ * quote the data project saw three weeks ago is three weeks old however long
+ * ago you pressed the button.
+ */
+function stamp(map, id, changed, seen) {
+  const at = Number.isFinite(seen) ? Math.round(seen / 60000) : nowMinutes();
+  if (changed || !(map[id] > 0) || at > map[id]) map[id] = at;
+}
+
+/** When this price was last a real observation, in ms, or 0 if never recorded. */
+export const priceSeenAt = (id, black = false) => {
+  const at = (black ? state.bmSeen : state.priceSeen)[id];
+  return at > 0 ? at * 60000 : 0;
+};
+
+export function setBmPrice(id, value, seen) {
   const n = Number(value);
-  if (!Number.isFinite(n) || n <= 0) delete state.bmPrices[id];
-  else state.bmPrices[id] = Math.round(n);
+  const was = state.bmPrices[id];
+  if (!Number.isFinite(n) || n <= 0) {
+    delete state.bmPrices[id];
+    delete state.bmSeen[id];
+  } else {
+    state.bmPrices[id] = Math.round(n);
+    stamp(state.bmSeen, id, was !== state.bmPrices[id], seen);
+  }
   commit();
 }
 
-export function setBmPrices(map) {
+export function setBmPrices(map, seenAt = {}) {
   for (const [id, v] of Object.entries(map)) {
     const n = Number(v);
-    if (Number.isFinite(n) && n > 0) state.bmPrices[id] = Math.round(n);
+    if (!Number.isFinite(n) || n <= 0) continue;
+    const was = state.bmPrices[id];
+    state.bmPrices[id] = Math.round(n);
+    stamp(state.bmSeen, id, was !== state.bmPrices[id], seenAt[id]);
   }
   commit();
 }
@@ -492,16 +554,27 @@ export function setQualityPrice(id, quality, value, black = false) {
 }
 
 /** Take a whole id -> {quality: price} table from a fetch. */
-export function setQualityPrices(table, black = false) {
+export function setQualityPrices(table, black = false, seenAt = {}) {
   const flat = black ? state.bmPrices : state.prices;
   const map = black ? state.qBmPrices : state.qPrices;
+  const seenMap = black ? state.bmSeen : state.priceSeen;
   for (const [id, at] of Object.entries(table)) {
+    let changed = false;
     for (const [q, v] of Object.entries(at)) {
       const n = Number(v);
       if (!Number.isFinite(n) || n <= 0) continue;
-      if (Number(q) <= 1) flat[id] = Math.round(n);
-      else (map[id] ||= {})[Number(q)] = Math.round(n);
+      if (Number(q) <= 1) {
+        changed = changed || flat[id] !== Math.round(n);
+        flat[id] = Math.round(n);
+      } else {
+        const was = map[id]?.[Number(q)];
+        (map[id] ||= {})[Number(q)] = Math.round(n);
+        changed = changed || was !== Math.round(n);
+      }
     }
+    /* One stamp per item, not one per quality level: all five come back from
+     * the same request, so they are one observation of one item. */
+    stamp(seenMap, id, changed, seenAt[id]);
   }
   commit();
 }
@@ -513,17 +586,26 @@ export function setBuyPrice(id, value) {
   commit();
 }
 
-export function setPrice(id, value) {
+export function setPrice(id, value, seen) {
   const n = Number(value);
-  if (!Number.isFinite(n) || n <= 0) delete state.prices[id];
-  else state.prices[id] = Math.round(n);
+  const was = state.prices[id];
+  if (!Number.isFinite(n) || n <= 0) {
+    delete state.prices[id];
+    delete state.priceSeen[id];
+  } else {
+    state.prices[id] = Math.round(n);
+    stamp(state.priceSeen, id, was !== state.prices[id], seen);
+  }
   commit();
 }
 
-export function setPrices(map) {
+export function setPrices(map, seenAt = {}) {
   for (const [id, v] of Object.entries(map)) {
     const n = Number(v);
-    if (Number.isFinite(n) && n > 0) state.prices[id] = Math.round(n);
+    if (!Number.isFinite(n) || n <= 0) continue;
+    const was = state.prices[id];
+    state.prices[id] = Math.round(n);
+    stamp(state.priceSeen, id, was !== state.prices[id], seenAt[id]);
   }
   commit();
 }
