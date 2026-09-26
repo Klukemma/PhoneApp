@@ -384,6 +384,54 @@ test('a node is counted twice over: full, and as you find it', () => {
   assert.equal(Math.ceil(crit.nodes), Math.ceil(crit.nodeVisits));
 });
 
+test('where the file gives no spawn count, the engine gives none either', () => {
+  /* A T8 static says its spawn charges are randomised and does not say over
+   * what spread. So there is no second node figure to quote, and the engine
+   * says so with a null rather than putting the 1 back in JavaScript. */
+  const t8 = gatherRun('T8_WOOD', { qty: 999, settings: kit({ gather: { toolTier: 8 } }) });
+  assert.equal(t8.rate.unitsPerFreshNode, null);
+  assert.equal(t8.nodeVisits, null);
+  assert.equal(t8.rate.randomCharges, true);
+  assert.ok(t8.nodes > 0, 'but a full node is still a number the file gives');
+  // Where it does say, nothing changed: T5 still spawns on one charge of five.
+  const t5 = gatherRun('T5_WOOD', { qty: 999, settings: kit({}) });
+  assert.equal(t5.rate.unitsPerFreshNode, 1);
+  assert.equal(Math.ceil(t5.nodeVisits), 1058);
+  assert.equal(t5.rate.randomCharges, false);
+});
+
+test('respawn is a tick, and what it puts back collapses with tier', () => {
+  /* The same 900-second number sits on T6, T7 and T8, and it is not "the node
+   * is back" - it is a roll, and the odds fall off a cliff. Printing it as a
+   * respawn said a T8 tree and a T2 tree were fifteen minutes apart when they
+   * are a factor of seven hundred apart. */
+  const at = (tier) => gatherRate('WOOD', tier, 0, kit({ gather: { toolTier: 8 } })).regrowSeconds;
+  assert.equal(round(at(2)), round(60 / 2.7027), 'a T2 tree refills in seconds');
+  assert.ok(at(2) < 30);
+  assert.equal(round(at(5)), round(720 / 1.2973));
+  assert.ok(at(5) > 500 && at(5) < 600, 'nine minutes a log at T5');
+  assert.equal(round(at(8)), round(900 / 0.0537));
+  assert.ok(at(8) > 4.5 * 3600 && at(8) < 4.8 * 3600, 'four and three quarter hours at T8');
+  // A carcass does not regrow at all, so there is no figure to give.
+  assert.equal(gatherRate('HIDE', 8, 0, kit({ gather: { toolTier: 8 } })).regrowSeconds, null);
+});
+
+test('a Roads guardian is the richest node the game has', () => {
+  const run = gatherRun('T8_WOOD', {
+    qty: 999, settings: kit({ gather: { toolTier: 8, kind: 'guardianRoads' } }),
+  });
+  assert.ok(!run.impossible);
+  assert.equal(Math.round(run.rate.unitsPerSwing), 10, 'ten logs a swing');
+  assert.equal(run.rate.unitsPerNode, 349);
+  assert.ok(run.nodes > 3 && run.nodes < 4, 'a stack is under four of them');
+  // And the open-world guardian does not exist at T8 at all, so it refuses.
+  const open = gatherRun('T8_WOOD', {
+    qty: 999, settings: kit({ gather: { toolTier: 8, kind: 'guardian' } }),
+  });
+  assert.equal(open.impossible, true);
+  assert.match(open.why, /no T8 guardian/);
+});
+
 test('a giant tree and a guardian are not ordinary nodes', () => {
   // Twelve logs over four swings, three at a time, twenty seconds a swing.
   const giant = gatherRun('T2_WOOD', { qty: 120, settings: kit({ gather: { kind: 'giant' } }) });

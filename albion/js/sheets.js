@@ -2022,12 +2022,16 @@ export function openGatherSetup(forId = null, keepPeek = false) {
       <div class="bar-row"><span class="n">Off</span>
         <span class="v num">${short(Math.ceil(run.nodes))}${
   run.nodeVisits > run.nodes * 1.05 ? `–${short(Math.ceil(run.nodeVisits))}` : ''} nodes${
-  run.rate.node.respawn ? ` <small>${Math.round(run.rate.node.respawn / 60)} min respawn</small>` : ''}</span></div>
+  run.rate.regrowSeconds ? ` <small>${esc(regrowWords(run.rate.regrowSeconds))}</small>` : ''}</span></div>
       ${run.nodeVisits > run.nodes * 1.05 ? note(`A ${esc(FAMILY_LABEL[family].toLowerCase())}
-        node starts at ${run.rate.node.startCharges} charge${run.rate.node.startCharges === 1 ? '' : 's'}
+        node spawns holding ${run.rate.node.startCharges} charge${run.rate.node.startCharges === 1 ? '' : 's'}
         of ${run.rate.node.charges} and fills up over time, so the low number is
         every node found full and the high one is every node found fresh. The
-        truth is somewhere between and depends on how picked-over the zone is.`) : ''}
+        truth is somewhere between and depends on how picked-over the zone is.`)
+    : run.rate.randomCharges ? note(`The file says a T${tier} node's spawn
+        charges are randomised and does not say over what spread, so that
+        figure is every node found full — the real number of nodes is higher
+        and the game does not publish by how much.`) : ''}
     </div>` : '<div class="hint">No node of that sort at that tier.</div>';
 
   const measuredRows = Object.entries(kit.measured).map(([k, v]) => {
@@ -2228,6 +2232,12 @@ const GRADES = [[0, 'plain'], [1, '.1'], [2, '.2'], [3, '.3']];
 
 /** "gear-head" -> "gearHead", to read the dataset the browser built. */
 const camel = (attr) => attr.replace(/-(\w)/g, (_, c) => c.toUpperCase());
+
+/* The file's respawn number is a tick on which the node rolls for charges,
+ * not the moment it is back. What that works out at is the useful figure. */
+const regrowWords = (s) => (s < 5400
+  ? `regrows one every ${Math.round(s / 60)} min`
+  : `regrows one every ${(s / 3600).toFixed(1)}h`);
 
 /** Minutes, or hours once minutes stop being readable. */
 const gMin = (seconds) => (seconds < 5400

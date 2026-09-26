@@ -453,9 +453,21 @@ function qualityTable(run) {
 /* How many nodes a run means. Two numbers where a node charges up over time,
  * because a static tree you walk up to holds one charge of five and quoting
  * only the full-tree figure was a fifth of the truth. */
-const nodeRange = (g) => (g.nodeVisits > g.nodes * 1.05
+const nodeRange = (g) => (g.nodeVisits && g.nodeVisits > g.nodes * 1.05
   ? `${short(Math.ceil(g.nodes))}–${short(Math.ceil(g.nodeVisits))} nodes`
   : `${short(Math.ceil(g.nodes))} nodes`);
+
+/* How long a node takes to put one unit back. The respawn figure in the file
+ * is a tick and not a return: what it means is "roll for charges again", and
+ * at T8 that roll comes up 5% of the time. One log every four and three
+ * quarter hours is the number a gatherer can actually use. */
+const regrowText = (rate) => {
+  const s = rate?.regrowSeconds;
+  if (!s) return '';
+  if (s < 90) return `regrows one every ${Math.round(s)}s`;
+  if (s < 5400) return `regrows one every ${Math.round(s / 60)} min`;
+  return `regrows one every ${(s / 3600).toFixed(1)}h`;
+};
 
 /* What the game calls each grade above plain. Taken off the item's own name,
  * which is where the game puts it: "Uncommon Cedar Logs". */
@@ -503,12 +515,15 @@ function gatherSection(run) {
       title: `${short(g.qty)} × ${esc(nameOf(id))}`,
       meta: esc([
         `${short(g.harvests)} harvests`,
-        g.nodeVisits > g.nodes * 1.05
-          ? `${nodeRange(g)}, by how charged you find them` : nodeRange(g),
+        g.nodeVisits && g.nodeVisits > g.nodes * 1.05
+          ? `${nodeRange(g)}, by how charged you find them`
+          : g.rate.randomCharges
+            ? `${nodeRange(g)} if full — the file says the spawn count varies but not by how much`
+            : nodeRange(g),
         `${g.rate.secondsPerSwing.toFixed(1)}s a swing`,
         y.multiplier > 1.005 ? `+${pct((y.multiplier - 1), 0)} yield` : 'no yield bonus',
         speed.total > 0 ? `+${pct(speed.total, 0)} speed${speed.capped ? ' (capped)' : ''}` : '',
-        g.rate.node.respawn ? `${Math.round(g.rate.node.respawn / 60)} min respawn` : '',
+        regrowText(g.rate),
       ].filter(Boolean).join(' · ')),
       right: amt(timeText(g.swingSeconds), { tone: 'flat' }),
     });

@@ -1,6 +1,6 @@
 {
  "source": "ao-data/ao-bin-dumps (items.xml, loot.xml, gamedata.xml)",
- "generated": "2026-09-24",
+ "generated": "2026-09-26",
  "constants": {
   "focusCraftBonus": 59.0,
   "focusCostConstant": 1.00695555005672,
@@ -19722,6 +19722,7 @@
       "perHarvest": 2,
       "startCharges": 2,
       "respawn": 120,
+      "chargeUp": 1.0811,
       "noTool": true,
       "noToolFactor": 2.0
      },
@@ -19732,7 +19733,8 @@
       "perNode": 9,
       "perHarvest": 1,
       "startCharges": 1,
-      "respawn": 60
+      "respawn": 60,
+      "chargeUp": 2.7027
      },
      "3": {
       "seconds": 3.0,
@@ -19741,7 +19743,8 @@
       "perNode": 9,
       "perHarvest": 1,
       "startCharges": 1,
-      "respawn": 120
+      "respawn": 120,
+      "chargeUp": 1.8018
      },
      "4": {
       "seconds": 4.0,
@@ -19751,6 +19754,7 @@
       "perHarvest": 1,
       "startCharges": 1,
       "respawn": 240,
+      "chargeUp": 1.2973,
       "rare": [
        1,
        2,
@@ -19765,6 +19769,7 @@
       "perHarvest": 1,
       "startCharges": 1,
       "respawn": 720,
+      "chargeUp": 1.2973,
       "rare": [
        1,
        2,
@@ -19779,6 +19784,7 @@
       "perHarvest": 1,
       "startCharges": 1,
       "respawn": 900,
+      "chargeUp": 0.2554,
       "rare": [
        1,
        2,
@@ -19791,8 +19797,9 @@
       "charges": 9,
       "perNode": 9,
       "perHarvest": 1,
-      "startCharges": 1,
+      "randomCharges": true,
       "respawn": 900,
+      "chargeUp": 0.0669,
       "rare": [
        1,
        2,
@@ -19805,8 +19812,9 @@
       "charges": 11,
       "perNode": 11,
       "perHarvest": 1,
-      "startCharges": 1,
+      "randomCharges": true,
       "respawn": 900,
+      "chargeUp": 0.0537,
       "rare": [
        1,
        2,
@@ -19896,7 +19904,6 @@
       "charges": 3,
       "perNode": 6,
       "perHarvest": 1,
-      "startCharges": 1,
       "rare": [
        1,
        2,
@@ -19909,7 +19916,6 @@
       "charges": 5,
       "perNode": 5,
       "perHarvest": 1,
-      "startCharges": 1,
       "rare": [
        1,
        2,
@@ -19922,7 +19928,6 @@
       "charges": 5,
       "perNode": 5,
       "perHarvest": 1,
-      "startCharges": 1,
       "rare": [
        1,
        2,
@@ -20192,6 +20197,88 @@
       ]
      }
     },
+    "guardianRoads": {
+     "6": {
+      "seconds": 8.0,
+      "yield": 9.975,
+      "charges": 80,
+      "perNode": 798,
+      "perHarvest": 10,
+      "startCharges": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "7": {
+      "seconds": 8.0,
+      "yield": 9.875,
+      "charges": 56,
+      "perNode": 553,
+      "perHarvest": 10,
+      "startCharges": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "8": {
+      "seconds": 8.0,
+      "yield": 9.9714,
+      "charges": 35,
+      "perNode": 349,
+      "perHarvest": 10,
+      "startCharges": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     }
+    },
+    "miniguardianRoads": {
+     "6": {
+      "seconds": 8.0,
+      "yield": 4.9556,
+      "charges": 45,
+      "perNode": 223,
+      "perHarvest": 5,
+      "startCharges": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "7": {
+      "seconds": 8.0,
+      "yield": 5.0,
+      "charges": 31,
+      "perNode": 155,
+      "perHarvest": 5,
+      "startCharges": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "8": {
+      "seconds": 8.0,
+      "yield": 4.9,
+      "charges": 20,
+      "perNode": 98,
+      "perHarvest": 5,
+      "startCharges": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     }
+    },
     "giant": {
      "1": {
       "seconds": 10.0,
@@ -20201,6 +20288,7 @@
       "perHarvest": 1,
       "startCharges": 2,
       "respawn": 120,
+      "chargeUp": 1.0811,
       "noTool": true,
       "noToolFactor": 2.0
      },
@@ -20211,7 +20299,8 @@
       "perNode": 12,
       "perHarvest": 3,
       "startCharges": 1,
-      "respawn": 900
+      "respawn": 900,
+      "chargeUp": 0.0802
      },
      "3": {
       "seconds": 30.0,
@@ -20220,7 +20309,8 @@
       "perNode": 9,
       "perHarvest": 3,
       "startCharges": 1,
-      "respawn": 900
+      "respawn": 900,
+      "chargeUp": 0.014
      },
      "4": {
       "seconds": 40.0,
@@ -20230,6 +20320,7 @@
       "perHarvest": 3,
       "startCharges": 1,
       "respawn": 900,
+      "chargeUp": 0.0039,
       "rare": [
        1,
        2,
@@ -20244,6 +20335,7 @@
       "perHarvest": 3,
       "startCharges": 1,
       "respawn": 900,
+      "chargeUp": 0.0008,
       "rare": [
        1,
        2,
@@ -20258,6 +20350,7 @@
       "perHarvest": 2,
       "startCharges": 1,
       "respawn": 900,
+      "chargeUp": 0.0002,
       "rare": [
        1,
        2,
@@ -20272,6 +20365,7 @@
       "perHarvest": 1,
       "startCharges": 1,
       "respawn": 900,
+      "chargeUp": 0.0001,
       "rare": [
        1,
        2,
@@ -20303,7 +20397,8 @@
       "perNode": 9,
       "perHarvest": 1,
       "startCharges": 1,
-      "respawn": 60
+      "respawn": 60,
+      "chargeUp": 2.7027
      },
      "3": {
       "seconds": 3.0,
@@ -20312,7 +20407,8 @@
       "perNode": 9,
       "perHarvest": 1,
       "startCharges": 1,
-      "respawn": 120
+      "respawn": 120,
+      "chargeUp": 1.8018
      },
      "4": {
       "seconds": 4.0,
@@ -20322,6 +20418,7 @@
       "perHarvest": 1,
       "startCharges": 1,
       "respawn": 240,
+      "chargeUp": 1.2973,
       "rare": [
        1,
        2,
@@ -20336,6 +20433,7 @@
       "perHarvest": 1,
       "startCharges": 1,
       "respawn": 720,
+      "chargeUp": 1.2973,
       "rare": [
        1,
        2,
@@ -20350,6 +20448,7 @@
       "perHarvest": 1,
       "startCharges": 1,
       "respawn": 900,
+      "chargeUp": 0.2554,
       "rare": [
        1,
        2,
@@ -20362,8 +20461,9 @@
       "charges": 9,
       "perNode": 9,
       "perHarvest": 1,
-      "startCharges": 1,
+      "randomCharges": true,
       "respawn": 900,
+      "chargeUp": 0.0669,
       "rare": [
        1,
        2,
@@ -20376,8 +20476,9 @@
       "charges": 11,
       "perNode": 11,
       "perHarvest": 1,
-      "startCharges": 1,
+      "randomCharges": true,
       "respawn": 900,
+      "chargeUp": 0.0537,
       "rare": [
        1,
        2,
@@ -20467,7 +20568,6 @@
       "charges": 3,
       "perNode": 6,
       "perHarvest": 1,
-      "startCharges": 1,
       "rare": [
        1,
        2,
@@ -20480,7 +20580,6 @@
       "charges": 5,
       "perNode": 5,
       "perHarvest": 1,
-      "startCharges": 1,
       "rare": [
        1,
        2,
@@ -20493,7 +20592,6 @@
       "charges": 5,
       "perNode": 5,
       "perHarvest": 1,
-      "startCharges": 1,
       "rare": [
        1,
        2,
@@ -20762,6 +20860,88 @@
        3
       ]
      }
+    },
+    "guardianRoads": {
+     "6": {
+      "seconds": 8.0,
+      "yield": 9.975,
+      "charges": 80,
+      "perNode": 798,
+      "perHarvest": 10,
+      "startCharges": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "7": {
+      "seconds": 8.0,
+      "yield": 9.875,
+      "charges": 56,
+      "perNode": 553,
+      "perHarvest": 10,
+      "startCharges": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "8": {
+      "seconds": 8.0,
+      "yield": 9.9714,
+      "charges": 35,
+      "perNode": 349,
+      "perHarvest": 10,
+      "startCharges": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     }
+    },
+    "miniguardianRoads": {
+     "6": {
+      "seconds": 8.0,
+      "yield": 4.9556,
+      "charges": 45,
+      "perNode": 223,
+      "perHarvest": 5,
+      "startCharges": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "7": {
+      "seconds": 8.0,
+      "yield": 5.0,
+      "charges": 31,
+      "perNode": 155,
+      "perHarvest": 5,
+      "startCharges": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "8": {
+      "seconds": 8.0,
+      "yield": 4.9,
+      "charges": 20,
+      "perNode": 98,
+      "perHarvest": 5,
+      "startCharges": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     }
     }
    },
    "FIBER": {
@@ -20773,7 +20953,8 @@
       "perNode": 9,
       "perHarvest": 1,
       "startCharges": 1,
-      "respawn": 60
+      "respawn": 60,
+      "chargeUp": 2.7027
      },
      "3": {
       "seconds": 3.0,
@@ -20782,7 +20963,8 @@
       "perNode": 9,
       "perHarvest": 1,
       "startCharges": 1,
-      "respawn": 120
+      "respawn": 120,
+      "chargeUp": 1.8018
      },
      "4": {
       "seconds": 4.0,
@@ -20792,6 +20974,7 @@
       "perHarvest": 1,
       "startCharges": 1,
       "respawn": 240,
+      "chargeUp": 1.2973,
       "rare": [
        1,
        2,
@@ -20806,6 +20989,7 @@
       "perHarvest": 1,
       "startCharges": 1,
       "respawn": 720,
+      "chargeUp": 1.2973,
       "rare": [
        1,
        2,
@@ -20820,6 +21004,7 @@
       "perHarvest": 1,
       "startCharges": 1,
       "respawn": 900,
+      "chargeUp": 0.2554,
       "rare": [
        1,
        2,
@@ -20832,8 +21017,9 @@
       "charges": 9,
       "perNode": 9,
       "perHarvest": 1,
-      "startCharges": 1,
+      "randomCharges": true,
       "respawn": 900,
+      "chargeUp": 0.0669,
       "rare": [
        1,
        2,
@@ -20846,8 +21032,9 @@
       "charges": 11,
       "perNode": 11,
       "perHarvest": 1,
-      "startCharges": 1,
+      "randomCharges": true,
       "respawn": 900,
+      "chargeUp": 0.0537,
       "rare": [
        1,
        2,
@@ -20937,7 +21124,6 @@
       "charges": 3,
       "perNode": 6,
       "perHarvest": 1,
-      "startCharges": 1,
       "rare": [
        1,
        2,
@@ -20950,7 +21136,6 @@
       "charges": 5,
       "perNode": 5,
       "perHarvest": 1,
-      "startCharges": 1,
       "rare": [
        1,
        2,
@@ -20963,7 +21148,6 @@
       "charges": 5,
       "perNode": 5,
       "perHarvest": 1,
-      "startCharges": 1,
       "rare": [
        1,
        2,
@@ -21226,6 +21410,88 @@
       "perNode": 500,
       "perHarvest": 5,
       "startCharges": 500,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     }
+    },
+    "guardianRoads": {
+     "6": {
+      "seconds": 8.0,
+      "yield": 9.975,
+      "charges": 80,
+      "perNode": 798,
+      "perHarvest": 10,
+      "startCharges": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "7": {
+      "seconds": 8.0,
+      "yield": 9.875,
+      "charges": 56,
+      "perNode": 553,
+      "perHarvest": 10,
+      "startCharges": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "8": {
+      "seconds": 8.0,
+      "yield": 9.9714,
+      "charges": 35,
+      "perNode": 349,
+      "perHarvest": 10,
+      "startCharges": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     }
+    },
+    "miniguardianRoads": {
+     "6": {
+      "seconds": 8.0,
+      "yield": 4.9556,
+      "charges": 45,
+      "perNode": 223,
+      "perHarvest": 5,
+      "startCharges": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "7": {
+      "seconds": 8.0,
+      "yield": 5.0,
+      "charges": 31,
+      "perNode": 155,
+      "perHarvest": 5,
+      "startCharges": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "8": {
+      "seconds": 8.0,
+      "yield": 4.9,
+      "charges": 20,
+      "perNode": 98,
+      "perHarvest": 5,
+      "startCharges": 1,
       "rare": [
        1,
        2,
@@ -21241,8 +21507,7 @@
       "yield": 2.0,
       "charges": 1,
       "perNode": 2,
-      "perHarvest": 2,
-      "startCharges": 1
+      "perHarvest": 2
      },
      "2": {
       "seconds": 1.0,
@@ -21250,7 +21515,6 @@
       "charges": 3,
       "perNode": 9,
       "perHarvest": 1,
-      "startCharges": 1,
       "respawn": 60
      },
      "3": {
@@ -21259,7 +21523,6 @@
       "charges": 3,
       "perNode": 9,
       "perHarvest": 1,
-      "startCharges": 1,
       "respawn": 180
      },
      "4": {
@@ -21268,7 +21531,6 @@
       "charges": 3,
       "perNode": 6,
       "perHarvest": 1,
-      "startCharges": 1,
       "respawn": 500,
       "rare": [
        1,
@@ -21282,7 +21544,6 @@
       "charges": 5,
       "perNode": 5,
       "perHarvest": 1,
-      "startCharges": 1,
       "respawn": 1500,
       "rare": [
        1,
@@ -21296,7 +21557,6 @@
       "charges": 5,
       "perNode": 5,
       "perHarvest": 1,
-      "startCharges": 1,
       "respawn": 10000,
       "rare": [
        1,
@@ -21310,7 +21570,7 @@
       "charges": 9,
       "perNode": 9,
       "perHarvest": 1,
-      "startCharges": 1,
+      "randomCharges": true,
       "rare": [
        1,
        2,
@@ -21323,7 +21583,7 @@
       "charges": 11,
       "perNode": 11,
       "perHarvest": 1,
-      "startCharges": 1,
+      "randomCharges": true,
       "rare": [
        1,
        2,
@@ -21413,7 +21673,6 @@
       "charges": 3,
       "perNode": 6,
       "perHarvest": 1,
-      "startCharges": 1,
       "rare": [
        1,
        2,
@@ -21426,7 +21685,6 @@
       "charges": 5,
       "perNode": 5,
       "perHarvest": 1,
-      "startCharges": 1,
       "rare": [
        1,
        2,
@@ -21439,7 +21697,6 @@
       "charges": 5,
       "perNode": 5,
       "perHarvest": 1,
-      "startCharges": 1,
       "rare": [
        1,
        2,
@@ -21614,7 +21871,6 @@
       "charges": 30,
       "perNode": 30,
       "perHarvest": 1,
-      "startCharges": 1,
       "rare": [
        1,
        2,
@@ -21628,7 +21884,6 @@
       "charges": 30,
       "perNode": 30,
       "perHarvest": 1,
-      "startCharges": 1,
       "rare": [
        1,
        2,
@@ -21642,7 +21897,6 @@
       "charges": 30,
       "perNode": 30,
       "perHarvest": 1,
-      "startCharges": 1,
       "rare": [
        1,
        2,
@@ -21656,7 +21910,6 @@
       "charges": 30,
       "perNode": 30,
       "perHarvest": 1,
-      "startCharges": 1,
       "rare": [
        1,
        2,
@@ -21670,7 +21923,6 @@
       "charges": 30,
       "perNode": 30,
       "perHarvest": 1,
-      "startCharges": 1,
       "rare": [
        1,
        2,
@@ -21697,6 +21949,88 @@
       "perNode": 500,
       "perHarvest": 5,
       "startCharges": 500,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     }
+    },
+    "guardianRoads": {
+     "6": {
+      "seconds": 8.0,
+      "yield": 9.975,
+      "charges": 80,
+      "perNode": 798,
+      "perHarvest": 10,
+      "startCharges": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "7": {
+      "seconds": 8.0,
+      "yield": 9.875,
+      "charges": 56,
+      "perNode": 553,
+      "perHarvest": 10,
+      "startCharges": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "8": {
+      "seconds": 8.0,
+      "yield": 9.9714,
+      "charges": 35,
+      "perNode": 349,
+      "perHarvest": 10,
+      "startCharges": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     }
+    },
+    "miniguardianRoads": {
+     "6": {
+      "seconds": 8.0,
+      "yield": 4.9556,
+      "charges": 45,
+      "perNode": 223,
+      "perHarvest": 5,
+      "startCharges": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "7": {
+      "seconds": 8.0,
+      "yield": 5.0,
+      "charges": 31,
+      "perNode": 155,
+      "perHarvest": 5,
+      "startCharges": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "8": {
+      "seconds": 8.0,
+      "yield": 4.9,
+      "charges": 20,
+      "perNode": 98,
+      "perHarvest": 5,
+      "startCharges": 1,
       "rare": [
        1,
        2,
@@ -21715,6 +22049,7 @@
       "perHarvest": 2,
       "startCharges": 2,
       "respawn": 60,
+      "chargeUp": 1.0811,
       "noTool": true,
       "noToolFactor": 1.0
      },
@@ -21725,7 +22060,8 @@
       "perNode": 9,
       "perHarvest": 1,
       "startCharges": 1,
-      "respawn": 60
+      "respawn": 60,
+      "chargeUp": 2.7027
      },
      "3": {
       "seconds": 3.0,
@@ -21734,7 +22070,8 @@
       "perNode": 9,
       "perHarvest": 1,
       "startCharges": 1,
-      "respawn": 120
+      "respawn": 120,
+      "chargeUp": 1.8018
      },
      "4": {
       "seconds": 4.0,
@@ -21744,6 +22081,7 @@
       "perHarvest": 1,
       "startCharges": 1,
       "respawn": 240,
+      "chargeUp": 1.2973,
       "rare": [
        1,
        2,
@@ -21758,6 +22096,7 @@
       "perHarvest": 1,
       "startCharges": 1,
       "respawn": 720,
+      "chargeUp": 1.2973,
       "rare": [
        1,
        2,
@@ -21772,6 +22111,7 @@
       "perHarvest": 1,
       "startCharges": 1,
       "respawn": 900,
+      "chargeUp": 0.2554,
       "rare": [
        1,
        2,
@@ -21784,8 +22124,9 @@
       "charges": 9,
       "perNode": 9,
       "perHarvest": 1,
-      "startCharges": 1,
+      "randomCharges": true,
       "respawn": 900,
+      "chargeUp": 0.0669,
       "rare": [
        1,
        2,
@@ -21798,8 +22139,9 @@
       "charges": 11,
       "perNode": 11,
       "perHarvest": 1,
-      "startCharges": 1,
+      "randomCharges": true,
       "respawn": 900,
+      "chargeUp": 0.0537,
       "rare": [
        1,
        2,
@@ -21889,7 +22231,6 @@
       "charges": 3,
       "perNode": 6,
       "perHarvest": 1,
-      "startCharges": 1,
       "rare": [
        1,
        2,
@@ -21902,7 +22243,6 @@
       "charges": 5,
       "perNode": 5,
       "perHarvest": 1,
-      "startCharges": 1,
       "rare": [
        1,
        2,
@@ -21915,7 +22255,6 @@
       "charges": 5,
       "perNode": 5,
       "perHarvest": 1,
-      "startCharges": 1,
       "rare": [
        1,
        2,
@@ -22179,6 +22518,88 @@
        3
       ]
      }
+    },
+    "guardianRoads": {
+     "6": {
+      "seconds": 8.0,
+      "yield": 9.975,
+      "charges": 80,
+      "perNode": 798,
+      "perHarvest": 10,
+      "startCharges": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "7": {
+      "seconds": 8.0,
+      "yield": 9.875,
+      "charges": 56,
+      "perNode": 553,
+      "perHarvest": 10,
+      "startCharges": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "8": {
+      "seconds": 8.0,
+      "yield": 9.9714,
+      "charges": 35,
+      "perNode": 349,
+      "perHarvest": 10,
+      "startCharges": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     }
+    },
+    "miniguardianRoads": {
+     "6": {
+      "seconds": 8.0,
+      "yield": 4.9556,
+      "charges": 45,
+      "perNode": 223,
+      "perHarvest": 5,
+      "startCharges": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "7": {
+      "seconds": 8.0,
+      "yield": 5.0,
+      "charges": 31,
+      "perNode": 155,
+      "perHarvest": 5,
+      "startCharges": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     },
+     "8": {
+      "seconds": 8.0,
+      "yield": 4.9,
+      "charges": 20,
+      "perNode": 98,
+      "perHarvest": 5,
+      "startCharges": 1,
+      "rare": [
+       1,
+       2,
+       3
+      ]
+     }
     }
    }
   },
@@ -22191,6 +22612,8 @@
    "treasure": "Resource treasure",
    "guardian": "Guardian",
    "miniguardian": "Mini guardian",
+   "guardianRoads": "Roads guardian",
+   "miniguardianRoads": "Roads mini guardian",
    "giant": "Giant tree"
   },
   "toolTimeFactor": {

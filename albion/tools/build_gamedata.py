@@ -478,6 +478,12 @@ NODE_KINDS = [
     ("treasure", "_TREASURE", "Resource treasure"),
     ("guardian", "_GUARDIAN", "Guardian"),
     ("miniguardian", "_MINIGUARDIAN", "Mini guardian"),
+    # The Roads have their own guardians, and they are the only ones above T6:
+    # the open-world pair exists at T6 and nowhere else, while these run T6 to
+    # T8 in every family. Leaving them out meant the two richest nodes in the
+    # game were missing from a screen whose whole job is to rank nodes.
+    ("guardianRoads", "_GUARDIAN_ROADS", "Roads guardian"),
+    ("miniguardianRoads", "_MINIGUARDIAN_ROADS", "Roads mini guardian"),
     ("giant", "_GIANTTREE", "Giant tree"),
 ]
 
@@ -525,14 +531,30 @@ def _tier_rows(harv, name):
                 "charges": swings,
                 "perNode": total,
                 "perHarvest": per_harvest,
-                # What a node holds when you walk up to it. A static tree sits
-                # at one charge and charges up slowly; a critter carries the
-                # lot. The difference is how many nodes a stack really takes.
-                "startCharges": int(t.get("startcharges") or 1),
             }
+            # What a node holds when you walk up to it - only where the file
+            # actually says. An absent attribute is not a 1: hide never carries
+            # one at any tier, nor do the roads critters at T4-T6, and
+            # defaulting it had the app announcing "starts at 1 charge of 30"
+            # about a hide treasure the file is silent on.
+            if t.get("startcharges") is not None:
+                row["startCharges"] = int(t.get("startcharges"))
+            # T7 and T8 statics say only that the spawn count is randomised.
+            # They do not say over what spread, so the app must not name one.
+            if t.get("randomizespawncharges") == "true":
+                row["randomCharges"] = True
             respawn = int(float(t.get("respawntimeseconds") or 0))
             if respawn:
                 row["respawn"] = respawn
+            # And what actually happens on each of those ticks, which is not
+            # "the node is back". It is a roll for ONE charge, and the odds
+            # collapse with tier: a T2 tree gains 2.7 charges a tick and is
+            # full again in one, while a T8 tree gains 0.0537 of one - a single
+            # log every four and three quarter hours. Reporting the tick as the
+            # respawn made the slowest node in the game look like the quickest.
+            chargeup = float(t.get("chargeupchance") or 0)
+            if chargeup > 0:
+                row["chargeUp"] = chargeup
             rare = sorted(int(c.get("state")) for c in t.findall("RareState"))
             if rare:
                 row["rare"] = rare

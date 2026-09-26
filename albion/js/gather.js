@@ -227,14 +227,28 @@ export function gatherRate(family, tier, enchant, settings) {
     secondsPerUnit: secondsPerSwing / perSwing,
     // A full node, which is what you get off a critter or a treasure.
     unitsPerNode: node.perNode * yld.multiplier,
-    /* And a node as you normally find it. A static tree sits at one charge
-     * and charges up slowly - a T8 tree at five percent a go - so walking up
-     * to one gets you a log and not eleven. The two figures together are the
-     * honest range for how many trees a stack really means. */
-    unitsPerFreshNode: Math.min(
+    /* And a node as you normally find it - but only where the file says what
+     * that is. A static tree spawns at one charge of five and charges up, so
+     * walking up to one gets you a log and not five; a critter carries the
+     * lot. For 36 of the 216 rows the file gives no spawn count at all - the
+     * T7 and T8 statics say only that it is randomised, and hide says nothing
+     * whatsoever - and there the honest answer is null, not a 1 the app made
+     * up. Null means the screen shows one node figure instead of a range. */
+    unitsPerFreshNode: node.startCharges == null ? null : Math.min(
       node.perNode,
-      Math.ceil((node.startCharges || 1) / node.perHarvest) * node.yield,
+      Math.ceil(node.startCharges / node.perHarvest) * node.yield,
     ) * yld.multiplier,
+    // Whether the file at least says the spawn count varies, which is a
+    // different thing from saying nothing about it.
+    randomCharges: !!node.randomCharges,
+    /* How long the node takes to put one unit back. The respawn attribute is
+     * a TICK, not "the node is back": on each tick it regains chargeupchance
+     * charges. At T2 that is 2.7 a tick on a 60s tick, so it is full again
+     * before you have walked away; at T8 it is 0.0537 on a 900s tick, which
+     * is one log every four and three quarter hours. Printing the tick as the
+     * respawn made the slowest node in the game read as the quickest. */
+    regrowSeconds: node.respawn && node.chargeUp
+      ? node.respawn / node.chargeUp : null,
   };
 }
 
@@ -328,8 +342,11 @@ export function gatherRun(itemId, { qty = 999, settings }) {
   const swings = harvests / rate.unitsPerSwing;
   const swingSeconds = swings * rate.secondsPerSwing;
   const nodes = harvests / rate.unitsPerNode;
-  // The same run counted in nodes you would actually have to walk up to.
-  const nodeVisits = harvests / rate.unitsPerFreshNode;
+  /* The same run counted in nodes you would actually have to walk up to -
+   * null where the file never said what a node spawns holding, because the
+   * alternative is to invent the spread and quote it as a range. */
+  const nodeVisits = rate.unitsPerFreshNode
+    ? harvests / rate.unitsPerFreshNode : null;
 
   const perHour = measuredPerHour(family, tier, settings);
   const hours = perHour > 0 ? harvests / perHour : null;
