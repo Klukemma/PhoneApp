@@ -326,6 +326,28 @@ test('the fishing set is the land set with a lower floor', () => {
 });
 
 test('the fishing backpack rises with tier, and refuses the best fish', () => {
+  /* The refusal, which is the part a tier check alone would get wrong. No pack
+   * names an Avalonian or a dragon-area rare at any tier - and those are the
+   * two most valuable catches, so granting them the cut would flatter a run in
+   * the Roads by the widest margin of anywhere in the app. Six fish, and it is
+   * derived from the spell's own item list rather than from the id. */
+  const refused = Object.entries(F.fish)
+    .filter(([, f]) => f.noPack).map(([id]) => id).sort();
+  assert.deepEqual(refused, [
+    'T3_FISH_FRESHWATER_AVALON_RARE', 'T3_FISH_FRESHWATER_DRAGON_AREA_RARE',
+    'T5_FISH_FRESHWATER_AVALON_RARE', 'T5_FISH_FRESHWATER_DRAGON_AREA_RARE',
+    'T7_FISH_FRESHWATER_AVALON_RARE', 'T7_FISH_FRESHWATER_DRAGON_AREA_RARE',
+  ]);
+  // The swamp rare at the same tier and weight IS carried, so the exclusion is
+  // about the zone and not about being rare or being heavy.
+  assert.equal(F.fish.T7_FISH_FRESHWATER_SWAMP_RARE.noPack, undefined);
+  assert.equal(F.fish.T7_FISH_FRESHWATER_AVALON_RARE.weight,
+    F.fish.T7_FISH_FRESHWATER_SWAMP_RARE.weight);
+  // And the boss shark, at ten kilos the heaviest thing you can catch, is.
+  assert.equal(F.fish.T8_FISH_SALTWATER_ALL_BOSS_SHARK.noPack, undefined);
+});
+
+test('the fishing backpack ladder itself', () => {
   /* The land packs are a flat 30% at every tier. The fishing pack is the only
    * one whose value moves, and it RISES - which is also the proof that the
    * number is the size of the cut and not the surviving fraction, because
@@ -422,4 +444,37 @@ test('zone colour moves fishing fame by exactly what it moves gathering fame', (
   for (const zone of ['black1', 'black2', 'black3', 'black4', 'black5', 'black6']) {
     assert.equal(F.fameFactor[zone], G.fameFactor[zone], zone);
   }
+});
+
+test('a pie and a potion answer for fishing off the same row', () => {
+  /* The whole fishing consumable stack rides on a coincidence in the spells:
+   * a pork pie writes gatheringyield and fishingyield in one breath, at the
+   * same value, and the gathering potion writes all four numbers. So there is
+   * no second pie table, and the build breaks rather than letting the pair
+   * drift apart silently. */
+  const pie = G.food.T7_MEAL_PIE.grades['0'];
+  assert.equal(pie.fishingyield, pie.gatheringyield);
+  assert.equal(pie.fishingyield, 0.15);
+  // A pie carries no speed at all, for fishing or for anything else.
+  assert.equal(pie.gatheringspeed, undefined);
+  assert.equal(pie.fishingspeed, undefined);
+  const potion = Object.values(G.potions)[0].grades['0'];
+  assert.equal(potion.fishingspeed, potion.gatheringspeed);
+  assert.equal(potion.fishingyield, potion.gatheringyield);
+  // The fish pies were already in the table and simply had nothing fishing on
+  // them; they are the same six foods, not six new ones.
+  assert.equal(Object.keys(G.food).length, 6);
+  assert.ok(G.food.T7_MEAL_PIE_FISH.grades['0'].fishingyield > 0);
+});
+
+test('nothing in the game caps fishing speed, and bait would breach it', () => {
+  /* GatheringSpeed is the only gathering attribute in the cap table - there is
+   * no FishingSpeed row and no GatheringYield row - which is the same reading
+   * the build already uses for yield: no row at all is the file saying it is
+   * uncapped. It matters here because the best bait alone is +250%, six times
+   * the 40% that caps a swing, so applying the wrong cap would not be a
+   * rounding difference. */
+  assert.equal(G.speedCap, 0.4);
+  assert.equal(F.speedCap, undefined);
+  assert.ok(F.bait.T5_FISHINGBAIT.speed > G.speedCap);
 });

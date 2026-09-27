@@ -23312,22 +23312,26 @@
      "0": {
       "seconds": 1800.0,
       "maxloadbonus": 0.1,
-      "gatheringyield": 0.05
+      "gatheringyield": 0.05,
+      "fishingyield": 0.05
      },
      "1": {
       "seconds": 1800.0,
       "maxloadbonus": 0.15,
-      "gatheringyield": 0.075
+      "gatheringyield": 0.075,
+      "fishingyield": 0.075
      },
      "2": {
       "seconds": 1800.0,
       "maxloadbonus": 0.2,
-      "gatheringyield": 0.1
+      "gatheringyield": 0.1,
+      "fishingyield": 0.1
      },
      "3": {
       "seconds": 1800.0,
       "maxloadbonus": 0.25,
-      "gatheringyield": 0.125
+      "gatheringyield": 0.125,
+      "fishingyield": 0.125
      }
     }
    },
@@ -23338,22 +23342,26 @@
      "0": {
       "seconds": 1800.0,
       "maxloadbonus": 0.2,
-      "gatheringyield": 0.1
+      "gatheringyield": 0.1,
+      "fishingyield": 0.1
      },
      "1": {
       "seconds": 1800.0,
       "maxloadbonus": 0.25,
-      "gatheringyield": 0.125
+      "gatheringyield": 0.125,
+      "fishingyield": 0.125
      },
      "2": {
       "seconds": 1800.0,
       "maxloadbonus": 0.3,
-      "gatheringyield": 0.15
+      "gatheringyield": 0.15,
+      "fishingyield": 0.15
      },
      "3": {
       "seconds": 1800.0,
       "maxloadbonus": 0.35,
-      "gatheringyield": 0.175
+      "gatheringyield": 0.175,
+      "fishingyield": 0.175
      }
     }
    },
@@ -23364,22 +23372,26 @@
      "0": {
       "seconds": 1800.0,
       "maxloadbonus": 0.3,
-      "gatheringyield": 0.15
+      "gatheringyield": 0.15,
+      "fishingyield": 0.15
      },
      "1": {
       "seconds": 1800.0,
       "maxloadbonus": 0.35,
-      "gatheringyield": 0.175
+      "gatheringyield": 0.175,
+      "fishingyield": 0.175
      },
      "2": {
       "seconds": 1800.0,
       "maxloadbonus": 0.4,
-      "gatheringyield": 0.2
+      "gatheringyield": 0.2,
+      "fishingyield": 0.2
      },
      "3": {
       "seconds": 1800.0,
       "maxloadbonus": 0.45,
-      "gatheringyield": 0.225
+      "gatheringyield": 0.225,
+      "fishingyield": 0.225
      }
     }
    },
@@ -23390,22 +23402,26 @@
      "0": {
       "seconds": 1800.0,
       "maxloadbonus": 0.075,
-      "gatheringyield": 0.05
+      "gatheringyield": 0.05,
+      "fishingyield": 0.05
      },
      "1": {
       "seconds": 1800.0,
       "maxloadbonus": 0.113,
-      "gatheringyield": 0.075
+      "gatheringyield": 0.075,
+      "fishingyield": 0.075
      },
      "2": {
       "seconds": 1800.0,
       "maxloadbonus": 0.15,
-      "gatheringyield": 0.1
+      "gatheringyield": 0.1,
+      "fishingyield": 0.1
      },
      "3": {
       "seconds": 1800.0,
       "maxloadbonus": 0.188,
-      "gatheringyield": 0.125
+      "gatheringyield": 0.125,
+      "fishingyield": 0.125
      }
     }
    },
@@ -23416,22 +23432,26 @@
      "0": {
       "seconds": 1800.0,
       "maxloadbonus": 0.15,
-      "gatheringyield": 0.1
+      "gatheringyield": 0.1,
+      "fishingyield": 0.1
      },
      "1": {
       "seconds": 1800.0,
       "maxloadbonus": 0.188,
-      "gatheringyield": 0.125
+      "gatheringyield": 0.125,
+      "fishingyield": 0.125
      },
      "2": {
       "seconds": 1800.0,
       "maxloadbonus": 0.225,
-      "gatheringyield": 0.15
+      "gatheringyield": 0.15,
+      "fishingyield": 0.15
      },
      "3": {
       "seconds": 1800.0,
       "maxloadbonus": 0.263,
-      "gatheringyield": 0.175
+      "gatheringyield": 0.175,
+      "fishingyield": 0.175
      }
     }
    },
@@ -23442,22 +23462,26 @@
      "0": {
       "seconds": 1800.0,
       "maxloadbonus": 0.225,
-      "gatheringyield": 0.15
+      "gatheringyield": 0.15,
+      "fishingyield": 0.15
      },
      "1": {
       "seconds": 1800.0,
       "maxloadbonus": 0.263,
-      "gatheringyield": 0.175
+      "gatheringyield": 0.175,
+      "fishingyield": 0.175
      },
      "2": {
       "seconds": 1800.0,
       "maxloadbonus": 0.3,
-      "gatheringyield": 0.2
+      "gatheringyield": 0.2,
+      "fishingyield": 0.2
      },
      "3": {
       "seconds": 1800.0,
       "maxloadbonus": 0.338,
-      "gatheringyield": 0.225
+      "gatheringyield": 0.225,
+      "fishingyield": 0.225
      }
     }
    }
@@ -23470,22 +23494,30 @@
      "0": {
       "seconds": 15.0,
       "gatheringspeed": 0.15,
-      "gatheringyield": 0.05
+      "gatheringyield": 0.05,
+      "fishingspeed": 0.15,
+      "fishingyield": 0.05
      },
      "1": {
       "seconds": 24.0,
       "gatheringspeed": 0.21,
-      "gatheringyield": 0.063
+      "gatheringyield": 0.063,
+      "fishingspeed": 0.21,
+      "fishingyield": 0.063
      },
      "2": {
       "seconds": 31.0,
       "gatheringspeed": 0.25,
-      "gatheringyield": 0.072
+      "gatheringyield": 0.072,
+      "fishingspeed": 0.25,
+      "fishingyield": 0.072
      },
      "3": {
       "seconds": 38.0,
       "gatheringspeed": 0.29,
-      "gatheringyield": 0.079
+      "gatheringyield": 0.079,
+      "fishingspeed": 0.29,
+      "fishingyield": 0.079
      }
     }
    },
@@ -23496,22 +23528,30 @@
      "0": {
       "seconds": 31.0,
       "gatheringspeed": 0.25,
-      "gatheringyield": 0.072
+      "gatheringyield": 0.072,
+      "fishingspeed": 0.25,
+      "fishingyield": 0.072
      },
      "1": {
       "seconds": 38.0,
       "gatheringspeed": 0.29,
-      "gatheringyield": 0.079
+      "gatheringyield": 0.079,
+      "fishingspeed": 0.29,
+      "fishingyield": 0.079
      },
      "2": {
       "seconds": 44.0,
       "gatheringspeed": 0.32,
-      "gatheringyield": 0.085
+      "gatheringyield": 0.085,
+      "fishingspeed": 0.32,
+      "fishingyield": 0.085
      },
      "3": {
       "seconds": 49.0,
       "gatheringspeed": 0.35,
-      "gatheringyield": 0.091
+      "gatheringyield": 0.091,
+      "fishingspeed": 0.35,
+      "fishingyield": 0.091
      }
     }
    },
@@ -23522,22 +23562,30 @@
      "0": {
       "seconds": 44.0,
       "gatheringspeed": 0.32,
-      "gatheringyield": 0.085
+      "gatheringyield": 0.085,
+      "fishingspeed": 0.32,
+      "fishingyield": 0.085
      },
      "1": {
       "seconds": 49.0,
       "gatheringspeed": 0.35,
-      "gatheringyield": 0.091
+      "gatheringyield": 0.091,
+      "fishingspeed": 0.35,
+      "fishingyield": 0.091
      },
      "2": {
       "seconds": 55.0,
       "gatheringspeed": 0.37,
-      "gatheringyield": 0.096
+      "gatheringyield": 0.096,
+      "fishingspeed": 0.37,
+      "fishingyield": 0.096
      },
      "3": {
       "seconds": 60.0,
       "gatheringspeed": 0.4,
-      "gatheringyield": 0.1
+      "gatheringyield": 0.1,
+      "fishingspeed": 0.4,
+      "fishingyield": 0.1
      }
     }
    }
@@ -24111,7 +24159,8 @@
      "weight": 0.52,
      "water": "freshwater",
      "rarity": "rare",
-     "zone": "avalon"
+     "zone": "avalon",
+     "noPack": true
     },
     "T5_FISH_FRESHWATER_AVALON_RARE": {
      "tier": 5,
@@ -24120,7 +24169,8 @@
      "weight": 0.78,
      "water": "freshwater",
      "rarity": "rare",
-     "zone": "avalon"
+     "zone": "avalon",
+     "noPack": true
     },
     "T7_FISH_FRESHWATER_AVALON_RARE": {
      "tier": 7,
@@ -24129,7 +24179,8 @@
      "weight": 1.04,
      "water": "freshwater",
      "rarity": "rare",
-     "zone": "avalon"
+     "zone": "avalon",
+     "noPack": true
     },
     "T3_FISH_FRESHWATER_DRAGON_AREA_RARE": {
      "tier": 3,
@@ -24138,7 +24189,8 @@
      "weight": 0.52,
      "water": "freshwater",
      "rarity": "rare",
-     "zone": "avalon"
+     "zone": "avalon",
+     "noPack": true
     },
     "T5_FISH_FRESHWATER_DRAGON_AREA_RARE": {
      "tier": 5,
@@ -24147,7 +24199,8 @@
      "weight": 0.78,
      "water": "freshwater",
      "rarity": "rare",
-     "zone": "avalon"
+     "zone": "avalon",
+     "noPack": true
     },
     "T7_FISH_FRESHWATER_DRAGON_AREA_RARE": {
      "tier": 7,
@@ -24156,7 +24209,8 @@
      "weight": 1.04,
      "water": "freshwater",
      "rarity": "rare",
-     "zone": "avalon"
+     "zone": "avalon",
+     "noPack": true
     },
     "T8_FISH_SALTWATER_ALL_BOSS_SHARK": {
      "tier": 8,

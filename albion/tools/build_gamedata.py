@@ -719,15 +719,35 @@ def build_gather_buffs(spells):
             tool[str(tier)] = next(iter(rows.values()))
 
     def consumable(spell_name):
+        """A pie or a potion, and the four engine numbers it moves.
+
+        Fishing's two are in here because they are the same spells: a pork pie
+        writes `gatheringyield` and `fishingyield` in the same breath, and at
+        the same value, and the gathering potion writes all four. So the pie
+        and the potion tables already answer for fishing and no second table
+        is needed - but only while the pairs stay equal, which the check below
+        is here to notice rather than trust. `fishingspeed` has no
+        `gatheringspeed` twin on a pie, only on the potion and on bait, so it
+        is checked only where both exist.
+        """
         el = idx.get(spell_name)
         if el is None:
             return None
+        KEYS = ("gatheringyield", "maxloadbonus", "gatheringspeed",
+                "fishingyield", "fishingspeed")
         out = {"seconds": 0}
         for b in el.findall("buffovertime"):
             kind = b.get("type")
-            if kind in ("gatheringyield", "maxloadbonus", "gatheringspeed"):
+            if kind in KEYS:
                 out[kind] = float(b.get("value"))
                 out["seconds"] = max(out["seconds"], float(b.get("time") or 0))
+        for land, water in (("gatheringyield", "fishingyield"),
+                            ("gatheringspeed", "fishingspeed")):
+            if land in out and water in out and out[land] != out[water]:
+                raise SystemExit(
+                    f"{spell_name} pays {out[land]} {land} but {out[water]} "
+                    f"{water} - fishing no longer rides on the same tables and "
+                    f"needs its own pie and potion rows")
         return out if len(out) > 1 else None
 
     return gear, interval, tool, tool_min or 2, consumable
@@ -1152,6 +1172,7 @@ def build_fishing(items, spells, gd, consumable):
     # --- the backpack, and the two rares it will not carry ---------------
     SKIP = ("AVALON", "DRAGON_AREA")
     backpack = {}
+    packed = set()
     for tier in range(4, 9):
         name = f"PASSIVE_BACKPACK_FISH_T{tier}"
         el = idx.get(name)
@@ -1178,6 +1199,21 @@ def build_fishing(items, spells, gd, consumable):
             raise SystemExit(f"{name} covers {sorted(covers ^ want)} "
                              f"unexpectedly (symmetric difference)")
         backpack[str(tier)] = {"value": next(iter(values)), "maxTier": tier}
+        packed |= covers
+
+    # The exclusion, said out loud on the fish rather than left for a reader of
+    # this function to remember. A tier check alone would hand the cut to the
+    # Avalonian and dragon-area rares, which no pack names at any tier - and
+    # those are the two most valuable catches in the game, so the error would
+    # flatter a run in the Roads by the widest margin of anywhere.
+    for fid, row in fish.items():
+        if fid not in packed:
+            row["noPack"] = True
+    unpacked = sorted(fid for fid, row in fish.items() if row.get("noPack"))
+    if unpacked != sorted(fid for fid in fish
+                          if any(s in fid for s in SKIP)):
+        raise SystemExit(f"the packs now refuse {unpacked}, which is not the "
+                         f"Avalonian and dragon-area rares this expected")
 
     # --- rods and bait ----------------------------------------------------
     rod_speed = set()
