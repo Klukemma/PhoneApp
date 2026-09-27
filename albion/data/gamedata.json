@@ -23866,6 +23866,7 @@
   "fishing": {
    "fish": {
     "T1_FISH_FRESHWATER_ALL_COMMON": {
+     "name": "Common Rudd",
      "tier": 1,
      "value": 1,
      "fame": 10.0,
@@ -23874,6 +23875,7 @@
      "rarity": "common"
     },
     "T2_FISH_FRESHWATER_ALL_COMMON": {
+     "name": "Striped Carp",
      "tier": 2,
      "value": 2,
      "fame": 20.0,
@@ -23882,6 +23884,7 @@
      "rarity": "common"
     },
     "T3_FISH_FRESHWATER_ALL_COMMON": {
+     "name": "Albion Perch",
      "tier": 3,
      "value": 3,
      "fame": 30.0,
@@ -23890,6 +23893,7 @@
      "rarity": "common"
     },
     "T4_FISH_FRESHWATER_ALL_COMMON": {
+     "name": "Bluescale Pike",
      "tier": 4,
      "value": 4,
      "fame": 40.0,
@@ -23898,6 +23902,7 @@
      "rarity": "common"
     },
     "T5_FISH_FRESHWATER_ALL_COMMON": {
+     "name": "Spotted Trout",
      "tier": 5,
      "value": 6,
      "fame": 60.0,
@@ -23906,6 +23911,7 @@
      "rarity": "common"
     },
     "T6_FISH_FRESHWATER_ALL_COMMON": {
+     "name": "Brightscale Zander",
      "tier": 6,
      "value": 8,
      "fame": 80.0,
@@ -23914,6 +23920,7 @@
      "rarity": "common"
     },
     "T7_FISH_FRESHWATER_ALL_COMMON": {
+     "name": "Danglemouth Catfish",
      "tier": 7,
      "value": 10,
      "fame": 100.0,
@@ -23922,6 +23929,7 @@
      "rarity": "common"
     },
     "T8_FISH_FRESHWATER_ALL_COMMON": {
+     "name": "River Sturgeon",
      "tier": 8,
      "value": 14,
      "fame": 140.0,
@@ -23930,6 +23938,7 @@
      "rarity": "common"
     },
     "T1_FISH_SALTWATER_ALL_COMMON": {
+     "name": "Common Herring",
      "tier": 1,
      "value": 1,
      "fame": 10.0,
@@ -23938,6 +23947,7 @@
      "rarity": "common"
     },
     "T2_FISH_SALTWATER_ALL_COMMON": {
+     "name": "Striped Mackerel",
      "tier": 2,
      "value": 2,
      "fame": 20.0,
@@ -23946,6 +23956,7 @@
      "rarity": "common"
     },
     "T3_FISH_SALTWATER_ALL_COMMON": {
+     "name": "Flatshore Plaice",
      "tier": 3,
      "value": 3,
      "fame": 30.0,
@@ -23954,6 +23965,7 @@
      "rarity": "common"
     },
     "T4_FISH_SALTWATER_ALL_COMMON": {
+     "name": "Bluescale Cod",
      "tier": 4,
      "value": 4,
      "fame": 40.0,
@@ -23962,6 +23974,7 @@
      "rarity": "common"
     },
     "T5_FISH_SALTWATER_ALL_COMMON": {
+     "name": "Spotted Wolffish",
      "tier": 5,
      "value": 6,
      "fame": 60.0,
@@ -23970,6 +23983,7 @@
      "rarity": "common"
     },
     "T6_FISH_SALTWATER_ALL_COMMON": {
+     "name": "Strongfin Salmon",
      "tier": 6,
      "value": 8,
      "fame": 80.0,
@@ -23978,6 +23992,7 @@
      "rarity": "common"
     },
     "T7_FISH_SALTWATER_ALL_COMMON": {
+     "name": "Bluefin Tuna",
      "tier": 7,
      "value": 10,
      "fame": 100.0,
@@ -23986,6 +24001,7 @@
      "rarity": "common"
     },
     "T8_FISH_SALTWATER_ALL_COMMON": {
+     "name": "Steelscale Swordfish",
      "tier": 8,
      "value": 14,
      "fame": 140.0,
@@ -23994,6 +24010,7 @@
      "rarity": "common"
     },
     "T3_FISH_FRESHWATER_FOREST_RARE": {
+     "name": "Greenriver Eel",
      "tier": 3,
      "value": 10,
      "fame": 100.0,
@@ -24003,6 +24020,7 @@
      "zone": "forest"
     },
     "T5_FISH_FRESHWATER_FOREST_RARE": {
+     "name": "Redspring Eel",
      "tier": 5,
      "value": 20,
      "fame": 200.0,
@@ -24012,6 +24030,7 @@
      "zone": "forest"
     },
     "T7_FISH_FRESHWATER_FOREST_RARE": {
+     "name": "Deadwater Eel",
      "tier": 7,
      "value": 30,
      "fame": 300.0,
@@ -24021,6 +24040,7 @@
      "zone": "forest"
     },
     "T3_FISH_FRESHWATER_MOUNTAIN_RARE": {
+     "name": "Upland Coldeye",
      "tier": 3,
      "value": 10,
      "fame": 100.0,
@@ -24030,6 +24050,7 @@
      "zone": "mountain"
     },
     "T5_FISH_FRESHWATER_MOUNTAIN_RARE": {
+     "name": "Mountain Blindeye",
      "tier": 5,
      "value": 20,
      "fame": 200.0,
@@ -24039,6 +24060,7 @@
      "zone": "mountain"
     },
     "T7_FISH_FRESHWATER_MOUNTAIN_RARE": {
+     "name": "Frostpeak Deadeye",
      "tier": 7,
      "value": 30,
      "fame": 300.0,
@@ -24048,6 +24070,7 @@
      "zone": "mountain"
     },
     "T3_FISH_FRESHWATER_HIGHLANDS_RARE": {
+     "name": "Stonestream Lurcher",
      "tier": 3,
      "value": 10,
      "fame": 100.0,
@@ -24057,6 +24080,7 @@
      "zone": "highlands"
     },
     "T5_FISH_FRESHWATER_HIGHLANDS_RARE": {
+     "name": "Rushwater Lurcher",
      "tier": 5,
      "value": 20,
      "fame": 200.0,
@@ -24066,6 +24090,7 @@
      "zone": "highlands"
     },
     "T7_FISH_FRESHWATER_HIGHLANDS_RARE": {
+     "name": "Thunderfall Lurcher",
      "tier": 7,
      "value": 30,
      "fame": 300.0,
@@ -24075,6 +24100,7 @@
      "zone": "highlands"
     },
     "T3_FISH_FRESHWATER_STEPPE_RARE": {
+     "name": "Lowriver Crab",
      "tier": 3,
      "value": 10,
      "fame": 100.0,
@@ -24084,6 +24110,7 @@
      "zone": "steppe"
     },
     "T5_FISH_FRESHWATER_STEPPE_RARE": {
+     "name": "Drybrook Crab",
      "tier": 5,
      "value": 20,
      "fame": 200.0,
@@ -24093,6 +24120,7 @@
      "zone": "steppe"
     },
     "T7_FISH_FRESHWATER_STEPPE_RARE": {
+     "name": "Dusthole Crab",
      "tier": 7,
      "value": 30,
      "fame": 300.0,
@@ -24102,6 +24130,7 @@
      "zone": "steppe"
     },
     "T3_FISH_FRESHWATER_SWAMP_RARE": {
+     "name": "Greenmoor Clam",
      "tier": 3,
      "value": 10,
      "fame": 100.0,
@@ -24111,6 +24140,7 @@
      "zone": "swamp"
     },
     "T5_FISH_FRESHWATER_SWAMP_RARE": {
+     "name": "Murkwater Clam",
      "tier": 5,
      "value": 20,
      "fame": 200.0,
@@ -24120,6 +24150,7 @@
      "zone": "swamp"
     },
     "T7_FISH_FRESHWATER_SWAMP_RARE": {
+     "name": "Blackbog Clam",
      "tier": 7,
      "value": 30,
      "fame": 300.0,
@@ -24129,6 +24160,7 @@
      "zone": "swamp"
     },
     "T3_FISH_SALTWATER_ALL_RARE": {
+     "name": "Shallowshore Squid",
      "tier": 3,
      "value": 10,
      "fame": 100.0,
@@ -24137,6 +24169,7 @@
      "rarity": "rare"
     },
     "T5_FISH_SALTWATER_ALL_RARE": {
+     "name": "Midwater Octopus",
      "tier": 5,
      "value": 20,
      "fame": 200.0,
@@ -24145,6 +24178,7 @@
      "rarity": "rare"
     },
     "T7_FISH_SALTWATER_ALL_RARE": {
+     "name": "Deepwater Kraken",
      "tier": 7,
      "value": 30,
      "fame": 300.0,
@@ -24153,6 +24187,7 @@
      "rarity": "rare"
     },
     "T3_FISH_FRESHWATER_AVALON_RARE": {
+     "name": "Whitefog Snapper",
      "tier": 3,
      "value": 10,
      "fame": 100.0,
@@ -24163,6 +24198,7 @@
      "noPack": true
     },
     "T5_FISH_FRESHWATER_AVALON_RARE": {
+     "name": "Clearhaze Snapper",
      "tier": 5,
      "value": 20,
      "fame": 200.0,
@@ -24173,6 +24209,7 @@
      "noPack": true
     },
     "T7_FISH_FRESHWATER_AVALON_RARE": {
+     "name": "Puremist Snapper",
      "tier": 7,
      "value": 30,
      "fame": 300.0,
@@ -24183,6 +24220,7 @@
      "noPack": true
     },
     "T3_FISH_FRESHWATER_DRAGON_AREA_RARE": {
+     "name": "Carefree Leyfin",
      "tier": 3,
      "value": 10,
      "fame": 100.0,
@@ -24193,6 +24231,7 @@
      "noPack": true
     },
     "T5_FISH_FRESHWATER_DRAGON_AREA_RARE": {
+     "name": "Brightsoul Leyfin",
      "tier": 5,
      "value": 20,
      "fame": 200.0,
@@ -24203,6 +24242,7 @@
      "noPack": true
     },
     "T7_FISH_FRESHWATER_DRAGON_AREA_RARE": {
+     "name": "Dragonbound Leyfin",
      "tier": 7,
      "value": 30,
      "fame": 300.0,
@@ -24213,6 +24253,7 @@
      "noPack": true
     },
     "T8_FISH_SALTWATER_ALL_BOSS_SHARK": {
+     "name": "Shark",
      "tier": 8,
      "value": 200,
      "fame": 2000.0,
@@ -24220,6 +24261,16 @@
      "water": "saltwater",
      "rarity": "boss"
     }
+   },
+   "names": {
+    "T1_FISHINGBAIT": "Simple Fish Bait",
+    "T3_FISHINGBAIT": "Fancy Fish Bait",
+    "T5_FISHINGBAIT": "Special Fish Bait",
+    "T1_FISHCHOPS": "Chopped Fish",
+    "T1_SEAWEED": "Seaweed",
+    "T1_FISHSAUCE_LEVEL1": "Basic Fish Sauce",
+    "T1_FISHSAUCE_LEVEL2": "Fancy Fish Sauce",
+    "T1_FISHSAUCE_LEVEL3": "Special Fish Sauce"
    },
    "gear": {
     "head": {
@@ -24437,43 +24488,50 @@
      "fame": 720.0,
      "silver": 500,
      "weight": 0.15,
-     "minTier": 1
+     "name": "Novice Fisherman's Journal",
+     "lootFrom": 1
     },
     "3": {
      "fame": 1360.0,
      "silver": 1000,
      "weight": 0.23,
-     "minTier": 1
+     "name": "Journeyman Fisherman's Journal",
+     "lootFrom": 1
     },
     "4": {
      "fame": 2223.0,
      "silver": 2000,
      "weight": 0.34,
-     "minTier": 2
+     "name": "Adept Fisherman's Journal",
+     "lootFrom": 2
     },
     "5": {
      "fame": 3680.0,
      "silver": 4000,
      "weight": 0.51,
-     "minTier": 3
+     "name": "Expert Fisherman's Journal",
+     "lootFrom": 3
     },
     "6": {
      "fame": 4880.0,
      "silver": 8000,
      "weight": 0.76,
-     "minTier": 4
+     "name": "Master Fisherman's Journal",
+     "lootFrom": 4
     },
     "7": {
      "fame": 6640.0,
      "silver": 16000,
      "weight": 1.14,
-     "minTier": 5
+     "name": "Grandmaster Fisherman's Journal",
+     "lootFrom": 5
     },
     "8": {
      "fame": 8320.0,
      "silver": 32000,
      "weight": 1.71,
-     "minTier": 6
+     "name": "Elder Fisherman's Journal",
+     "lootFrom": 6
     }
    },
    "fameFactor": {

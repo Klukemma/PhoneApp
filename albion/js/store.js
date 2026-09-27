@@ -122,7 +122,56 @@ let ALL_NODES = null;
 let ALL_ITEMS = null;
 
 /** Look an item up in whichever file happens to know it. */
-export const itemMeta = (id) => DATA?.items[id] || GEAR?.items[id] || null;
+/**
+ * What to call an id, and which drawer it belongs in.
+ *
+ * Three sources, in order: the boot file's item registry, the lazy gear file,
+ * and then fishing. Fishing is a fallback rather than a fourth block of item
+ * rows because every name it needs already ships inside `gathering.fishing` -
+ * on the fish themselves, in `names` for the bait and the sauces, and on the
+ * journals - so reading them here costs nothing at boot where copying them
+ * into `items` would cost about two kilobytes.
+ *
+ * Note bait is given no weight. The tables publish none, and a weight invented
+ * here would end up in somebody's carry load.
+ */
+export const itemMeta = (id) => DATA?.items[id] || GEAR?.items[id] || fishMeta(id);
+
+function fishMeta(id) {
+  const F = DATA?.gathering?.fishing;
+  if (!F) return null;
+  const fish = F.fish?.[id];
+  if (fish) {
+    return { name: fish.name, tier: fish.tier, cat: 'raw', weight: fish.weight };
+  }
+  const named = F.names?.[id];
+  if (named) {
+    return { name: named, tier: Number(id[1]) || 1, cat: 'material' };
+  }
+  const book = /^T(\d)_JOURNAL_FISHING_(EMPTY|FULL)$/.exec(id);
+  if (book && F.journals?.[book[1]]) {
+    return {
+      name: `${F.journals[book[1]].name} (${book[2] === 'EMPTY' ? 'Empty' : 'Full'})`,
+      tier: Number(book[1]),
+      cat: 'journal',
+      weight: F.journals[book[1]].weight,
+    };
+  }
+  return null;
+}
+
+/** Every fishing id a price box should exist for. */
+function fishingIds(data = DATA) {
+  const F = data?.gathering?.fishing;
+  if (!F) return [];
+  return [
+    ...Object.keys(F.fish || {}),
+    ...Object.keys(F.names || {}),
+    ...Object.keys(F.journals || {}).flatMap((t) => [
+      `T${t}_JOURNAL_FISHING_EMPTY`, `T${t}_JOURNAL_FISHING_FULL`,
+    ]),
+  ];
+}
 
 function defaults() {
   return {
@@ -184,6 +233,28 @@ function defaults() {
         gearCoversEnchanted: true,
         // "WOOD:5:static:royal" -> { per10min }
         measured: {},
+        /* Fishing, which is its own kit and not a flag on this one. The game
+         * sells a separate set for it - T?_HEAD_GATHERER_FISH against
+         * T?_HEAD_GATHERER_ORE - so owning a T8 ore set says nothing about
+         * what you can wear on the water, and reading the tiers above would
+         * quote a bonus off equipment you have never bought. The pie, the
+         * potion and premium ARE shared, because those are the same items. */
+        fish: {
+          rodTier: 0,            // 0 = none set, and then nothing is assumed
+          rodAvalon: false,
+          gear: { head: 0, armor: 0, shoes: 0, backpack: 0 },
+          bait: '',
+          water: 'freshwater',
+          // Which landscape you fish in, which decides WHICH rare is on the
+          // table. Freshwater only: every published zone word belongs to a
+          // freshwater rare, and saltwater has one rare with no zone at all.
+          zone: 'forest',
+          danger: 'black',
+          // "FISH:5:freshwater:T3_FISHINGBAIT" -> { per10min }. The bait is in
+          // the key on purpose: it is the biggest speed lever in the game at
+          // +250%, so a count taken without it is a count of something else.
+          measured: {},
+        },
       },
       // What goes in the trough, per food category. The game will not let a
       // direwolf eat wheat, so one field could never cover all three.
@@ -339,7 +410,48 @@ function normalizeKit(rawKit = {}) {
     const per10 = Number(v?.per10min);
     if (Number.isFinite(per10) && per10 > 0) kit.measured[k] = { per10min: Math.round(per10) };
   }
+  kit.fish = normalizeFish(rawKit.fish);
   return kit;
+}
+
+/**
+ * The fishing kit, held to the same rules and clamped separately.
+ *
+ * A save written before fishing existed has none of this, and the answer to
+ * that is zeros - "I own no rod and no fisherman's set" - never the land
+ * tiers. Inheriting those would put a bonus on screen off a set the user has
+ * never bought, which is the same mistake as inventing the number.
+ */
+function normalizeFish(raw = {}) {
+  const base = defaults().settings.gather.fish;
+  const fish = {
+    ...base, ...raw, gear: { ...base.gear, ...(raw.gear || {}) }, measured: {},
+  };
+  // Rods run T3 to T8 - the game sells no T1 or T2 rod - and the Avalonian
+  // ones start at T4, so a T3 Avalonian rod in a save is an item that has
+  // never existed.
+  const tier = (v, lo) => {
+    const n = Math.round(Number(v) || 0);
+    return n >= lo && n <= 8 ? n : 0;
+  };
+  fish.rodTier = tier(fish.rodTier, 3);
+  fish.rodAvalon = !!fish.rodAvalon && fish.rodTier >= 4;
+  for (const slot of ['head', 'armor', 'shoes', 'backpack']) {
+    fish.gear[slot] = tier(fish.gear[slot], 4);
+  }
+  fish.water = fish.water === 'saltwater' ? 'saltwater' : 'freshwater';
+  fish.zone = typeof fish.zone === 'string' && fish.zone ? fish.zone : 'forest';
+  /* The bait is NOT checked against the game tables here. This runs while a
+   * save is being read, which can be before the game file has been hydrated,
+   * and a check against an empty table would silently throw away a bait the
+   * user really owns. An id the tables do not know reaches the engine as "no
+   * bait", which is what it already does with a blank. */
+  fish.bait = typeof fish.bait === 'string' ? fish.bait : '';
+  for (const [k, v] of Object.entries(raw.measured || {})) {
+    const per10 = Number(v?.per10min);
+    if (Number.isFinite(per10) && per10 > 0) fish.measured[k] = { per10min: Math.round(per10) };
+  }
+  return fish;
 }
 
 function normalize(raw) {
@@ -690,6 +802,12 @@ export function pricedItemIds(data = DATA) {
    * could never quote the one number the journal line needs, and the run
    * would only ever be able to subtract the cost of the empties. */
   for (const id of data.journalIds || []) ids.add(id);
+  /* And the water: forty-one fish, three baits, the chops, the seaweed, the
+   * three sauces and the fourteen fisherman's books. Without them the fishing
+   * rows could never be priced, and an unpriced bait is charged at zero, which
+   * would make every baited hour beat every land row by exactly the price of
+   * the bait it never paid for. */
+  for (const id of fishingIds(data)) ids.add(id);
   return [...ids];
 }
 
@@ -954,7 +1072,18 @@ export function setSpec(recipeId, level) {
 
 /** Change part of the kit. Every road in goes through the same clamp. */
 export function setGather(patch) {
-  state.settings.gather = normalizeKit({ ...state.settings.gather, ...patch });
+  state.settings.gather = normalizeKit({
+    ...state.settings.gather,
+    ...patch,
+    /* A patch that names the fishing kit means "change these fields of it",
+     * the same way a patch that names `gear` does. Spreading the patch alone
+     * would replace the whole object and drop the rod every time the bait
+     * changed. */
+    fish: { ...state.settings.gather.fish, ...(patch.fish || {}),
+      ...(patch.fish?.gear
+        ? { gear: { ...state.settings.gather.fish?.gear, ...patch.fish.gear } }
+        : {}) },
+  });
   commit();
 }
 
@@ -975,6 +1104,22 @@ export function setMeasured(key, per10min) {
   if (!Number.isFinite(n) || n <= 0) delete measured[key];
   else measured[key] = { per10min: Math.round(n) };
   setGather({ measured });
+}
+
+/**
+ * The same one door for a fishing count, filed under its own key.
+ *
+ * Separate from the land measurements because the key means something else:
+ * FISH:{tier}:{water}:{bait} rather than {family}:{tier}:{kind}:{zone}. Zero
+ * clears it, and then the app goes back to refusing to say what an hour is
+ * worth rather than standing behind a count from a different bait.
+ */
+export function setFishMeasured(key, per10min) {
+  const n = Number(per10min);
+  const measured = { ...state.settings.gather.fish.measured };
+  if (!Number.isFinite(n) || n <= 0) delete measured[key];
+  else measured[key] = { per10min: Math.round(n) };
+  setGather({ fish: { measured } });
 }
 
 export function setNodeLevel(nodeId, level) {

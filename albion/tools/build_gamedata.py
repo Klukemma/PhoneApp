@@ -1092,6 +1092,7 @@ def build_fishing(items, spells, gd, consumable):
             raise SystemExit(f"{unique} is neither common, rare nor a boss")
         zone = sub3.replace("fish_", "") if sub3.startswith("fish_") else ""
         fish[unique] = {
+            "name": NAMES_BY_ID.get(unique) or pretty(unique),
             "tier": int(el.get("tier")),
             "value": value,
             "fame": fame,
@@ -1323,8 +1324,20 @@ def build_fishing(items, spells, gd, consumable):
             "fame": cap,
             "silver": int(float(req.get("silver", 0))),
             "weight": float(el.get("weight") or 0),
-            # Which catches count towards it, as the rule the loot list states.
-            "minTier": low,
+            # The base id's own name carries a state in brackets - the file
+            # keys one book and localization carries empty, part-full and full
+            # - so the clean name comes off the empty one, which is the id the
+            # market lists and the app prices.
+            "name": re.sub(r"\s*\(Empty\)$", "",
+                           NAMES_BY_ID[f"T{tier}_JOURNAL_FISHING_EMPTY"]),
+            # The lowest tier in its LOOT list, and deliberately not called
+            # minTier. A land journal publishes its fill rule -
+            # <gatherfame mintier="5" value="2400"/> plus a validitem list -
+            # and this one publishes <fishingfame value="3680"/> and nothing
+            # else. So which catches fill a fisherman's book is not in the
+            # files, and this number is what the book PAYS OUT on, which is a
+            # different question. Nothing may gate on it.
+            "lootFrom": low,
         }
 
     # --- the danger bonus, fishing's own column --------------------------
@@ -1375,8 +1388,17 @@ def build_fishing(items, spells, gd, consumable):
     if len(sauce) != 3:
         raise SystemExit(f"expected 3 fish sauces, found {len(sauce)}")
 
+    # The four other things a fishing screen has to put a price box against.
+    # Bait is in neither data file today, and an unpriced bait is charged at
+    # zero, which would make every baited hour beat every land row by exactly
+    # the price of the bait.
+    named = {}
+    for unique in (*bait, chops_id, "T1_SEAWEED", *sauce):
+        named[unique] = NAMES_BY_ID.get(unique) or pretty(unique)
+
     return {
         "fish": fish,
+        "names": named,
         "gear": gear,
         "toolYield": tool,
         "toolYieldMinTier": 1,

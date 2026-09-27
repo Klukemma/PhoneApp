@@ -287,10 +287,12 @@ test('forty-one fish, and the one that hides from a resourcetype filter', () => 
   assert.equal(Object.keys(F.fish).length, 41);
   // The user's own tier. Six silver of item value, sixty fame, a third of a kilo.
   assert.deepEqual(F.fish.T5_FISH_FRESHWATER_ALL_COMMON, {
+    name: 'Spotted Trout',
     tier: 5, value: 6, fame: 60, weight: 0.31, water: 'freshwater', rarity: 'common',
   });
   // A rare is worth three and a bit commons and weighs two and a half of them.
   assert.deepEqual(F.fish.T5_FISH_FRESHWATER_SWAMP_RARE, {
+    name: 'Murkwater Clam',
     tier: 5, value: 20, fame: 200, weight: 0.78, water: 'freshwater',
     rarity: 'rare', zone: 'swamp',
   });
@@ -299,6 +301,7 @@ test('forty-one fish, and the one that hides from a resourcetype filter', () => 
    * fish by resourcetype loses it - and it is the single most valuable catch
    * in the game, worth fourteen T8 commons. */
   assert.deepEqual(F.fish.T8_FISH_SALTWATER_ALL_BOSS_SHARK, {
+    name: 'Shark',
     tier: 8, value: 200, fame: 2000, weight: 10.36, water: 'saltwater',
     rarity: 'boss',
   });
@@ -406,13 +409,21 @@ test("a fisherman's journal holds exactly what it says it holds", () => {
   /* The land journals carry two different fame numbers - maxfame and the
    * mission value - and the app has to pick one out loud. These carry the same
    * number twice, so there is nothing to choose and nothing to caveat. */
-  assert.deepEqual(F.journals['5'], { fame: 3680, silver: 4000, weight: 0.51, minTier: 3 });
+  assert.deepEqual(F.journals['5'], {
+    fame: 3680, silver: 4000, weight: 0.51, lootFrom: 3,
+    name: "Expert Fisherman's Journal",
+  });
   assert.equal(F.journals['8'].fame, 8320);
   assert.equal(F.journals['8'].silver, 32000);
-  // A T5 book fills from T3 catches up, which is what minTier records. The
-  // build checks that rule against the loot list rather than assuming it.
-  assert.equal(F.journals['2'].minTier, 1);
-  assert.equal(F.journals['8'].minTier, 6);
+  /* What is NOT published: which catches fill a fisherman's book. A land
+   * journal states the rule - <gatherfame mintier="5" value="2400"/> and a
+   * list of valid items - and a fishing one carries <fishingfame value="3680"/>
+   * and nothing else. `lootFrom` is the lowest tier in its loot list, which is
+   * what the book pays OUT on, a different question. The field is named that
+   * way so nothing gates on it, and the screen says nothing about it. */
+  assert.equal(F.journals['2'].minTier, undefined);
+  assert.equal(F.journals['2'].lootFrom, 1);
+  assert.equal(F.journals['8'].lootFrom, 6);
   /* And the two ladders are nothing like each other, which is the sort of
    * thing a guess would have got backwards. A land journal doubles every tier,
    * 450 to 28,800. A fishing one starts HIGHER and then flattens out: it holds
