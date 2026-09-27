@@ -15,7 +15,7 @@ import {
   landSummary, plotsOwned, pricedItemIds, priceOf, qBmPriceOf, qPriceOf,
   priceSeenAt, removeCraft, removePlot, scheduleDays, setBmPrice, setBuyPrice,
   setCraftCity, setDayMode, setGather, setGoal, setGoalStamp, setHolding,
-  setMeasured, setNodeLevel, setPrice, setPrices, setQualityPrice,
+  setFishMeasured, setMeasured, setNodeLevel, setPrice, setPrices, setQualityPrice,
   setQualityPrices, setSchedule, setScheduleLength, setSettings, setSpec,
   setStock, state, updateCraft, updatePlot, wipe,
 } from './store.js';
@@ -24,11 +24,15 @@ import {
   rawIdOf, refinedOf,
 } from './gather.js';
 import { resourceExits } from './exits.js';
+import {
+  baitBreakEven, commonFishId, fishChoices, fishExits, fishKitOf, fishNameOf,
+  fishRateKey, fishRun, fishSpeed, fishWeight, fishYield, fishZones,
+} from './fish.js';
 import { solve } from './solve.js';
 import { $, $$, closeSheet, esc, openSheet, toast } from './ui.js';
 import { ICON, amt, go, moreHTML, note, rowHTML, tag, tick } from './html.js';
 import { row as meRow, toggle as meToggle } from './me.js';
-import { ago, hours, pct, short, silver, tierText } from './util.js';
+import { ago, hours, pct, short, silver, tierText, toneOf } from './util.js';
 import {
   cityDeltas, ctx, cycleFor, detailHTML, lastSim, setSolution, solution,
   solveStamp,
@@ -1868,6 +1872,30 @@ export function openBoard(branch = null) {
       </div>`;
   };
 
+  /* And a fishing one, which is NOT the row above with a different icon. That
+   * one clamps the speed half with s.gathering.speedCap, a 40% cap published
+   * for the attribute named GatheringSpeed; gamedata.xml has no fishing
+   * attribute of any kind, so applying it here would be inventing a ceiling.
+   * The per-level figures differ too: two nodes at 0.15% and 0.35% covering
+   * every tier, against five nodes at 0.5% covering one tier each. */
+  const fishNodes = s.gathering?.fishing?.board || [];
+  const fishRow = (n) => {
+    const level = state.nodeLevels[n.id] || '';
+    const on = Number(level) || 0;
+    return `
+      <div class="row" style="gap:8px">
+        <span class="ico">${FAMILY_ICON.FISH}</span>
+        <span class="body"><span class="title">${esc(n.name)}</span>
+          <span class="meta">${esc(on
+      ? `+${pct(on * n.yieldPerLevel, 0)} yield, and +${pct(on * n.speedPerLevel, 0)}`
+        + ` speed with a rod, at ${on}`
+      : `+${pct(n.yieldPerLevel, 2)} yield and speed a level, to ${n.maxLevel}`)}</span></span>
+        <input type="number" class="spec-input" data-node="${esc(n.id)}"
+          inputmode="numeric" min="0" max="${n.maxLevel}" placeholder="0"
+          value="${level}" aria-label="Level for ${esc(n.name)}">
+      </div>`;
+  };
+
   openSheet(`
     <h2>Destiny board</h2>
     <div class="field">
@@ -1888,11 +1916,20 @@ export function openBoard(branch = null) {
         <div class="section-head" style="margin-top:14px"><h2>${esc(FAMILY_LABEL[f] || f)}</h2></div>
         ${rows.map(gatherRow).join('')}` : '';
     }).join('') : ''}
-    ${gathering ? note(`Every level is +${pct(0.005, 1)} to how much a swing gives AND +${
-      pct(0.005, 1)} to how fast you swing, and the speed half is capped at +${
-      pct(s.gathering.speedCap, 0)} across everything. At 100 that is half again as
-      much per swing — second only to a full T8 set at +70% — and it is the
-      only thing besides a gathering potion that makes you swing any faster.`) : ''}
+    ${gathering ? note(`On land, every level is +${pct(0.005, 1)} to how much a swing
+      gives AND +${pct(0.005, 1)} to how fast you swing, and that speed half is capped
+      at +${pct(s.gathering.speedCap, 0)} across everything. At 100 that is half again
+      as much per swing — second only to a full T8 set at +70% — and it is the only
+      thing besides a gathering potion that makes you swing any faster.`) : ''}
+    ${gathering && fishNodes.length ? `
+      <div class="section-head" style="margin-top:14px"><h2>${esc(FAMILY_LABEL.FISH)}</h2></div>
+      ${fishNodes.map(fishRow).join('')}
+      ${note(`Fishing is two nodes rather than five, and each pays on every tier
+        instead of one. At a hundred levels apiece they come to the same +50% a
+        single land tier does. The speed half needs a rod in your hands — the
+        achievement says so — and nothing in the game caps it: gamedata.xml
+        publishes one cap, for the attribute called GatheringSpeed, and no
+        fishing attribute at all.`)}` : ''}
 
     ${gathering ? '' : mine.filter((n) => n.kind === 'mastery').map(nodeRow).join('')}
     ${!gathering && mine.some((n) => n.kind === 'spec')
@@ -1935,10 +1972,11 @@ export function openBoard(branch = null) {
 
 const FAMILY_LABEL = {
   WOOD: 'Wood', ORE: 'Ore', FIBER: 'Fibre', HIDE: 'Hide', ROCK: 'Rock',
+  FISH: 'Fishing',
 };
 const FAMILY_ICON = {
   WOOD: '\u{1FAB5}', ORE: '⛰️', FIBER: '\u{1F33F}',
-  HIDE: '\u{1F98C}', ROCK: '\u{1FAA8}',
+  HIDE: '\u{1F98C}', ROCK: '\u{1FAA8}', FISH: '\u{1F3A3}',
 };
 
 /** How good the cluster is, which is the only thing that sets the grade odds. */
@@ -2747,6 +2785,350 @@ export function openQuality() {
         closeSheet();
         toast('Using the model');
       };
+    },
+  });
+}
+
+/* --------------------------------------------------- the fishing kit --- */
+
+const WATERS = [['freshwater', 'Freshwater'], ['saltwater', 'Saltwater']];
+
+const FISH_SLOTS = [['head', 'Hat'], ['armor', 'Jacket'], ['shoes', 'Boots'],
+  ['backpack', 'Backpack']];
+
+/** Which catch the preview is about. A question, not a plan. */
+let fishPeek = { tier: 5, id: '' };
+
+/**
+ * Your fishing kit, and what it is worth.
+ *
+ * Deliberately its own sheet and its own kit. The game sells a separate set for
+ * fishing, so a T8 ore set says nothing about what you can wear on the water,
+ * and reading the gathering tiers here would quote a bonus off equipment you
+ * have never bought. The pie, the potion and premium are shared, because they
+ * are literally the same items: one pork pie writes gatheringyield and
+ * fishingyield in the same breath at the same value.
+ *
+ * The thing this sheet cannot do, and says so in three places, is turn any of
+ * it into a time. Fishing is the one gathering line the game publishes no node
+ * for, so how long a catch takes has no source and the ten-minute count is the
+ * only honest way in.
+ */
+export function openFishSetup(forId = null, keepPeek = false) {
+  const s = state.settings;
+  const F = s.gathering?.fishing;
+  if (!F) { openSheet('<h2>Fishing</h2><p class="muted">No game data loaded.</p>'); return; }
+  const kit = fishKitOf(s);
+  if (!keepPeek) {
+    fishPeek = { tier: kit.rodTier || 5, id: '' };
+  }
+  const tier = fishPeek.tier;
+  const peekId = fishPeek.id || commonFishId(tier, kit.water);
+  const run = fishRun(peekId, { qty: 999, settings: s });
+  const yld = fishYield(s, peekId);
+  const speed = fishSpeed(s);
+  const weight = fishWeight(s, peekId);
+  const key = fishRateKey(tier, kit);
+  const counted = kit.measured?.[key];
+
+  const seg = (options, chosen, attr) => `
+    <div class="seg small">${options.map(([v, label, title]) => `
+      <button data-${attr}="${esc(String(v))}" aria-pressed="${String(v) === String(chosen)}"
+        ${title ? `title="${esc(title)}"` : ''}>${esc(label)}</button>`).join('')}</div>`;
+  const tiers = (attr, chosen, { min = 4 } = {}) => seg(
+    [[0, 'none'], ...Array.from({ length: 9 - min }, (_, i) => [min + i, `T${min + i}`])],
+    chosen, attr);
+
+  const choices = fishChoices(s, tier);
+  // The rares this tier offers. Empty at every tier but T3, T5 and T7.
+  const zones = fishZones(s, tier).length ? fishZones(s, tier) : fishZones(s, 5);
+  const measuredRows = Object.entries(kit.measured || {}).map(([k, v]) => {
+    const [, t, water, bait] = k.split(':');
+    return `<div class="row" style="gap:8px"><span class="ico">\u{1F3A3}</span>
+      <span class="body"><span class="title">T${t} ${esc(water)}</span>
+      <span class="meta">${esc(bait === 'none' ? 'no bait'
+    : fishNameOf(s, bait) || bait)} · ${short(v.per10min * 6)} an hour</span></span>
+      <input type="number" class="spec-input" data-fish-measured="${esc(k)}"
+        inputmode="numeric" min="0" value="${v.per10min}" aria-label="Per ten minutes"></div>`;
+  }).join('');
+
+  openSheet(`
+    <h2>Your fishing</h2>
+    <p class="muted">Fishing is the one thing you go out and gather that the game
+      publishes no node for. <b>FISH</b> appears nowhere in harvestables.xml, so
+      how long a catch takes and how many fish come out of it are in no file —
+      that part is a stopwatch, below. Everything else about a catch is
+      published, and all of it is here.</p>
+
+    <div class="field">
+      <label>Which catch this preview is about</label>
+      ${seg([2, 3, 4, 5, 6, 7, 8].map((t) => [t, `T${t}`]), tier, 'fpeek-tier')}
+      ${choices.length > 1 ? `<div class="seg small wrap">${choices.map((f) => `
+        <button data-fpeek-id="${esc(f.id)}" aria-pressed="${f.id === peekId}">${
+    esc(f.name)}</button>`).join('')}</div>` : ''}
+    </div>
+
+    ${run && !run.impossible ? `<div class="card">
+      <div class="bar-row"><span class="n">Sells for</span>
+        <span class="v num">${priceOf(peekId) ? silver(priceOf(peekId)) : '— no price yet'}</span></div>
+      <div class="bar-row"><span class="n">Weighs, in your bags</span>
+        <span class="v num">${weight.each.toFixed(2)} kg${weight.cut
+    ? ` <small>−${pct(weight.cut, 0)}</small>` : ''}</span></div>
+      <div class="bar-row"><span class="n">Fishing fame</span>
+        <span class="v num">${short(run.famePer)}</span></div>
+      <div class="bar-row"><span class="n">Makes</span>
+        <span class="v num">${run.chopsEach} fish chops</span></div>
+      <div class="bar-row total"><span class="n">Your kit is worth</span>
+        <span class="v num good">+${pct(yld.multiplier - 1, 0)} a catch</span></div>
+    </div>
+    ${weight.why ? `<div class="warn-note">${esc(weight.why)}.</div>` : ''}` : ''}
+
+    <div class="section-head" style="margin-top:16px"><h2>The rod</h2></div>
+    <div class="field">
+      <label>Rod tier — this is the one thing that decides nothing about speed</label>
+      ${tiers('rod-tier', kit.rodTier, { min: 3 })}
+      <div class="hint">Every rod in the game carries the same +${pct(F.rodSpeed, 0)},
+        T3 and T8 alike — the only tool whose speed does not scale with tier. An
+        Avalonian one adds a real yield bonus on top, which a plain rod has no
+        passive slot for.</div>
+      ${kit.rodTier >= 4 ? kitToggle('fishRodAvalon', 'Avalonian rod',
+    `+${pct(F.toolYield[String(kit.rodTier)] || 0, 1)} yield at T${kit.rodTier}`,
+    kit.rodAvalon) : ''}
+    </div>
+
+    <div class="section-head" style="margin-top:16px"><h2>The fisherman's set</h2></div>
+    ${FISH_SLOTS.map(([slot, label]) => `
+      <div class="field"><label>${esc(label)}</label>${tiers(`fgear-${slot}`, kit.gear[slot])}</div>`).join('')}
+    <div class="hint">Its yield numbers are the land set's to the decimal — a full
+      T8 set is +70% either way — with one difference: it pays from T1 up, where a
+      land set starts at T2, because there are T1 fish and no T1 trees. The pack
+      is the odd one out in the whole game: its cut RISES with tier,
+      ${Object.entries(F.backpack).map(([t, b]) => `T${t} −${pct(b.value, 0)}`).join(', ')},
+      where every land pack is a flat −30%. And no pack carries an Avalonian
+      or a dragon-area rare at any tier.</div>
+
+    <div class="section-head" style="margin-top:16px"><h2>Bait and water</h2></div>
+    <div class="field">
+      <label for="fishBait">Bait</label>
+      <select id="fishBait">
+        <option value="" ${kit.bait ? '' : 'selected'}>None</option>
+        ${Object.entries(F.bait).map(([id, b]) => `
+          <option value="${esc(id)}" ${id === kit.bait ? 'selected' : ''}>${
+    esc(fishNameOf(s, id) || id)} · +${pct(b.speed, 0)} speed · ${
+    b.charges} casts</option>`).join('')}
+      </select>
+      <div class="hint">Bait is the one part of fishing whose cost is exact rather
+        than measured: the spell carries ten charges and ten minutes, whichever
+        runs out first, so a bait is ten casts and its cost a cast is its price
+        over ten. It is also the biggest speed lever in the game at +250% — but
+        speed here scales the wait for a bite, and neither the wait nor what
+        share of a catch it is appears in any file, so changing bait asks for a
+        fresh ten minutes rather than scaling the old count.</div>
+    </div>
+    <div class="field">
+      <label>Water</label>
+      ${seg(WATERS, kit.water, 'fwater')}
+      <div class="hint">${kit.water === 'saltwater'
+    ? 'Saltwater carries one rare per rare tier and it has no landscape, so the picker below does not apply.'
+    : 'Freshwater carries seven rares per rare tier, one for each landscape. Rares exist only at T3, T5 and T7 — T8 has none.'}</div>
+    </div>
+    ${kit.water === 'freshwater' && zones.length ? `<div class="field">
+      <label>Landscape — which rare is on the table</label>
+      <div class="seg small wrap">${zones.map((z) => `
+        <button data-fzone="${esc(z.id)}" aria-pressed="${
+    z.id === kit.zone || z.zone === kit.zone}">${esc(z.name)}</button>`).join('')}</div>
+      <div class="hint">At one tier every freshwater rare is identical in every
+        published number — same value, same fame, same weight — so this picks
+        which one you can actually catch and price, not which is better. Two of
+        them are Avalonian and the file gives both the same landscape word, so
+        they are listed by name.</div>
+    </div>` : ''}
+    <div class="field">
+      <label>Zone colour — fame only, never yield</label>
+      ${seg(DANGERS, kit.danger, 'fdanger')}
+      <div class="hint">The danger table carries a fishing fame column beside the
+        gathering one and the two are identical at every colour.</div>
+    </div>
+
+    <div class="section-head" style="margin-top:16px"><h2>Destiny board</h2></div>
+    ${rowHTML({
+    act: 'fish-board', icon: ICON.board, title: 'Fishing nodes',
+    meta: `${(F.board || []).filter((n) => state.nodeLevels[n.id]).length} of ${
+      (F.board || []).length} set · +${pct(yld.spec || 0, 0)} yield from them now`,
+    right: go(),
+  })}
+
+    <div class="section-head" style="margin-top:16px"><h2>Every speed bonus you have</h2></div>
+    <div class="card">
+      ${speed.parts.length ? speed.parts.map((p) => `
+        <div class="bar-row"><span class="n">${esc(p.what)}</span>
+          <span class="v num">+${pct(p.value, 0)}</span></div>`).join('')
+    : '<div class="bar-row"><span class="n">Nothing set</span><span class="v num">—</span></div>'}
+      ${speed.parts.length ? `<div class="bar-row total"><span class="n">Together</span>
+        <span class="v num">+${pct(speed.total, 0)}</span></div>` : ''}
+    </div>
+    <div class="warn-note">${esc(speed.why)}. Nothing on this list is turned into
+      an hour anywhere in the app, and nothing caps it either: gamedata.xml
+      publishes one cap, for the attribute called GatheringSpeed, and no fishing
+      attribute of any kind.</div>
+
+    <div class="section-head" style="margin-top:16px"><h2>Your real rate</h2></div>
+    <div class="field">
+      <label for="fishCount">T${tier} ${esc(kit.water)}${kit.bait
+    ? ` with ${esc(fishNameOf(s, kit.bait) || kit.bait)}` : ', no bait'}, in ten minutes</label>
+      <input type="number" id="fishCount" inputmode="numeric" min="0" step="1"
+        placeholder="0" value="${counted?.per10min || ''}">
+      <div class="hint">Fish where you would really fish, for ten minutes by the
+        clock, and type how many you came home with. This is filed under the
+        water AND the bait, because bait is what moves it most — a count taken
+        without bait is a count of something else.</div>
+    </div>
+    ${measuredRows ? `<div class="card">${measuredRows}</div>` : ''}
+
+    <div class="sheet-actions">
+      <button class="btn primary" id="done">Done</button>
+    </div>
+  `, {
+    onMount(root) {
+      const again = () => openFishSetup(forId, true);
+      const wireSeg = (attr, fn) => {
+        for (const b of $$(`[data-${attr}]`, root)) {
+          b.onclick = () => { fn(b.dataset[camel(attr)]); again(); };
+        }
+      };
+      wireSeg('fpeek-tier', (v) => { fishPeek = { tier: Number(v), id: '' }; });
+      wireSeg('fpeek-id', (v) => { fishPeek = { ...fishPeek, id: v }; });
+      wireSeg('rod-tier', (v) => setGather({ fish: { rodTier: Number(v) } }));
+      for (const [slot] of FISH_SLOTS) {
+        wireSeg(`fgear-${slot}`, (v) => setGather({ fish: { gear: { [slot]: Number(v) } } }));
+      }
+      wireSeg('fwater', (v) => setGather({ fish: { water: v } }));
+      wireSeg('fzone', (v) => setGather({ fish: { zone: v } }));
+      wireSeg('fdanger', (v) => setGather({ fish: { danger: v } }));
+      for (const t of $$('[data-kit-toggle]', root)) {
+        t.onclick = () => {
+          setGather({ fish: { rodAvalon: !state.settings.gather.fish.rodAvalon } });
+          again();
+        };
+      }
+      $('#fishBait', root).onchange = (e) => { setGather({ fish: { bait: e.target.value } }); again(); };
+      $('#fishCount', root).onchange = (e) => {
+        setFishMeasured(fishRateKey(tier, fishKitOf(state.settings)), e.target.value);
+        again();
+      };
+      for (const box of $$('[data-fish-measured]', root)) {
+        box.onchange = () => { setFishMeasured(box.dataset.fishMeasured, box.value); again(); };
+      }
+      const board = $('[data-act="fish-board"]', root);
+      if (board) board.onclick = () => openBoard(GATHER_BRANCH);
+      $('#done', root).onclick = () => { closeSheet(); toast('Fishing kit saved'); };
+    },
+  });
+}
+
+/** The ten-minute count on its own, for a row that only needs that one thing. */
+export function openFishTime() {
+  openFishSetup(null, false);
+}
+
+/**
+ * One pile of one catch, and every way out of it.
+ *
+ * Two routes where a land resource has five, and that is the file rather than a
+ * gap: fish do not refine into a bar and do not transmute a grade up. What they
+ * do is become chops at one chop a point of value — so one chop price prices
+ * all forty-one catches — and chops plus seaweed become the sauce that enchants
+ * food.
+ */
+export function openFishExits(id, qty = 999) {
+  const s = state.settings;
+  const ctxNow = {
+    recipeOf, priceOf, costOf, sellPriceOf: priceOf, settings: s, cityId: s.craftCity,
+  };
+  const run = fishRun(id, { qty, settings: s });
+  if (!run) { openSheet('<h2>Fishing</h2><p class="muted">Not a catch.</p>'); return; }
+  const rows = run.impossible ? [] : fishExits(id, ctxNow, { qty });
+  const best = rows.find((r) => !r.missing.length) || null;
+  const even = run.impossible ? null : baitBreakEven(id, ctxNow);
+  const name = fishNameOf(s, id) || id;
+
+  const routeRow = (r) => rowHTML({
+    attrs: `data-fish-route="${esc(r.key)}"`,
+    icon: r.key === 'raw' ? '\u{1FA99}' : '\u{1F9C2}',
+    cls: r.missing.length ? 'warn' : '',
+    title: esc(r.label),
+    meta: r.missing.length
+      ? `needs a price for ${r.missing.map((m) => esc(fishNameOf(s, m) || m)).join(', ')}`
+      : esc([
+        `${short(r.made)} out`,
+        r.baitCost ? `${short(r.baitCost)} of bait` : 'no bait charged',
+        r.bookValue ? `${short(r.bookValue)} of books` : '',
+        r.silverPerKg != null ? `${short(r.silverPerKg)} a kilo` : '',
+      ].filter(Boolean).join(' · ')),
+    right: r.missing.length ? amt('—', { tone: 'flat' })
+      : amt(r.profit, { tone: toneOf(r.profit) }),
+    tagName: 'div',
+  });
+
+  openSheet(`
+    <h2>${esc(name)}</h2>
+    <p class="muted">${qty} of them, every way out, over your own prices. ${
+  run.impossible ? '' : `A T${run.tier} ${esc(run.water)} ${esc(run.rarity)}.`}</p>
+
+    ${run.impossible ? `<div class="warn-note bad">${esc(run.why)}.</div>` : `
+      ${run.warn ? `<div class="warn-note">${esc(run.warn)}.</div>` : ''}
+      <div class="card">
+        <div class="bar-row"><span class="n">Weighs</span>
+          <span class="v num">${Math.round(run.weight)} kg${run.weightCut
+    ? ` <small>−${pct(run.weightCut, 0)} in your pack</small>` : ''}</span></div>
+        <div class="bar-row"><span class="n">Fishing fame</span>
+          <span class="v num">${short(run.fame)}</span></div>
+        ${run.journal ? `<div class="bar-row"><span class="n">${
+    esc(run.journal.name)}s filled</span>
+          <span class="v num">${run.journal.filled.toFixed(1)}</span></div>` : ''}
+        <div class="bar-row"><span class="n">Fish chops</span>
+          <span class="v num">${short(run.chops)}</span></div>
+        ${run.baits ? `<div class="bar-row"><span class="n">Baits${
+    run.baitBound === 'clock' ? ' <small>the ten minutes runs out first</small>'
+      : ' <small>at least, ten casts each</small>'}</span>
+          <span class="v num">${run.baits.toFixed(1)}</span></div>` : ''}
+        <div class="bar-row"><span class="n">How long${run.hours ? ', at your pace' : ''}</span>
+          <span class="v num${run.hours ? '' : ' flat'}">${run.hours
+    ? hours(run.hours) : 'you have not timed it'}</span></div>
+        <div class="bar-row total"><span class="n">Your kit, of what you land</span>
+          <span class="v num good">${pct(run.kitShare, 0)}</span></div>
+      </div>
+      ${run.hours ? '' : `<div class="warn-note">No file anywhere says how long a
+        cast takes, so this pile has no hours until you time ten minutes on the
+        water. <b>Tap "Time a run"</b> below.</div>`}`}
+
+    ${rows.length ? `<div class="section-head" style="margin-top:14px"><h2>Every way out</h2></div>
+      ${rows.map(routeRow).join('')}` : ''}
+
+    ${even && even.rows.some((r) => !r.missing) ? `
+      <div class="section-head" style="margin-top:14px"><h2>Is better bait worth it?</h2></div>
+      <div class="card">
+        ${even.rows.filter((r) => !r.missing).map((r) => `
+          <div class="bar-row"><span class="n">${esc(fishNameOf(s, r.id) || r.id)}
+            <small>+${pct(r.speed, 0)}</small></span>
+            <span class="v num">${r.fishPerHour <= 0 ? 'cheaper already'
+    : `+${Math.ceil(r.fishPerHour)} fish an hour`}</span></div>`).join('')}
+      </div>
+      <div class="hint">${esc(even.why)}. At ${silver(Math.round(even.perFish))} a
+        fish after tax, that is the count to beat — fish ten minutes with it and
+        ten without, and compare.</div>` : ''}
+
+    ${(run.assumed || []).length ? note(`Yours rather than the game's: ${
+    esc(run.assumed.join('; '))}.`) : ''}
+
+    <div class="sheet-actions">
+      <button class="btn" id="fkit">Time a run</button>
+      <button class="btn primary" id="fdone">Done</button>
+    </div>
+  `, {
+    onMount(root) {
+      $('#fkit', root).onclick = () => openFishSetup(id);
+      $('#fdone', root).onclick = closeSheet;
     },
   });
 }

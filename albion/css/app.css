@@ -271,7 +271,11 @@ nav { position: fixed; bottom: 0; left: 0; right: 0; z-index: 25; display: flex;
   background: rgba(13, 11, 8, .92); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
   border-top: 1px solid var(--line); padding-bottom: var(--pad-bot); }
 nav button { flex: 1; height: var(--nav-h); display: flex; flex-direction: column; align-items: center;
-  justify-content: center; gap: 4px; font-size: 11px; font-weight: var(--w-semi); color: var(--text-3); position: relative; }
+  justify-content: center; gap: 4px; font-size: 11px; font-weight: var(--w-semi); color: var(--text-3); position: relative;
+  /* The bar is a fixed 60px and nothing clips it, so a two-word label would
+   * wrap to three lines and spill over the page. Six buttons are 53px wide at
+   * 320px, which fits a one-word label and nothing longer. */
+  white-space: nowrap; }
 nav button .e { font-size: 20px; line-height: 1; filter: grayscale(1); opacity: .6; }
 nav button[aria-current="page"] { color: var(--text); }
 nav button[aria-current="page"] .e { filter: none; opacity: 1; }

@@ -11,6 +11,7 @@ import {
   DATA, landSummary, plotsOwned, scheduleDays, state,
 } from './store.js';
 import { kitOf } from './gather.js';
+import { fishKitOf, fishNameOf } from './fish.js';
 import { serverName } from './prices.js';
 import { esc } from './ui.js';
 import { pct, short } from './util.js';
@@ -76,6 +77,31 @@ function farmWords(city) {
   const n = bonuses.length;
   return `+${top}% on ${n} ${n === 1 ? 'thing' : 'things'} it grows best${
     city?.farmOnly ? ' — plants only, and nothing on an island out there' : ''}`;
+}
+
+/* Both halves of the board, so the count on this row stops reading "3 of 25"
+ * on a screen where twenty-seven nodes can be typed in. */
+const boardNodes = (s) => [
+  ...(s.gathering?.board || []), ...(s.gathering?.fishing?.board || []),
+];
+
+/** What you have on the water, in a phrase. Its own kit, and its own sentence. */
+function fishWords() {
+  const s = state.settings;
+  const kit = fishKitOf(s);
+  const set = ['head', 'armor', 'shoes'].filter((slot) => kit.gear[slot] > 0);
+  const bits = [
+    kit.rodTier ? `T${kit.rodTier}${kit.rodAvalon ? ' Avalonian' : ''} rod` : '',
+    set.length === 3 ? `T${Math.min(...set.map((x) => kit.gear[x]))} set`
+      : set.length ? `${set.length} of 3 gear` : '',
+    kit.bait ? fishNameOf(s, kit.bait) || kit.bait : 'no bait',
+    kit.water,
+    Object.keys(kit.measured).length
+      ? `${Object.keys(kit.measured).length} timed` : 'nothing timed',
+  ].filter(Boolean);
+  const said = kit.rodTier || set.length || kit.bait
+    || Object.keys(kit.measured).length;
+  return said ? bits.join(' \u00b7 ') : 'Nothing set — tap to say what you hold';
 }
 
 /** What you have on, in a phrase, or an invitation if you have said nothing. */
@@ -167,9 +193,13 @@ export function me() {
       <section>
         <div class="section-head"><h2>Your gathering</h2></div>
         ${row('gather-setup', '\u26CF\uFE0F', 'Kit, node and where you swing', esc(kitWords()))}
-        ${row('gather-board', '\u{1F31F}', 'Gathering nodes on the board',
-    `${(s.gathering?.board || []).filter((n) => state.nodeLevels[n.id]).length} of ${
-      (s.gathering?.board || []).length} set · yield and swing speed, both`)}
+        ${row('fish-setup', '\u{1F3A3}', 'Rod, bait and where you fish', esc(fishWords()))}
+        ${row('gather-board', '\u{1F31F}', 'Gathering and fishing on the board',
+    `${boardNodes(s).filter((n) => state.nodeLevels[n.id]).length} of ${
+      boardNodes(s).length} set · yield and swing speed, both`)}
+        <div class="hint">What all of this is worth is on <b>Gather</b>, the
+          open world farming screen. Your island's plots and pastures are on
+          Plan — this is the other kind.</div>
       </section>
 
       <section>

@@ -1,14 +1,14 @@
 // Cache-first shell so the app opens instantly and works with no signal.
 // Bump CACHE when the shell or the game data changes.
 
-const CACHE = 'albionfarm-v44';  // v44: fishing, the family the game publishes no node for
+const CACHE = 'albionfarm-v45';  // v45: Open world farming, its own screen, fishing in it
 const SHELL = [
   './', './index.html', './manifest.webmanifest',
   './css/app.css',
   './js/app.js', './js/views.js', './js/sheets.js', './js/store.js',
   './js/calc.js', './js/craft.js', './js/me.js', './js/solve.js',
   './js/prices.js', './js/ui.js', './js/util.js', './js/html.js',
-  './js/gather.js', './js/exits.js',
+  './js/gather.js', './js/exits.js', './js/fish.js', './js/wild.js',
   './data/gamedata.json',
   './icons/icon.svg', './icons/icon-192.png', './icons/icon-512.png',
 ];

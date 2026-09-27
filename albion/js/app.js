@@ -5,7 +5,8 @@ import {
   acceptSpare, carryLeftoversIn, chainIds, GATHER_BRANCH, openAddCraft,
   openAddPlot, openAdvanced, openAssumptions, openBoard, openCraft,
   openCraftCity, openCraftPick, openCycle, openData, openFarm, openFarmCity,
-  openGatherSetup, openGoal, openMastery, openPlot, openPrice, openPriceSource,
+  openFishSetup, openFishExits, openFishTime, openGatherSetup, openGoal,
+  openMastery, openPlot, openPrice, openPriceSource,
   openQuality, openResourceExits, openScanFilter, openStock, runCraftPriceFetch,
   runPriceFetch, runScanPriceFetch, runSolve, setNavigate, solveWithPrices,
 } from './sheets.js';
@@ -15,9 +16,11 @@ import {
 } from './craft.js';
 import { $, $$, closeSheet, sheetIsOpen } from './ui.js';
 import {
-  gatherMissingIds, missingPrices, rankMissingIds, rankTab, setGatherTier,
-  setPriceFilter, setRankTab, views,
+  missingPrices, rankMissingIds, rankTab, setPriceFilter, setRankTab, views,
 } from './views.js';
+import {
+  setWildTier, setWildUnit, wildMissingIds,
+} from './wild.js';
 import { openDetails } from './html.js';
 import { addPlot, addCraft, setGoal, setSettings } from './store.js';
 
@@ -48,7 +51,13 @@ function go(name) {
   if (!views[name]) return;
   // The weapon and armour file is two megabytes, so it is fetched the first
   // time something needs it and not before.
-  if (name === 'craft' || name === 'rank') ensureGear();
+  /* The weapon and armour file is two megabytes, so it is fetched the first
+   * time something needs it and not before. `wild` needs it as much as the
+   * other two: every refine and transmute route lives in there, and exits.js
+   * drops a route whose recipe it cannot find without a word, so a screen
+   * missing from this list would quietly show "sell it as it is" and nothing
+   * else. */
+  if (name === 'craft' || name === 'rank' || name === 'wild') ensureGear();
   current = name;
   for (const b of document.querySelectorAll('#nav button')) {
     b.removeAttribute('aria-current');
@@ -61,7 +70,8 @@ function go(name) {
 const SEL = '[data-act],[data-plot],[data-craft],[data-price],[data-rank],'
   + '[data-price-filter],[data-toggle],[data-add-plot],[data-add-craft],'
   + '[data-add-step],[data-add-spare],[data-craft-sell],[data-source],'
-  + '[data-craft-rank],[data-gather-row],[data-gather-tier]';
+  + '[data-craft-rank],[data-gather-row],[data-gather-tier],'
+  + '[data-fish-row],[data-wild-tier],[data-wild-unit]';
 
 /** One tap, wherever it landed. Shared by the screen and the top-bar button. */
 function act(el) {
@@ -75,7 +85,10 @@ function act(el) {
   if (d.craftRank) { setCraftTarget(d.craftRank); go('craft'); return; }
   // A ranked resource opens every way out of it, rather than one of them.
   if (d.gatherRow) { openResourceExits(d.gatherRow); return; }
-  if (d.gatherTier) { setGatherTier(d.gatherTier); render(); return; }
+  if (d.gatherTier || d.wildTier) { setWildTier(d.gatherTier || d.wildTier); render(); return; }
+  if (d.wildUnit) { setWildUnit(d.wildUnit); render(); return; }
+  // A fish row opens every way out of that catch, the same as a land row does.
+  if (d.fishRow) { openFishExits(d.fishRow); return; }
 
   if (d.plot) {
     const row = state.plan.plots.find((p) => p.id === d.plot);
@@ -164,8 +177,14 @@ function act(el) {
   } else if (d.act === 'journal-prices') {
     // The books this run fills, so a full one can be given a price.
     go('prices');
-  } else if (d.act === 'gather-prices') {
-    runPriceFetch(gatherMissingIds());
+  } else if (d.act === 'wild-prices') {
+    runPriceFetch(wildMissingIds());
+  } else if (d.act === 'fish-setup') {
+    openFishSetup();
+  } else if (d.act === 'fish-time') {
+    openFishTime();
+  } else if (d.act === 'plan') {
+    go('plan');
   } else if (d.act === 'craft-pick') {
     openCraftPick();
   } else if (d.act === 'craft-prices') {
@@ -238,7 +257,9 @@ async function boot() {
   subscribe(render);
   // The Craft tab finishes loading its data after the first paint, so it
   // needs a way to ask for a redraw once it has.
-  setCraftRerender(() => { if (current === 'craft' || current === 'rank') render(); });
+  setCraftRerender(() => {
+    if (current === 'craft' || current === 'rank' || current === 'wild') render();
+  });
   // A sheet that ranks a route has to be able to open the tab that works on it.
   setNavigate(go);
   wire();
