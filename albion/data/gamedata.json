@@ -1,6 +1,6 @@
 {
  "source": "ao-data/ao-bin-dumps (items.xml, loot.xml, gamedata.xml)",
- "generated": "2026-09-26",
+ "generated": "2026-09-27",
  "constants": {
   "focusCraftBonus": 59.0,
   "focusCostConstant": 1.00695555005672,
@@ -23814,6 +23814,646 @@
    "black6": 1.5
   },
   "premiumYield": 0.5,
-  "premiumYieldSource": "localization"
+  "premiumYieldSource": "localization",
+  "fishing": {
+   "fish": {
+    "T1_FISH_FRESHWATER_ALL_COMMON": {
+     "tier": 1,
+     "value": 1,
+     "fame": 10.0,
+     "weight": 0.05,
+     "water": "freshwater",
+     "rarity": "common"
+    },
+    "T2_FISH_FRESHWATER_ALL_COMMON": {
+     "tier": 2,
+     "value": 2,
+     "fame": 20.0,
+     "weight": 0.1,
+     "water": "freshwater",
+     "rarity": "common"
+    },
+    "T3_FISH_FRESHWATER_ALL_COMMON": {
+     "tier": 3,
+     "value": 3,
+     "fame": 30.0,
+     "weight": 0.16,
+     "water": "freshwater",
+     "rarity": "common"
+    },
+    "T4_FISH_FRESHWATER_ALL_COMMON": {
+     "tier": 4,
+     "value": 4,
+     "fame": 40.0,
+     "weight": 0.21,
+     "water": "freshwater",
+     "rarity": "common"
+    },
+    "T5_FISH_FRESHWATER_ALL_COMMON": {
+     "tier": 5,
+     "value": 6,
+     "fame": 60.0,
+     "weight": 0.31,
+     "water": "freshwater",
+     "rarity": "common"
+    },
+    "T6_FISH_FRESHWATER_ALL_COMMON": {
+     "tier": 6,
+     "value": 8,
+     "fame": 80.0,
+     "weight": 0.41,
+     "water": "freshwater",
+     "rarity": "common"
+    },
+    "T7_FISH_FRESHWATER_ALL_COMMON": {
+     "tier": 7,
+     "value": 10,
+     "fame": 100.0,
+     "weight": 0.52,
+     "water": "freshwater",
+     "rarity": "common"
+    },
+    "T8_FISH_FRESHWATER_ALL_COMMON": {
+     "tier": 8,
+     "value": 14,
+     "fame": 140.0,
+     "weight": 0.73,
+     "water": "freshwater",
+     "rarity": "common"
+    },
+    "T1_FISH_SALTWATER_ALL_COMMON": {
+     "tier": 1,
+     "value": 1,
+     "fame": 10.0,
+     "weight": 0.05,
+     "water": "saltwater",
+     "rarity": "common"
+    },
+    "T2_FISH_SALTWATER_ALL_COMMON": {
+     "tier": 2,
+     "value": 2,
+     "fame": 20.0,
+     "weight": 0.1,
+     "water": "saltwater",
+     "rarity": "common"
+    },
+    "T3_FISH_SALTWATER_ALL_COMMON": {
+     "tier": 3,
+     "value": 3,
+     "fame": 30.0,
+     "weight": 0.16,
+     "water": "saltwater",
+     "rarity": "common"
+    },
+    "T4_FISH_SALTWATER_ALL_COMMON": {
+     "tier": 4,
+     "value": 4,
+     "fame": 40.0,
+     "weight": 0.21,
+     "water": "saltwater",
+     "rarity": "common"
+    },
+    "T5_FISH_SALTWATER_ALL_COMMON": {
+     "tier": 5,
+     "value": 6,
+     "fame": 60.0,
+     "weight": 0.31,
+     "water": "saltwater",
+     "rarity": "common"
+    },
+    "T6_FISH_SALTWATER_ALL_COMMON": {
+     "tier": 6,
+     "value": 8,
+     "fame": 80.0,
+     "weight": 0.41,
+     "water": "saltwater",
+     "rarity": "common"
+    },
+    "T7_FISH_SALTWATER_ALL_COMMON": {
+     "tier": 7,
+     "value": 10,
+     "fame": 100.0,
+     "weight": 0.52,
+     "water": "saltwater",
+     "rarity": "common"
+    },
+    "T8_FISH_SALTWATER_ALL_COMMON": {
+     "tier": 8,
+     "value": 14,
+     "fame": 140.0,
+     "weight": 0.73,
+     "water": "saltwater",
+     "rarity": "common"
+    },
+    "T3_FISH_FRESHWATER_FOREST_RARE": {
+     "tier": 3,
+     "value": 10,
+     "fame": 100.0,
+     "weight": 0.52,
+     "water": "freshwater",
+     "rarity": "rare",
+     "zone": "forest"
+    },
+    "T5_FISH_FRESHWATER_FOREST_RARE": {
+     "tier": 5,
+     "value": 20,
+     "fame": 200.0,
+     "weight": 0.78,
+     "water": "freshwater",
+     "rarity": "rare",
+     "zone": "forest"
+    },
+    "T7_FISH_FRESHWATER_FOREST_RARE": {
+     "tier": 7,
+     "value": 30,
+     "fame": 300.0,
+     "weight": 1.04,
+     "water": "freshwater",
+     "rarity": "rare",
+     "zone": "forest"
+    },
+    "T3_FISH_FRESHWATER_MOUNTAIN_RARE": {
+     "tier": 3,
+     "value": 10,
+     "fame": 100.0,
+     "weight": 0.52,
+     "water": "freshwater",
+     "rarity": "rare",
+     "zone": "mountain"
+    },
+    "T5_FISH_FRESHWATER_MOUNTAIN_RARE": {
+     "tier": 5,
+     "value": 20,
+     "fame": 200.0,
+     "weight": 0.78,
+     "water": "freshwater",
+     "rarity": "rare",
+     "zone": "mountain"
+    },
+    "T7_FISH_FRESHWATER_MOUNTAIN_RARE": {
+     "tier": 7,
+     "value": 30,
+     "fame": 300.0,
+     "weight": 1.04,
+     "water": "freshwater",
+     "rarity": "rare",
+     "zone": "mountain"
+    },
+    "T3_FISH_FRESHWATER_HIGHLANDS_RARE": {
+     "tier": 3,
+     "value": 10,
+     "fame": 100.0,
+     "weight": 0.52,
+     "water": "freshwater",
+     "rarity": "rare",
+     "zone": "highlands"
+    },
+    "T5_FISH_FRESHWATER_HIGHLANDS_RARE": {
+     "tier": 5,
+     "value": 20,
+     "fame": 200.0,
+     "weight": 0.78,
+     "water": "freshwater",
+     "rarity": "rare",
+     "zone": "highlands"
+    },
+    "T7_FISH_FRESHWATER_HIGHLANDS_RARE": {
+     "tier": 7,
+     "value": 30,
+     "fame": 300.0,
+     "weight": 1.04,
+     "water": "freshwater",
+     "rarity": "rare",
+     "zone": "highlands"
+    },
+    "T3_FISH_FRESHWATER_STEPPE_RARE": {
+     "tier": 3,
+     "value": 10,
+     "fame": 100.0,
+     "weight": 0.52,
+     "water": "freshwater",
+     "rarity": "rare",
+     "zone": "steppe"
+    },
+    "T5_FISH_FRESHWATER_STEPPE_RARE": {
+     "tier": 5,
+     "value": 20,
+     "fame": 200.0,
+     "weight": 0.78,
+     "water": "freshwater",
+     "rarity": "rare",
+     "zone": "steppe"
+    },
+    "T7_FISH_FRESHWATER_STEPPE_RARE": {
+     "tier": 7,
+     "value": 30,
+     "fame": 300.0,
+     "weight": 1.04,
+     "water": "freshwater",
+     "rarity": "rare",
+     "zone": "steppe"
+    },
+    "T3_FISH_FRESHWATER_SWAMP_RARE": {
+     "tier": 3,
+     "value": 10,
+     "fame": 100.0,
+     "weight": 0.52,
+     "water": "freshwater",
+     "rarity": "rare",
+     "zone": "swamp"
+    },
+    "T5_FISH_FRESHWATER_SWAMP_RARE": {
+     "tier": 5,
+     "value": 20,
+     "fame": 200.0,
+     "weight": 0.78,
+     "water": "freshwater",
+     "rarity": "rare",
+     "zone": "swamp"
+    },
+    "T7_FISH_FRESHWATER_SWAMP_RARE": {
+     "tier": 7,
+     "value": 30,
+     "fame": 300.0,
+     "weight": 1.04,
+     "water": "freshwater",
+     "rarity": "rare",
+     "zone": "swamp"
+    },
+    "T3_FISH_SALTWATER_ALL_RARE": {
+     "tier": 3,
+     "value": 10,
+     "fame": 100.0,
+     "weight": 0.52,
+     "water": "saltwater",
+     "rarity": "rare"
+    },
+    "T5_FISH_SALTWATER_ALL_RARE": {
+     "tier": 5,
+     "value": 20,
+     "fame": 200.0,
+     "weight": 0.78,
+     "water": "saltwater",
+     "rarity": "rare"
+    },
+    "T7_FISH_SALTWATER_ALL_RARE": {
+     "tier": 7,
+     "value": 30,
+     "fame": 300.0,
+     "weight": 1.04,
+     "water": "saltwater",
+     "rarity": "rare"
+    },
+    "T3_FISH_FRESHWATER_AVALON_RARE": {
+     "tier": 3,
+     "value": 10,
+     "fame": 100.0,
+     "weight": 0.52,
+     "water": "freshwater",
+     "rarity": "rare",
+     "zone": "avalon"
+    },
+    "T5_FISH_FRESHWATER_AVALON_RARE": {
+     "tier": 5,
+     "value": 20,
+     "fame": 200.0,
+     "weight": 0.78,
+     "water": "freshwater",
+     "rarity": "rare",
+     "zone": "avalon"
+    },
+    "T7_FISH_FRESHWATER_AVALON_RARE": {
+     "tier": 7,
+     "value": 30,
+     "fame": 300.0,
+     "weight": 1.04,
+     "water": "freshwater",
+     "rarity": "rare",
+     "zone": "avalon"
+    },
+    "T3_FISH_FRESHWATER_DRAGON_AREA_RARE": {
+     "tier": 3,
+     "value": 10,
+     "fame": 100.0,
+     "weight": 0.52,
+     "water": "freshwater",
+     "rarity": "rare",
+     "zone": "avalon"
+    },
+    "T5_FISH_FRESHWATER_DRAGON_AREA_RARE": {
+     "tier": 5,
+     "value": 20,
+     "fame": 200.0,
+     "weight": 0.78,
+     "water": "freshwater",
+     "rarity": "rare",
+     "zone": "avalon"
+    },
+    "T7_FISH_FRESHWATER_DRAGON_AREA_RARE": {
+     "tier": 7,
+     "value": 30,
+     "fame": 300.0,
+     "weight": 1.04,
+     "water": "freshwater",
+     "rarity": "rare",
+     "zone": "avalon"
+    },
+    "T8_FISH_SALTWATER_ALL_BOSS_SHARK": {
+     "tier": 8,
+     "value": 200,
+     "fame": 2000.0,
+     "weight": 10.36,
+     "water": "saltwater",
+     "rarity": "boss"
+    }
+   },
+   "gear": {
+    "head": {
+     "4": {
+      "perCharge": 0.0025,
+      "minTier": 1,
+      "maxTier": 4,
+      "maxCharges": 10
+     },
+     "5": {
+      "perCharge": 0.005,
+      "minTier": 1,
+      "maxTier": 5,
+      "maxCharges": 10
+     },
+     "6": {
+      "perCharge": 0.0075,
+      "minTier": 1,
+      "maxTier": 6,
+      "maxCharges": 10
+     },
+     "7": {
+      "perCharge": 0.0125,
+      "minTier": 1,
+      "maxTier": 7,
+      "maxCharges": 10
+     },
+     "8": {
+      "perCharge": 0.0175,
+      "minTier": 1,
+      "maxTier": 8,
+      "maxCharges": 10
+     }
+    },
+    "armor": {
+     "4": {
+      "perCharge": 0.005,
+      "minTier": 1,
+      "maxTier": 4,
+      "maxCharges": 10
+     },
+     "5": {
+      "perCharge": 0.01,
+      "minTier": 1,
+      "maxTier": 5,
+      "maxCharges": 10
+     },
+     "6": {
+      "perCharge": 0.015,
+      "minTier": 1,
+      "maxTier": 6,
+      "maxCharges": 10
+     },
+     "7": {
+      "perCharge": 0.025,
+      "minTier": 1,
+      "maxTier": 7,
+      "maxCharges": 10
+     },
+     "8": {
+      "perCharge": 0.035,
+      "minTier": 1,
+      "maxTier": 8,
+      "maxCharges": 10
+     }
+    },
+    "shoes": {
+     "4": {
+      "perCharge": 0.0025,
+      "minTier": 1,
+      "maxTier": 4,
+      "maxCharges": 10
+     },
+     "5": {
+      "perCharge": 0.005,
+      "minTier": 1,
+      "maxTier": 5,
+      "maxCharges": 10
+     },
+     "6": {
+      "perCharge": 0.0075,
+      "minTier": 1,
+      "maxTier": 6,
+      "maxCharges": 10
+     },
+     "7": {
+      "perCharge": 0.0125,
+      "minTier": 1,
+      "maxTier": 7,
+      "maxCharges": 10
+     },
+     "8": {
+      "perCharge": 0.0175,
+      "minTier": 1,
+      "maxTier": 8,
+      "maxCharges": 10
+     }
+    }
+   },
+   "toolYield": {
+    "4": 0.1,
+    "5": 0.125,
+    "6": 0.15,
+    "7": 0.175,
+    "8": 0.2
+   },
+   "toolYieldMinTier": 1,
+   "backpack": {
+    "4": {
+     "value": 0.2,
+     "maxTier": 4
+    },
+    "5": {
+     "value": 0.25,
+     "maxTier": 5
+    },
+    "6": {
+     "value": 0.3,
+     "maxTier": 6
+    },
+    "7": {
+     "value": 0.35,
+     "maxTier": 7
+    },
+    "8": {
+     "value": 0.4,
+     "maxTier": 8
+    }
+   },
+   "rodSpeed": 0.05,
+   "rods": {
+    "T3_2H_TOOL_FISHINGROD": {
+     "tier": 3,
+     "avalon": false
+    },
+    "T4_2H_TOOL_FISHINGROD": {
+     "tier": 4,
+     "avalon": false
+    },
+    "T5_2H_TOOL_FISHINGROD": {
+     "tier": 5,
+     "avalon": false
+    },
+    "T6_2H_TOOL_FISHINGROD": {
+     "tier": 6,
+     "avalon": false
+    },
+    "T7_2H_TOOL_FISHINGROD": {
+     "tier": 7,
+     "avalon": false
+    },
+    "T8_2H_TOOL_FISHINGROD": {
+     "tier": 8,
+     "avalon": false
+    },
+    "T4_2H_TOOL_FISHINGROD_AVALON": {
+     "tier": 4,
+     "avalon": true
+    },
+    "T5_2H_TOOL_FISHINGROD_AVALON": {
+     "tier": 5,
+     "avalon": true
+    },
+    "T6_2H_TOOL_FISHINGROD_AVALON": {
+     "tier": 6,
+     "avalon": true
+    },
+    "T7_2H_TOOL_FISHINGROD_AVALON": {
+     "tier": 7,
+     "avalon": true
+    },
+    "T8_2H_TOOL_FISHINGROD_AVALON": {
+     "tier": 8,
+     "avalon": true
+    }
+   },
+   "bait": {
+    "T1_FISHINGBAIT": {
+     "tier": 1,
+     "speed": 0.5,
+     "charges": 10,
+     "seconds": 600.0
+    },
+    "T3_FISHINGBAIT": {
+     "tier": 3,
+     "speed": 1.25,
+     "charges": 10,
+     "seconds": 600.0
+    },
+    "T5_FISHINGBAIT": {
+     "tier": 5,
+     "speed": 2.5,
+     "charges": 10,
+     "seconds": 600.0
+    }
+   },
+   "board": [
+    {
+     "id": "GATHER_FISH",
+     "name": "Fisherman",
+     "yieldPerLevel": 0.0015,
+     "speedPerLevel": 0.0015,
+     "maxLevel": 100
+    },
+    {
+     "id": "GATHER_FISH_FISH",
+     "name": "Fishing Specialist",
+     "yieldPerLevel": 0.0035,
+     "speedPerLevel": 0.0035,
+     "maxLevel": 100
+    }
+   ],
+   "journals": {
+    "2": {
+     "fame": 720.0,
+     "silver": 500,
+     "weight": 0.15,
+     "minTier": 1
+    },
+    "3": {
+     "fame": 1360.0,
+     "silver": 1000,
+     "weight": 0.23,
+     "minTier": 1
+    },
+    "4": {
+     "fame": 2223.0,
+     "silver": 2000,
+     "weight": 0.34,
+     "minTier": 2
+    },
+    "5": {
+     "fame": 3680.0,
+     "silver": 4000,
+     "weight": 0.51,
+     "minTier": 3
+    },
+    "6": {
+     "fame": 4880.0,
+     "silver": 8000,
+     "weight": 0.76,
+     "minTier": 4
+    },
+    "7": {
+     "fame": 6640.0,
+     "silver": 16000,
+     "weight": 1.14,
+     "minTier": 5
+    },
+    "8": {
+     "fame": 8320.0,
+     "silver": 32000,
+     "weight": 1.71,
+     "minTier": 6
+    }
+   },
+   "fameFactor": {
+    "safe": 1.0,
+    "yellow": 1.0,
+    "orange": 1.0,
+    "red": 1.0,
+    "black": 1.0,
+    "black1": 1.25,
+    "black2": 1.3,
+    "black3": 1.35,
+    "black4": 1.4,
+    "black5": 1.45,
+    "black6": 1.5
+   },
+   "chopsId": "T1_FISHCHOPS",
+   "sauce": {
+    "T1_FISHSAUCE_LEVEL1": {
+     "chops": 15,
+     "seaweed": 1,
+     "grade": 1
+    },
+    "T1_FISHSAUCE_LEVEL2": {
+     "chops": 45,
+     "seaweed": 3,
+     "grade": 2
+    },
+    "T1_FISHSAUCE_LEVEL3": {
+     "chops": 135,
+     "seaweed": 9,
+     "grade": 3
+    }
+   },
+   "seaweedId": "T1_SEAWEED"
+  }
  }
 }

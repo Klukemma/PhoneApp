@@ -1,7 +1,7 @@
 // Cache-first shell so the app opens instantly and works with no signal.
 // Bump CACHE when the shell or the game data changes.
 
-const CACHE = 'albionfarm-v43';  // v43: the backpack, and the rune route to every enchanted item
+const CACHE = 'albionfarm-v44';  // v44: fishing, the family the game publishes no node for
 const SHELL = [
   './', './index.html', './manifest.webmanifest',
   './css/app.css',

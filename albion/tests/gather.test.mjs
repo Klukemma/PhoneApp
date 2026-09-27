@@ -258,3 +258,168 @@ test('premium is the one number here the game does not publish', () => {
   // a table, and the app has to say so wherever it shows it.
   assert.equal(G.premiumYieldSource, 'localization');
 });
+
+/* ----------------------------------------------------------- fishing --- */
+
+/* Fishing is the family with no node. Everything a swing needs - seconds,
+ * yield per charge, charges, respawn - comes out of harvestables.xml, and the
+ * word FISH does not appear in that file once. So these tests are about the
+ * other half: everything fishing DOES publish, which turns out to be every
+ * bonus the land families have, in the same shapes. */
+
+const F = G.fishing;
+
+test('fishing has no node, and the build does not invent one', () => {
+  // The five land families each have a node table. Fishing has none, and
+  // nothing in here is standing in for one.
+  assert.equal(G.nodes.FISH, undefined);
+  assert.equal(F.nodes, undefined);
+  assert.equal(F.seconds, undefined);
+  assert.equal(F.yield, undefined);
+  assert.equal(F.charges, undefined);
+  assert.equal(F.respawn, undefined);
+  // And it is not in the families list, so nothing that loops the five
+  // families quietly picks it up and divides by a swing time it does not have.
+  assert.ok(!G.families.includes('FISH'));
+});
+
+test('forty-one fish, and the one that hides from a resourcetype filter', () => {
+  assert.equal(Object.keys(F.fish).length, 41);
+  // The user's own tier. Six silver of item value, sixty fame, a third of a kilo.
+  assert.deepEqual(F.fish.T5_FISH_FRESHWATER_ALL_COMMON, {
+    tier: 5, value: 6, fame: 60, weight: 0.31, water: 'freshwater', rarity: 'common',
+  });
+  // A rare is worth three and a bit commons and weighs two and a half of them.
+  assert.deepEqual(F.fish.T5_FISH_FRESHWATER_SWAMP_RARE, {
+    tier: 5, value: 20, fame: 200, weight: 0.78, water: 'freshwater',
+    rarity: 'rare', zone: 'swamp',
+  });
+  /* The boss shark is a simpleitem with resourcetype="TOKEN", not a
+   * consumableitem with resourcetype="FISH" like the other forty, so selecting
+   * fish by resourcetype loses it - and it is the single most valuable catch
+   * in the game, worth fourteen T8 commons. */
+  assert.deepEqual(F.fish.T8_FISH_SALTWATER_ALL_BOSS_SHARK, {
+    tier: 8, value: 200, fame: 2000, weight: 10.36, water: 'saltwater',
+    rarity: 'boss',
+  });
+  // Commons run T1-T8 in both waters; rares only ever at T3, T5 and T7.
+  const rareTiers = new Set(Object.values(F.fish)
+    .filter((f) => f.rarity === 'rare').map((f) => f.tier));
+  assert.deepEqual([...rareTiers].sort(), [3, 5, 7]);
+});
+
+test('the fishing set is the land set with a lower floor', () => {
+  /* This is why fishing can share the yield engine at all. Every number is the
+   * land number - a T8 chest is 0.035 a charge over ten charges either way -
+   * and the build asserts it against the wood passives so a patch that moved
+   * one and not the other stops the build rather than paying the wrong bonus. */
+  assert.equal(F.gear.armor['8'].perCharge, G.gear.armor['8'].perCharge);
+  assert.equal(F.gear.head['5'].perCharge, G.gear.head['5'].perCharge);
+  assert.equal(F.gear.armor['8'].maxCharges, 10);
+  // The one difference: there are T1 fish and no T1 trees, so fishing gear
+  // pays from tier 1 and land gear from tier 2.
+  assert.equal(F.gear.armor['8'].minTier, 1);
+  assert.equal(G.gear.armor['8'].minTier, 2);
+  // The Avalonian rod's flat yield, same ladder as an Avalonian axe.
+  assert.deepEqual(F.toolYield, { 4: 0.1, 5: 0.125, 6: 0.15, 7: 0.175, 8: 0.2 });
+  assert.equal(F.toolYieldMinTier, 1);
+});
+
+test('the fishing backpack rises with tier, and refuses the best fish', () => {
+  /* The land packs are a flat 30% at every tier. The fishing pack is the only
+   * one whose value moves, and it RISES - which is also the proof that the
+   * number is the size of the cut and not the surviving fraction, because
+   * under the other reading a T8 pack would be worse than a T4. */
+  assert.equal(F.backpack['4'].value, 0.2);
+  assert.equal(F.backpack['8'].value, 0.4);
+  assert.equal(G.backpack['4'].value, 0.3);
+  assert.equal(G.backpack['8'].value, 0.3);
+  for (const t of [4, 5, 6, 7, 8]) assert.equal(F.backpack[t].maxTier, t);
+});
+
+test('a rod is the one tool in the game whose speed does not scale', () => {
+  // Five percent, on a T3 rod and on a T8 one alike.
+  assert.equal(F.rodSpeed, 0.05);
+  assert.equal(Object.keys(F.rods).length, 11);
+  assert.deepEqual(F.rods.T3_2H_TOOL_FISHINGROD, { tier: 3, avalon: false });
+  assert.deepEqual(F.rods.T8_2H_TOOL_FISHINGROD_AVALON, { tier: 8, avalon: true });
+  // There is no Avalonian rod at T3, so a kit that claims one is claiming an
+  // item that does not exist.
+  assert.equal(F.rods.T3_2H_TOOL_FISHINGROD_AVALON, undefined);
+});
+
+test('bait is the one part of fishing whose cost per cast is exact', () => {
+  /* Ten charges, stated in the file as startcharges on the paired charge
+   * spell, and ten minutes. So a bait's cost per cast is its market price
+   * divided by ten - no measurement and no assumption needed. */
+  assert.deepEqual(F.bait.T5_FISHINGBAIT,
+    { tier: 5, speed: 2.5, charges: 10, seconds: 600 });
+  assert.equal(F.bait.T1_FISHINGBAIT.speed, 0.5);
+  assert.equal(F.bait.T3_FISHINGBAIT.speed, 1.25);
+  for (const b of Object.values(F.bait)) assert.equal(b.charges, 10);
+  /* And bait dwarfs everything else on the speed side: the best bait is +250%
+   * where the whole destiny board is +50% and the rod is +5%. */
+  assert.ok(F.bait.T5_FISHINGBAIT.speed > 4 * 0.5);
+});
+
+test('the fishing board is two nodes, not five, and pays on every tier', () => {
+  /* Land gathering has GATHER_WOOD_T4..T8, each paying only on its own tier.
+   * Fishing has one general node and one specialist, both paying on tiers 1-8.
+   * The totals land in the same place at a hundred levels - 0.0015 + 0.0035 is
+   * 0.005 - which is a useful check that neither reading is wrong. */
+  assert.equal(F.board.length, 2);
+  assert.equal(F.board[0].id, 'GATHER_FISH');
+  assert.equal(F.board[1].id, 'GATHER_FISH_FISH');
+  assert.equal(F.board[0].yieldPerLevel, 0.0015);
+  assert.equal(F.board[1].yieldPerLevel, 0.0035);
+  const perLevel = F.board.reduce((s, n) => s + n.yieldPerLevel, 0);
+  assert.equal(perLevel, G.board[0].yieldPerLevel, 'the same total as one land tier');
+  // Fishing is the only gathering line where the board moves speed as well as
+  // yield by the same amount at both nodes.
+  for (const n of F.board) assert.equal(n.speedPerLevel, n.yieldPerLevel);
+  assert.deepEqual(F.board.map((n) => n.name), ['Fisherman', 'Fishing Specialist']);
+});
+
+test("a fisherman's journal holds exactly what it says it holds", () => {
+  /* The land journals carry two different fame numbers - maxfame and the
+   * mission value - and the app has to pick one out loud. These carry the same
+   * number twice, so there is nothing to choose and nothing to caveat. */
+  assert.deepEqual(F.journals['5'], { fame: 3680, silver: 4000, weight: 0.51, minTier: 3 });
+  assert.equal(F.journals['8'].fame, 8320);
+  assert.equal(F.journals['8'].silver, 32000);
+  // A T5 book fills from T3 catches up, which is what minTier records. The
+  // build checks that rule against the loot list rather than assuming it.
+  assert.equal(F.journals['2'].minTier, 1);
+  assert.equal(F.journals['8'].minTier, 6);
+  /* And the two ladders are nothing like each other, which is the sort of
+   * thing a guess would have got backwards. A land journal doubles every tier,
+   * 450 to 28,800. A fishing one starts HIGHER and then flattens out: it holds
+   * more than a wood book up to T5 and less than a third of one at T8. So the
+   * silver a fishing run earns off its journal is not the land figure with the
+   * word fish in front of it. */
+  assert.ok(F.journals['2'].fame > G.journals.tiers['2'].fame);
+  assert.ok(F.journals['5'].fame > G.journals.tiers['5'].fame);
+  assert.ok(F.journals['8'].fame < G.journals.tiers['8'].fame / 3);
+  // The price a station charges IS the same ladder, though, and it doubles.
+  assert.equal(F.journals['8'].silver, G.journals.tiers['8'].silver);
+});
+
+test('every fish becomes chops at one chop a point of value', () => {
+  /* Which is what lets one chop price be quoted against forty-one different
+   * catches, and it is asserted in the build rather than assumed. */
+  assert.equal(F.chopsId, 'T1_FISHCHOPS');
+  assert.equal(F.seaweedId, 'T1_SEAWEED');
+  assert.deepEqual(F.sauce.T1_FISHSAUCE_LEVEL1, { chops: 15, seaweed: 1, grade: 1 });
+  assert.deepEqual(F.sauce.T1_FISHSAUCE_LEVEL3, { chops: 135, seaweed: 9, grade: 3 });
+  // Three times the chops and three times the seaweed for each grade up.
+  assert.equal(F.sauce.T1_FISHSAUCE_LEVEL2.chops, 3 * F.sauce.T1_FISHSAUCE_LEVEL1.chops);
+});
+
+test('zone colour moves fishing fame by exactly what it moves gathering fame', () => {
+  for (const colour of ['safe', 'yellow', 'orange', 'red', 'black']) {
+    assert.equal(F.fameFactor[colour], 1, colour);
+  }
+  for (const zone of ['black1', 'black2', 'black3', 'black4', 'black5', 'black6']) {
+    assert.equal(F.fameFactor[zone], G.fameFactor[zone], zone);
+  }
+});

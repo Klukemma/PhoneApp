@@ -998,6 +998,366 @@ def journal_items():
     return out
 
 
+def build_fishing(items, spells, gd, consumable):
+    """Fishing: the one gathering family the game does not publish a node for.
+
+    Everything else in this file describes a swing at a thing that stands
+    still: harvestables.xml says how long the swing takes, how much comes off
+    per charge, how many charges the node holds and how long it takes to come
+    back. For fishing there is no such row. `FISH` appears nowhere in
+    harvestables.xml, resources.xml has a bare `<Resource name="FISH"/>`, and
+    gamedata.xml has one line, `<Fishing safety="3"/>`. So how long a catch
+    takes, and how many fish come out of it, are not in the files at all and
+    this build refuses to guess them - the app asks the user to time a run,
+    exactly as it already does for travel and respawn on land.
+
+    What IS published is everything else, and it is published in the same
+    shapes as the land families, which is why fishing can share the engine:
+
+      - 41 fish, each with an itemvalue, a fishingfame, a weight, a water and
+        a rarity. Forty are `consumableitem`s with `resourcetype="FISH"`; the
+        forty-first, the boss shark, is a `simpleitem` with
+        `resourcetype="TOKEN"`, so selecting on resourcetype alone silently
+        loses it and this selects on the id instead.
+      - A gatherer set (T?_{HEAD,ARMOR,SHOES,BACKPACK}_GATHERER_FISH) whose
+        yield passives carry the identical numbers to the land sets. Two things
+        differ and both are asserted below: the tier floor is 1 rather than 2,
+        because there are T1 fish and no T1 trees, and the bufftype is
+        `fishingyield` rather than `gatheringyield`.
+      - Rods T3-T8 plus Avalonian T4-T8. Every rod at every tier carries
+        `fishingspeed="0.05"` - it does not scale, which is worth stating
+        plainly because every other tool in the game does.
+      - Bait, three grades, and this is the one part of fishing whose economy
+        is exact: the spell grants fishingspeed for 600 seconds and its paired
+        CHARGE spell carries startcharges=10, so one bait is ten casts and a
+        bait's cost per cast is its price divided by ten. No guess needed.
+      - Two destiny board nodes rather than five per family. Land gathering has
+        GATHER_WOOD_T4..T8, each paying only on its own tier; fishing has
+        GATHER_FISH and GATHER_FISH_FISH, each paying on tiers 1-8. The totals
+        land in the same place - 0.15 + 0.35 = 0.50 at a hundred levels, same
+        as a land family's 0.005 x 100 - but the shape is different enough that
+        forcing it through build_gather_board would have produced nothing.
+      - Fisherman's journals, T2-T8, filled by fishingfame. Unlike the land
+        journals, whose capacity is exactly 1.5x their mission value, these two
+        numbers are equal, so there is no reading to choose between.
+      - The refining route, which is unusual and completely stated: any fish
+        becomes T1_FISHCHOPS at one chop per point of itemvalue, so chops are a
+        common currency across all 41; then chops plus seaweed become fish
+        sauce at 15+1, 45+3 and 135+9, and fish sauce is what enchants food.
+
+    Premium is not in here on purpose. The client's store copy promises "50%
+    higher yield and Fame while gathering" and says nothing about fishing
+    either way, so the app reuses the same figure and the same out-loud
+    caveat rather than inventing a second one.
+    """
+    # --- the fish themselves ---------------------------------------------
+    fish = {}
+    for el in items.iter():
+        unique = el.get("uniquename") or ""
+        if not re.fullmatch(r"T\d_FISH_.*", unique) or not el.get("tier"):
+            continue
+        fame = float(el.get("fishingfame") or 0)
+        value = int(float(el.get("itemvalue") or 0))
+        if not fame or not value:
+            raise SystemExit(f"{unique} has no fishingfame or no itemvalue")
+        sub3 = el.get("shopsubcategory3") or ""
+        water = "saltwater" if "SALTWATER" in unique else "freshwater"
+        if unique.endswith("_COMMON"):
+            rarity = "common"
+        elif unique.endswith("_RARE"):
+            rarity = "rare"
+        elif "_BOSS_" in unique:
+            rarity = "boss"
+        else:
+            raise SystemExit(f"{unique} is neither common, rare nor a boss")
+        zone = sub3.replace("fish_", "") if sub3.startswith("fish_") else ""
+        fish[unique] = {
+            "tier": int(el.get("tier")),
+            "value": value,
+            "fame": fame,
+            "weight": float(el.get("weight")),
+            "water": water,
+            "rarity": rarity,
+            **({"zone": zone} if zone and zone != water else {}),
+        }
+    if len(fish) != 41:
+        raise SystemExit(f"expected 41 fish, found {len(fish)}")
+
+    idx = _spell_index(spells)
+
+    # --- the gatherer set, checked against its land twin ------------------
+    def buff_over_time(name):
+        el = idx.get(name)
+        b = el.find("resourcegatheringbuffovertime") if el is not None else None
+        if b is None:
+            return None
+        if b.get("bufftype") != "fishingyield":
+            raise SystemExit(f"{name} writes into {b.get('bufftype')}, not fishingyield")
+        return {
+            "perCharge": float(b.get("value")),
+            "minTier": int(b.get("mintier", 1)),
+            "maxTier": int(b.get("maxtier", 8)),
+            "maxCharges": int(el.get("maxcharges", 1)),
+        }
+
+    SLOTS = {"head": "PASSIVE_HEAD_YIELD_FISH_EFFECT_T{t}",
+             "armor": "PASSIVE_YIELD_FISH_EFFECT_T{t}",
+             "shoes": "PASSIVE_SHOES_YIELD_FISH_EFFECT_T{t}"}
+    LAND = {"head": "PASSIVE_HEAD_YIELD_WOOD_EFFECT_T{t}",
+            "armor": "PASSIVE_YIELD_WOOD_EFFECT_T{t}",
+            "shoes": "PASSIVE_SHOES_YIELD_WOOD_EFFECT_T{t}"}
+    gear = {}
+    for slot, pattern in SLOTS.items():
+        per_tier = {}
+        for tier in range(4, 9):
+            row = buff_over_time(pattern.format(t=tier))
+            if row is None:
+                raise SystemExit(f"no fishing {slot} passive at T{tier}")
+            # The whole reason fishing can share the engine: the numbers are
+            # the land numbers. If a patch ever changes one and not the other
+            # this stops the build rather than quietly paying the wrong bonus.
+            land = idx.get(LAND[slot].format(t=tier))
+            lb = land.find("resourcegatheringbuffovertime") if land is not None else None
+            if lb is None:
+                raise SystemExit(f"no land {slot} passive at T{tier} to compare against")
+            if float(lb.get("value")) != row["perCharge"]:
+                raise SystemExit(
+                    f"fishing {slot} T{tier} pays {row['perCharge']} but land pays "
+                    f"{lb.get('value')} - fishing is no longer the land set with a "
+                    f"different floor and needs its own numbers on screen")
+            if int(lb.get("maxtier")) != row["maxTier"]:
+                raise SystemExit(f"fishing {slot} T{tier} caps differently from land")
+            if row["minTier"] != 1:
+                raise SystemExit(
+                    f"fishing {slot} T{tier} floors at T{row['minTier']}, not T1")
+            per_tier[str(tier)] = row
+        gear[slot] = per_tier
+
+    # --- the Avalonian rod's flat yield ----------------------------------
+    tool = {}
+    for tier in range(4, 9):
+        el = idx.get(f"PASSIVE_AVALON_YIELD_FISH_T{tier}")
+        if el is None:
+            raise SystemExit(f"no PASSIVE_AVALON_YIELD_FISH_T{tier}")
+        rows = {int(b.get("tier")): float(b.get("value"))
+                for b in el.findall("resourcegatheringbuff")
+                if b.get("bufftype") == "fishingyield"}
+        if sorted(rows) != list(range(1, tier + 1)):
+            raise SystemExit(f"Avalon fishing rod T{tier} covers {sorted(rows)}, "
+                             f"not tiers 1-{tier}")
+        if len(set(rows.values())) != 1:
+            raise SystemExit(f"Avalon fishing rod T{tier} pays several amounts")
+        tool[str(tier)] = rows[tier]
+
+    # --- the backpack, and the two rares it will not carry ---------------
+    SKIP = ("AVALON", "DRAGON_AREA")
+    backpack = {}
+    for tier in range(4, 9):
+        name = f"PASSIVE_BACKPACK_FISH_T{tier}"
+        el = idx.get(name)
+        if el is None:
+            raise SystemExit(f"no {name} in spells.xml")
+        if el.get("maxcharges"):
+            raise SystemExit(f"{name} has become a charge ramp")
+        rows = el.findall("weightbonus")
+        values = {float(b.get("value")) for b in rows}
+        if len(values) != 1:
+            raise SystemExit(f"{name} cuts by several amounts: {values}")
+        dummy = el.find("dummypassive")
+        if dummy is None or int(dummy.get("value")) != tier:
+            raise SystemExit(f"{name} does not cap at its own tier")
+        covers = {b.get("item") for b in rows}
+        # Every fish at or below the pack's tier EXCEPT the Avalonian and
+        # dragon-area rares, which the pack names nowhere at any tier. That is
+        # not an omission to paper over: those two are exactly the fish worth
+        # the most, so a pack that silently cut their weight would flatter a
+        # run in the Roads by the widest margin.
+        want = {fid for fid, row in fish.items()
+                if row["tier"] <= tier and not any(s in fid for s in SKIP)}
+        if covers != want:
+            raise SystemExit(f"{name} covers {sorted(covers ^ want)} "
+                             f"unexpectedly (symmetric difference)")
+        backpack[str(tier)] = {"value": next(iter(values)), "maxTier": tier}
+
+    # --- rods and bait ----------------------------------------------------
+    rod_speed = set()
+    rods = {}
+    for el in items.iter("weapon"):
+        unique = el.get("uniquename") or ""
+        if "FISHINGROD" not in unique:
+            continue
+        if el.get("fishing") != "true":
+            raise SystemExit(f"{unique} is not flagged fishing")
+        rod_speed.add(float(el.get("fishingspeed")))
+        rods[unique] = {"tier": int(el.get("tier")),
+                        "avalon": unique.endswith("_AVALON")}
+    if len(rod_speed) != 1:
+        raise SystemExit(f"rods no longer share one fishingspeed: {rod_speed}")
+
+    bait = {}
+    for el in items.iter("consumablefrominventoryitem"):
+        unique = el.get("uniquename") or ""
+        if "FISHINGBAIT" not in unique:
+            continue
+        use = idx.get(el.get("consumespell") or "")
+        if use is None:
+            raise SystemExit(f"{unique} points at no spell")
+        speed = None
+        seconds = None
+        for b in use.findall("buffovertime"):
+            if b.get("type") == "fishingspeed":
+                speed = float(b.get("value"))
+                seconds = float(b.get("time"))
+        charge = next((idx.get(a.get("spell")) for a in use.findall("applyspell")
+                       if (idx.get(a.get("spell")) or ET.Element("x")).get("category")
+                       == "fishingbait_charges"), None)
+        if speed is None or charge is None:
+            raise SystemExit(f"{unique} has no speed buff or no charge counter")
+        charges = int(charge.get("startcharges"))
+        if charges != int(charge.get("maxcharges")):
+            raise SystemExit(f"{unique} does not start full")
+        bait[unique] = {"tier": int(el.get("tier")), "speed": speed,
+                        "charges": charges, "seconds": seconds}
+    if len(bait) != 3:
+        raise SystemExit(f"expected 3 baits, found {len(bait)}")
+
+    # --- the two board nodes ---------------------------------------------
+    board = []
+    root = parse("achievements.xml")
+    for el in root.iter("templateachievement"):
+        nid = el.get("id") or ""
+        if nid not in ("GATHER_FISH", "GATHER_FISH_FISH"):
+            continue
+        if el.get("missiontype") != "fishingfame":
+            raise SystemExit(f"{nid} no longer fills on fishingfame")
+        yield_per = speed_per = 0.0
+        for b in el.iter("bonus"):
+            if b.get("bufftype") == "fishingyield" and b.get("type") == "resourcegatherbonus":
+                yield_per = max(yield_per, float(b.get("bonus")))
+            elif b.get("attribute") == "fishingspeed" and b.get("type") == "passivebonus":
+                speed_per = max(speed_per, float(b.get("bonus")))
+        if not yield_per or not speed_per:
+            raise SystemExit(f"{nid} lost its yield or its speed bonus")
+        title = el.find("title")
+        key = title.get("tag") if title is not None else None
+        board.append({
+            "id": nid,
+            "name": NAMES_BY_ID.get(key, "Fisherman"),
+            "yieldPerLevel": yield_per,
+            "speedPerLevel": speed_per,
+            "maxLevel": 100,
+        })
+    if len(board) != 2:
+        raise SystemExit(f"expected 2 fishing board nodes, found {len(board)}")
+    board.sort(key=lambda n: n["yieldPerLevel"])
+
+    # --- the journals -----------------------------------------------------
+    RARE_TIERS = (3, 5, 7)
+    journals = {}
+    for tier in range(2, 9):
+        el = next((j for j in items.iter("journalitem")
+                   if j.get("uniquename") == f"T{tier}_JOURNAL_FISHING"), None)
+        if el is None:
+            raise SystemExit(f"no T{tier}_JOURNAL_FISHING in items.xml")
+        fill = el.find("famefillingmissions/fishingfame")
+        req = el.find("craftingrequirements")
+        if fill is None or req is None:
+            raise SystemExit(f"T{tier}_JOURNAL_FISHING lost its fame or its price")
+        cap = float(el.get("maxfame"))
+        # The land journals carry two different fame numbers and the app has to
+        # pick one out loud. These carry the same number twice, so there is
+        # nothing to choose and nothing to caveat.
+        if float(fill.get("value")) != cap:
+            raise SystemExit(f"T{tier}_JOURNAL_FISHING capacity {cap} is not its "
+                             f"mission value {fill.get('value')}")
+        loot = {l.get("itemname") for l in el.findall("lootlist/loot")}
+        low = max(1, tier - 2)
+        want = {"T1_SEAWEED"} | {
+            fid for fid, row in fish.items()
+            if (row["rarity"] == "common" and low <= row["tier"] <= tier)
+            or (row["rarity"] == "rare" and row["tier"] in RARE_TIERS
+                and row["tier"] <= tier
+                and "DRAGON_AREA" not in fid)}
+        if tier == 2:
+            want -= {fid for fid, row in fish.items() if row["rarity"] == "rare"}
+        if loot != want:
+            raise SystemExit(f"T{tier}_JOURNAL_FISHING loots {sorted(loot ^ want)} "
+                             f"unexpectedly (symmetric difference)")
+        journals[str(tier)] = {
+            "fame": cap,
+            "silver": int(float(req.get("silver", 0))),
+            "weight": float(el.get("weight") or 0),
+            # Which catches count towards it, as the rule the loot list states.
+            "minTier": low,
+        }
+
+    # --- the danger bonus, fishing's own column --------------------------
+    fame_factor = {}
+    for b in gd.iter("ClusterDangerBonus"):
+        factor = float(b.get("fishingfamefactor") or 1)
+        if factor != 1 or b.get("type") in ("safe", "yellow", "orange", "red", "black"):
+            fame_factor[b.get("type")] = factor
+
+    # --- fish out, chops and sauce in -------------------------------------
+    chops_id = "T1_FISHCHOPS"
+    if not any(el.get("uniquename") == chops_id for el in items.iter()):
+        raise SystemExit(f"no {chops_id} in items.xml")
+    # Every fish turns into chops at one chop per point of itemvalue, which is
+    # what lets the app quote one chop price against forty-one different
+    # catches. Asserted rather than assumed: it is the whole basis of the
+    # comparison and a patch could break it without touching anything else.
+    chopped = {}
+    for el in items.iter("simpleitem"):
+        if el.get("uniquename") != chops_id:
+            continue
+        for cr in el.findall("craftingrequirements"):
+            res = cr.findall("craftresource")
+            if len(res) != 1:
+                continue
+            fid = res[0].get("uniquename")
+            if fid in fish:
+                chopped[fid] = int(cr.get("amountcrafted"))
+    wrong = {fid: n for fid, n in chopped.items() if n != fish[fid]["value"]}
+    if wrong:
+        raise SystemExit(f"chops no longer match itemvalue: {wrong}")
+    missing = set(fish) - set(chopped)
+    if missing:
+        raise SystemExit(f"these fish cannot be chopped: {sorted(missing)}")
+
+    sauce = {}
+    for el in items.iter("simpleitem"):
+        unique = el.get("uniquename") or ""
+        if not unique.startswith("T1_FISHSAUCE_LEVEL"):
+            continue
+        req = el.find("craftingrequirements")
+        needs = {r.get("uniquename"): int(r.get("count"))
+                 for r in req.findall("craftresource")}
+        if set(needs) != {chops_id, "T1_SEAWEED"}:
+            raise SystemExit(f"{unique} no longer eats chops and seaweed")
+        sauce[unique] = {"chops": needs[chops_id], "seaweed": needs["T1_SEAWEED"],
+                         "grade": int(unique[-1])}
+    if len(sauce) != 3:
+        raise SystemExit(f"expected 3 fish sauces, found {len(sauce)}")
+
+    return {
+        "fish": fish,
+        "gear": gear,
+        "toolYield": tool,
+        "toolYieldMinTier": 1,
+        "backpack": backpack,
+        # Not a table: one number, the same on every rod at every tier.
+        "rodSpeed": next(iter(rod_speed)),
+        "rods": rods,
+        "bait": bait,
+        "board": board,
+        "journals": journals,
+        "fameFactor": fame_factor,
+        "chopsId": chops_id,
+        "sauce": sauce,
+        "seaweedId": "T1_SEAWEED",
+    }
+
+
 def build_gathering(gd, items, spells):
     """Everything the app needs to cost an hour in the open world."""
     raws = build_gather_raws(items)
@@ -1056,6 +1416,9 @@ def build_gathering(gd, items, spells):
         # from the files, and the app says so where it shows it.
         "premiumYield": 0.5,
         "premiumYieldSource": "localization",
+        # Fishing sits beside the five families rather than inside them: it
+        # shares every bonus shape and none of the node data. See build_fishing.
+        "fishing": build_fishing(items, spells, gd, consumable),
     }
 
 
