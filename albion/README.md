@@ -10,7 +10,7 @@ CoinKeep.
 
 ---
 
-## The five screens
+## The six screens
 
 **Plan** — one whole **cycle**, not a daily rate. Farming and crafting are
 separate phases because that is how focus works: it banks up while you farm,
@@ -63,13 +63,54 @@ that material comes from. Buy it and it is a bill; make it and the run grows a
 refining step; gather it and the bill goes to zero and the run starts costing
 hours instead.
 
-**Best** — four rankings, on four tabs. *Farm*: every crop, herb and animal by
+**Gather** — *Open world farming*. Resources you go out and take off a node or
+out of the water, as opposed to the island and the farm plots on Plan: out
+here anyone can walk up to a node and take it first, and land you own regrows
+on a timer you set.
+
+One ranked list, land and fishing together, because the choice is real — an
+hour is an hour, and whether it is better spent on a tree or on the water is
+the comparison the screen exists to make. Three units, and which ones you get
+depends on what you have told the app rather than on what it is willing to
+guess:
+
+- **A stack** — 999 of it, every route out, costed off your own prices. Needs
+  nothing else, so it works on the first open.
+- **A full load** — needs the kilos you can carry, which is one number on Me.
+  Exact once it is there: every weight involved is published, including the
+  gatherer pack's cut.
+- **An hour** — needs a run you timed. Travel, respawn, somebody else on the
+  node and, for fishing, the cast itself are in no game file.
+
+It will not turn the swing floor into silver an hour. That figure is exact
+arithmetic and a wrong answer to the question: it assumes you never walk,
+never wait and never find a node taken.
+
+One line says what your destiny board and your gatherer set are actually
+worth, because the obvious units are blind to it — level the board to a
+hundred and the stack, the fame and the hours do not move. What moves is how
+long you stand there swinging, so the run is costed twice, once with the kit
+and once with the same tool and nothing else. A full T8 Avalonian kit with the
+board at a hundred is 2.85× fewer swings.
+
+**Fishing** is in it, and it is the one gathering line the game publishes no
+node for: `FISH` appears nowhere in `harvestables.xml`, `resources.xml` carries
+a bare `<Resource name="FISH"/>` and `gamedata.xml` one `<Fishing safety="3"/>`.
+So how long a cast takes is yours, timed, filed under the water *and* the bait
+— bait is +250% speed against a whole destiny board's +50%, so a count taken
+without it is a count of something else. Everything else is published and all
+of it is there: silver a fish after tax, what it weighs after the Fisherman's
+pack (which rises 20→40% with tier, the only one in the game that moves, and
+carries no Avalonian or dragon-area rare at any tier), the fame, the books it
+fills, the chops it makes, the three grades of sauce those chops make, and bait
+at its price over ten casts — ten being a published number, not a guess.
+
+**Best** — three rankings, on three tabs. *Farm*: every crop, herb and animal by
 silver per plot per day. *Brew*: every recipe by **silver per focus**, which is
 the number that matters once focus is the bottleneck rather than silver.
 *Gear*: one slice of the six thousand weapons and armours, whichever of the
-market and the Black Market pays more. *Gather*: every resource at a tier by
-the best thing to do with it. Toggle watering, premium, focus and the city
-bonus and watch the order change. Tap any row to open it where it can be
+market and the Black Market pays more. Toggle watering, premium, focus and the
+city bonus and watch the order change. Tap any row to open it where it can be
 worked on.
 
 **Market** — your market prices. Everything else is fixed by the game; this is
