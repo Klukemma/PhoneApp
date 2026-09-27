@@ -7,6 +7,11 @@
 <meta name="description" content="Work out what farming and crafting actually earns you in Albion Online.">
 <meta name="theme-color" content="#0d0b08">
 <meta name="mobile-web-app-capable" content="yes">
+<!-- The apple- prefixed one is not a duplicate: iOS before 16.4 reads only
+     this, and without it the app opens in Safari's chrome rather than
+     fullscreen when you launch it from the home screen. -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Farm Profit">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
@@ -37,6 +42,17 @@
 <div class="sheet" id="sheet" role="dialog" aria-modal="true"></div>
 <div class="toast" id="toast"><span id="toastMsg"></span><button id="toastAction" class="hide"></button></div>
 
+<!-- Chrome decides when the app qualifies to be installed and fires this once.
+     It can fire before a deferred module has run, and an event you did not
+     hear is an install you cannot offer - so it is caught here, inline, and
+     js/install.js picks it up whenever it gets around to asking. -->
+<script>
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    window.__installPrompt = e;
+  });
+  window.addEventListener('appinstalled', () => { window.__installPrompt = null; });
+</script>
 <script type="module" src="js/app.js"></script>
 </body>
 </html>

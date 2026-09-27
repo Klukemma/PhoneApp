@@ -6,7 +6,7 @@ import {
   openAddPlot, openAdvanced, openAssumptions, openBoard, openCraft,
   openCraftCity, openCraftPick, openCycle, openData, openFarm, openFarmCity,
   openFishSetup, openFishExits, openFishTime, openGatherSetup, openGoal,
-  openMastery, openPlot, openPrice, openPriceSource,
+  openInstall, openMastery, openPlot, openPrice, openPriceSource,
   openQuality, openResourceExits, openScanFilter, openStock, runCraftPriceFetch,
   runPriceFetch, runScanPriceFetch, runSolve, setNavigate, solveWithPrices,
 } from './sheets.js';
@@ -179,6 +179,8 @@ function act(el) {
     go('prices');
   } else if (d.act === 'wild-prices') {
     runPriceFetch(wildMissingIds());
+  } else if (d.act === 'install') {
+    openInstall();
   } else if (d.act === 'fish-setup') {
     openFishSetup();
   } else if (d.act === 'fish-time') {

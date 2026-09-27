@@ -139,6 +139,25 @@ otherwise look like a bargain when it is really just unknown.
 
 ---
 
+## Installing it
+
+It is a web app that installs as a real one. No app store, no account, no
+domain of your own — open the published URL on your phone and put it on the
+home screen, and it gets its own icon, opens fullscreen with no address bar,
+and works with no signal at all. The whole app and the game data are cached on
+first open; only fetching market prices needs a connection.
+
+**Me → Put this on your home screen** does it. On Android and desktop Chrome
+that is one tap, because the browser hands the app its own install dialog. On
+an iPhone it is Share → Add to Home Screen, because Safari offers no API for
+it and instructions are the only honest alternative — and only Safari itself
+can do it, not Chrome or Firefox on iOS.
+
+What you give up by not being in a store: there is no sync, no account and no
+backup off the device. Clear the browser's data or delete it from the home
+screen and your prices and your kit go with it. **Me → Backup and restore**
+writes a file, and it is the only copy there is.
+
 ## Where the numbers come from
 
 Almost everything is read straight out of the game's own data files

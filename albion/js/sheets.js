@@ -24,6 +24,7 @@ import {
   rawIdOf, refinedOf,
 } from './gather.js';
 import { resourceExits } from './exits.js';
+import { canPrompt, promptInstall, steps as installSteps } from './install.js';
 import {
   baitBreakEven, commonFishId, fishChoices, fishExits, fishKitOf, fishNameOf,
   fishRateKey, fishRun, fishSpeed, fishWeight, fishYield, fishZones,
@@ -3129,6 +3130,68 @@ export function openFishExits(id, qty = 999) {
     onMount(root) {
       $('#fkit', root).onclick = () => openFishSetup(id);
       $('#fdone', root).onclick = closeSheet;
+    },
+  });
+}
+
+/* --------------------------------------------------------- installing --- */
+
+/**
+ * Putting it on the home screen.
+ *
+ * Two paths and no third. Chrome hands the app its own install dialog and this
+ * is one button; Safari on iOS hands it nothing at all, and the only honest
+ * thing left is the steps, for the browser actually in their hand.
+ *
+ * What installing buys, and why it is worth a row on Me: it opens fullscreen
+ * with no address bar, it keeps working with no signal — the whole app and the
+ * game data are already cached — and it stops being a tab that gets closed.
+ */
+export function openInstall() {
+  const how = installSteps();
+  const offer = canPrompt();
+
+  openSheet(`
+    <h2>${esc(offer ? 'Put this on your home screen' : how.title)}</h2>
+    <p class="muted">It becomes an app: its own icon, fullscreen with no address
+      bar, and it works with no signal at all — every screen and the whole game
+      data file are already on this device. Nothing is uploaded anywhere and
+      nothing needs an account.</p>
+
+    ${offer ? `
+      <div class="sheet-actions" style="margin-top:4px">
+        <button class="btn primary" id="doInstall">Install it</button>
+      </div>
+      <div class="hint" style="margin-top:10px">Your browser's own dialog will
+        ask to confirm.</div>`
+    : `<div class="card">
+        ${how.lines.map((line, i) => `
+          <div class="bar-row"><span class="n">${i + 1}. ${line}</span></div>`).join('')}
+      </div>
+      <div class="hint">${how.note}</div>`}
+
+    <div class="section-head" style="margin-top:16px"><h2>What it does not do</h2></div>
+    <div class="hint">It is not in an app store and does not need to be. There
+      is no account, no sync and no backup off this device — if you clear the
+      browser's data or delete it from the home screen, your prices and your
+      kit go with it. <b>Me → Backup and restore</b> writes a file you can keep,
+      and is the only copy there is.</div>
+
+    <div class="sheet-actions">
+      <button class="btn" id="installDone">Close</button>
+    </div>
+  `, {
+    onMount(root) {
+      const go = $('#doInstall', root);
+      if (go) {
+        go.onclick = async () => {
+          const outcome = await promptInstall();
+          closeSheet();
+          if (outcome === 'accepted') toast('Installing — look for it on your home screen');
+          else if (outcome === 'unavailable') openInstall();
+        };
+      }
+      $('#installDone', root).onclick = closeSheet;
     },
   });
 }

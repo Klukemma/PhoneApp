@@ -1,7 +1,7 @@
 // Cache-first shell so the app opens instantly and works with no signal.
 // Bump CACHE when the shell or the game data changes.
 
-const CACHE = 'albionfarm-v45';  // v45: Open world farming, its own screen, fishing in it
+const CACHE = 'albionfarm-v46';  // v46: installing it, and the icons that takes
 const SHELL = [
   './', './index.html', './manifest.webmanifest',
   './css/app.css',
@@ -9,8 +9,12 @@ const SHELL = [
   './js/calc.js', './js/craft.js', './js/me.js', './js/solve.js',
   './js/prices.js', './js/ui.js', './js/util.js', './js/html.js',
   './js/gather.js', './js/exits.js', './js/fish.js', './js/wild.js',
+  './js/install.js',
   './data/gamedata.json',
   './icons/icon.svg', './icons/icon-192.png', './icons/icon-512.png',
+  // The home-screen icons themselves, so installing works offline too and the
+  // icon is never the one thing that had to be fetched.
+  './icons/icon-180.png', './icons/icon-maskable-512.png',
 ];
 // data/equipment.json is deliberately NOT in the shell. It is two megabytes
 // against the rest of the app's three hundred kilobytes, and nobody planning

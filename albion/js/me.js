@@ -12,6 +12,8 @@ import {
 } from './store.js';
 import { kitOf } from './gather.js';
 import { fishKitOf, fishNameOf } from './fish.js';
+import { canPrompt, isInstalled } from './install.js';
+import { rowHTML } from './html.js';
 import { serverName } from './prices.js';
 import { esc } from './ui.js';
 import { pct, short } from './util.js';
@@ -130,6 +132,7 @@ function kitWords() {
 
 export function me() {
   const s = state.settings;
+  const installed = isInstalled();
   const land = landSummary();
   const nodes = Object.keys(state.nodeLevels || {}).length;
   const sample = 'T4_MAIN_SWORD';
@@ -149,6 +152,16 @@ export function me() {
   return {
     title: 'Me',
     html: `
+      ${installed ? '' : `
+        <section>
+          ${rowHTML({
+    act: 'install', cls: 'wrap suggest', icon: '\u{1F4F2}',
+    title: 'Put this on your home screen',
+    meta: canPrompt()
+      ? 'One tap. It opens fullscreen, keeps your numbers and works with no signal.'
+      : 'It opens fullscreen, keeps your numbers and works with no signal — tap for the steps.',
+  })}
+        </section>`}
       <section>
         <div class="section-head"><h2>You</h2></div>
         <div class="card tight">
@@ -201,6 +214,14 @@ export function me() {
           open world farming screen. Your island's plots and pastures are on
           Plan — this is the other kind.</div>
       </section>
+
+      ${installed ? `<section>
+        ${rowHTML({ act: '', cls: 'wrap', icon: '\u{1F4F2}',
+    title: 'Installed on this device',
+    meta: 'Running from your home screen. It works with no signal, and your '
+      + 'numbers live on this device only.',
+    right: '' })}
+      </section>` : ''}
 
       <section>
         <div class="section-head"><h2>Prices</h2></div>
