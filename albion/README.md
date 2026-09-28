@@ -221,6 +221,15 @@ installs over the old one instead of being refused. Without it Gradle generates
 a fresh random key on every CI runner, and an app signed by a different key can
 only be installed by uninstalling the old one, which takes your data with it.
 
+The workflow names that file in the debug `signingConfig` rather than copying it
+to `~/.android/debug.keystore`, because the copy does not work — Gradle on the CI
+runner generated its own key anyway, so it reads that path from somewhere other
+than `$HOME` there. **And then the build checks the APK it produced against that
+key with `apksigner` and fails if it does not match.** That check is the load-
+bearing part. The first attempt at this was wrong and shipped, twice described as
+working, and a signing key is exactly the kind of thing you cannot verify by
+reading the workflow — only by reading the APK.
+
 The packaged app bundles `equipment.json`, so the Craft tab and every refining
 route work from the moment it is installed rather than after a 2.3 MB download.
 It carries no service worker — every asset is already on the device, and a

@@ -56,22 +56,25 @@ jobs:
       # Sign every build with the SAME key, which is the difference between an
       # update you can install over the top and one Android refuses.
       #
-      # Gradle's debug signing config reads ~/.android/debug.keystore and
-      # generates one if it is missing. A CI runner is a fresh machine every
-      # time, so that generated a new random key on every build - and Android
-      # will not replace an app with a build signed by a different key. The
-      # first APKs out of this workflow could only be installed by uninstalling
-      # the old one, which takes your data with it.
+      # Android identifies an app by the key that signed it and will not replace
+      # an installed app with a build signed by a different one. Gradle's debug
+      # signing config generates a key when it cannot find one, and a CI runner
+      # is a fresh machine every time, so the first APKs out of this workflow
+      # each carried a different random key. Installing a newer one over an
+      # older one failed outright.
+      #
+      # Copying the key to ~/.android/debug.keystore was the obvious fix and did
+      # not work - Gradle generated its own anyway, so it reads that path from
+      # somewhere other than $HOME on this runner. Rather than guess where, the
+      # signing config below names the file outright, and the check after the
+      # build proves the APK really carries that key instead of taking it on
+      # trust. That check is the point: this went out wrong once already.
       #
       # tools/debug.keystore is committed on purpose and is NOT a secret. It is
-      # Android's standard debug key, with the password every debug key has,
-      # and it is public knowledge by design - a debug-signed app is one nobody
+      # Android's standard debug key, with the password every debug key has, and
+      # it is public knowledge by design - a debug-signed app is one nobody
       # should trust on that basis alone. It is here so that two builds of this
       # app are the same app to Android, and nothing more.
-      - name: Use a signing key that does not change between builds
-        run: |
-          mkdir -p ~/.android
-          cp tools/debug.keystore ~/.android/debug.keystore
 
       - name: Stage the web root
         run: node tools/stage-app.mjs
@@ -81,9 +84,48 @@ jobs:
           npx cap add android
           npx cap sync android
 
+      # Appending a second android {} block merges into the one Capacitor
+      # generated, and redefining signingConfigs.debug mutates the config the
+      # debug build type already points at.
+      - name: Point the debug signing config at the committed key
+        run: |
+          cat >> android/app/build.gradle <<'GRADLE'
+
+          android {
+              signingConfigs {
+                  debug {
+                      storeFile file("$rootDir/../tools/debug.keystore")
+                      storePassword "android"
+                      keyAlias "androiddebugkey"
+                      keyPassword "android"
+                  }
+              }
+          }
+          GRADLE
+          tail -15 android/app/build.gradle
+
       - name: Build
         working-directory: android
         run: ./gradlew --no-daemon assembleDebug
+
+      # Fail the build rather than publish an APK nobody can install over the
+      # top of the last one.
+      - name: The APK must carry that key and no other
+        env:
+          EXPECTED: b791a3251f3d163a4ef93ef09225f3c925588fc7605b675faa4602c213b01c6b
+        run: |
+          APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort | tail -1)
+          echo "using $APKSIGNER"
+          GOT=$("$APKSIGNER" verify --print-certs \
+            android/app/build/outputs/apk/debug/app-debug.apk \
+            | sed -n 's/.*SHA-256 digest: *//p' | head -1 | tr -d ':' | tr 'A-Z' 'a-z')
+          echo "expected $EXPECTED"
+          echo "got      $GOT"
+          if [ "$GOT" != "$EXPECTED" ]; then
+            echo "::error::The APK is signed with a different key than tools/debug.keystore, so it cannot be installed over an earlier build."
+            exit 1
+          fi
+          echo "Signing key matches tools/debug.keystore."
 
       - name: Name it something you can recognise on a phone
         run: |
@@ -106,13 +148,6 @@ jobs:
       #
       # One rolling tag rather than a version per build. This is a personal app
       # and the only question anyone asks of it is "give me the current one".
-      # And as a release, because that is the one you can actually install from
-      # a tablet: an Actions artifact downloads as a ZIP, which Android will not
-      # open, so installing from one means a file manager and an unzip first. A
-      # release asset is the raw .apk - tap it and Android offers to install.
-      #
-      # One rolling tag rather than a version per build. This is a personal app
-      # and the only question anyone asks of it is "give me the current one".
       - name: Publish it somewhere a phone can reach
         if: github.ref_name == 'main' || startsWith(github.ref_name, 'claude/')
         env:
@@ -123,13 +158,18 @@ jobs:
           to allow installing from your browser the first time.
 
           A debug-signed build for personal use. It is not on any store and does
-          not update itself - come back here for a newer one, and installing over
-          the top keeps your data.
+          not update itself - come back here for a newer one.
 
-          If Android refuses with "App not installed", the build you have is from
-          before 28 Sep 2026, when every build was signed with a different key by
-          accident. One-time fix: export from Me - Backup and restore, uninstall,
-          install this, restore. It will not happen again.
+          Every build from this one onwards is signed with the same key, so a
+          newer one installs straight over the top and keeps your data. The build
+          that does this is checked against that key before it is published, so
+          if you are reading this, it passed.
+
+          Builds before this were each signed with a different key by accident,
+          and Android will not replace one of those with this. If it refuses with
+          "App not installed": open the app you have, Me - Backup and restore,
+          export and save the file, uninstall, install this, then import. Once
+          only.
 
           The web app is unchanged and still installs from the home screen.
           EOF
