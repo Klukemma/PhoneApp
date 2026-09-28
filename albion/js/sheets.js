@@ -28,6 +28,9 @@ import {
 import { resourceExits } from './exits.js';
 import { growableOf, growMinutes, plotStatus, clockWords } from './rounds.js';
 import {
+  askToRemind, clearReminders, plannedReminders, reminderState, syncReminders,
+} from './notify.js';
+import {
   choicesFor, islandWords, KIND_ICON, KIND_LABEL, plotName, plotWords, roundsCtx,
 } from './roundscard.js';
 import { canPrompt, promptInstall, steps as installSteps } from './install.js';
@@ -3473,5 +3476,85 @@ export function openPlotWhen(islandId, plotId, itemId) {
       }
       $('#back', root).onclick = () => openPlotPick(islandId, plotId);
     },
+  });
+}
+
+/* --------------------------------------------------------- reminders --- */
+
+/**
+ * Letting the phone wake you, which only the packaged app can do.
+ *
+ * The sheet asks the device for the truth rather than trusting the saved flag,
+ * because permission lives with Android and the user can revoke it from
+ * settings at any time without the app hearing about it.
+ */
+export function openReminders() {
+  const s = state.settings;
+  reminderState().then((perm) => {
+    const on = perm === 'granted' && s.remindMe;
+    const planned = on
+      ? plannedReminders(roundsCtx(), state.islands || [], Date.now()) : [];
+
+    openSheet(`
+      <h2>Reminders</h2>
+      <p class="muted">The phone holds the time and wakes you, even with the app
+        shut. Nothing leaves this device and there is no account — the alarm
+        is set on the tablet itself, from times worked out here.</p>
+
+      ${perm === 'unavailable' ? `<div class="warn-note">This is the web version,
+        which cannot set an alarm. No web page can: the one browser feature that
+        would have allowed it was dropped by Chrome and never existed in Safari.
+        The Android build can, and it is the same app.</div>`
+    : perm === 'denied' ? `<div class="warn-note bad">Android is refusing
+        notifications for this app. Turn them on in <b>Settings → Apps →
+        Albion Farm Profit → Notifications</b>, then come back.</div>` : ''}
+
+      ${perm === 'granted' || perm === 'prompt' ? `
+        <div class="card tight">
+          ${meToggle('remindMe', 'Wake me when a plot is ready',
+    'One alarm per plot, set from the moment you said you planted it.')}
+        </div>` : ''}
+
+      ${on ? `
+        <div class="section-head" style="margin-top:14px"><h2>Set right now</h2></div>
+        ${planned.length ? `<div class="card">${planned.slice(0, 12).map((n) => `
+          <div class="bar-row"><span class="n">${esc(n.title)}</span>
+            <span class="v num">${esc(clockWords(n.at))}</span></div>`).join('')}
+          ${planned.length > 12 ? `<div class="bar-row"><span class="n">and ${
+    planned.length - 12} more</span><span class="v num"></span></div>` : ''}
+        </div>` : `<div class="hint">Nothing to set. An alarm needs a plot with a
+          planting time on it — <b>Me → Your islands</b> is where that
+          goes.</div>`}` : ''}
+
+      ${note(`Only for a plot you have actually told it about. Somewhere with no
+        planting time gets no alarm rather than a guessed one, and a plot a whole
+        growth overdue gets none either — by then the app has stopped claiming
+        to know what is in there, and an alarm would be claiming it again.`)}
+
+      <div class="sheet-actions">
+        <button class="btn primary" id="done">Done</button>
+      </div>
+    `, {
+      onMount(root) {
+        for (const t of $$('[data-toggle]', root)) {
+          t.onclick = async () => {
+            const want = !state.settings.remindMe;
+            if (want) {
+              const got = await askToRemind();
+              if (got !== 'granted') {
+                setSettings({ remindMe: false });
+                openReminders();
+                return;
+              }
+            }
+            setSettings({ remindMe: want });
+            if (want) await syncReminders(roundsCtx(), state.islands || []);
+            else await clearReminders();
+            openReminders();
+          };
+        }
+        $('#done', root).onclick = closeSheet;
+      },
+    });
   });
 }

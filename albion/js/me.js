@@ -14,6 +14,7 @@ import { kitOf } from './gather.js';
 import { fishKitOf, fishNameOf } from './fish.js';
 import { canPrompt, isInstalled, isNative } from './install.js';
 import { islandWords } from './roundscard.js';
+import { canRemind } from './notify.js';
 import { rowHTML } from './html.js';
 import { serverName } from './prices.js';
 import { esc } from './ui.js';
@@ -81,6 +82,13 @@ function farmWords(city) {
   return `+${top}% on ${n} ${n === 1 ? 'thing' : 'things'} it grows best${
     city?.farmOnly ? ' — plants only, and nothing on an island out there' : ''}`;
 }
+
+/* Whether the alarms are on. Read from a flag rather than from the plugin,
+ * because a row cannot wait on a promise - the sheet behind it asks the device
+ * for the truth and corrects this if they disagree. */
+const reminderWords = () => (state.settings.remindMe
+  ? 'On \u2014 the phone will tell you, even with the app shut'
+  : 'Off \u2014 tap to let it wake you when a plot is ready');
 
 /** Your islands in a phrase, or an invitation if there are none. */
 function islandsWords() {
@@ -191,6 +199,8 @@ export function me() {
         <div class="section-head"><h2>Your farm</h2></div>
         ${row('islands', '\u{1F3DD}\uFE0F', 'Your islands and what is in them',
     esc(islandsWords()))}
+        ${canRemind() ? row('reminders', '\u{1F514}', 'Remind me when things are ready',
+    esc(reminderWords())) : ''}
         ${row('land', '\u{1F5FA}\u{FE0F}', landBits.length ? esc(landBits.join(' · ')) : 'No land yet',
     landBits.length ? `${esc(landWhere)} · tap to change` : 'Say what you own and the plans stop guessing')}
         ${row('farm-city', '\u{1F33E}', `Farm in ${esc(farmCityFor(s)?.name || 'a city')}`,

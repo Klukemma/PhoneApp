@@ -195,6 +195,9 @@ function defaults() {
       schedule: [],
       startFocus: 0,           // focus in hand when a cycle begins
       hideMounts: false,
+      /* Whether the packaged Android app may wake you. Off until you say so,
+       * and meaningless in a browser - no web page can schedule an alarm. */
+      remindMe: false,
       sellSurplus: false,      // true = sell leftover ingredients instead of keeping them
       stockCap: 5000,          // spare units you are willing to sit on before pausing
       // What each city's station owner charges, per 100 nutrition consumed.

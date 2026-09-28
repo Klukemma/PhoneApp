@@ -6,7 +6,8 @@ import {
   openAddPlot, openAdvanced, openAssumptions, openBoard, openCraft,
   openCraftCity, openCraftPick, openCycle, openData, openFarm, openFarmCity,
   openFishSetup, openFishExits, openFishTime, openGatherSetup, openGoal,
-  openInstall, openIsland, openIslands, openMastery, openPlot, openPrice, openPriceSource,
+  openInstall, openIsland, openIslands, openMastery, openPlot, openPrice,
+  openPriceSource, openReminders,
   openQuality, openResourceExits, openScanFilter, openStock, runCraftPriceFetch,
   runPriceFetch, runScanPriceFetch, runSolve, setNavigate, solveWithPrices,
 } from './sheets.js';
@@ -22,6 +23,8 @@ import {
   setWildTier, setWildUnit, wildMissingIds,
 } from './wild.js';
 import { openDetails } from './html.js';
+import { canRemind, syncReminders } from './notify.js';
+import { roundsCtx } from './roundscard.js';
 import { addPlot, addCraft, setGoal, setSettings } from './store.js';
 
 let current = 'plan';
@@ -183,6 +186,8 @@ function act(el) {
     runPriceFetch(wildMissingIds());
   } else if (d.act === 'islands') {
     openIslands();
+  } else if (d.act === 'reminders') {
+    openReminders();
   } else if (d.act === 'install') {
     openInstall();
   } else if (d.act === 'fish-setup') {
@@ -211,6 +216,22 @@ function act(el) {
     go('plan');
     if (!state.plan.plots.length && !state.plan.crafts.length) solveWithPrices();
   }
+}
+
+/**
+ * Keep the phone's alarms matching what the app believes.
+ *
+ * Debounced, because every tap commits and a commit tells every listener - and
+ * rescheduling crosses the native bridge, which is not something to do four
+ * times while somebody edits a name. A no-op in a browser.
+ */
+let resyncTimer = null;
+function scheduleResync() {
+  if (!canRemind() || !state.settings.remindMe) return;
+  clearTimeout(resyncTimer);
+  resyncTimer = setTimeout(() => {
+    syncReminders(roundsCtx(), state.islands || []);
+  }, 800);
 }
 
 function wire() {
@@ -261,6 +282,11 @@ async function boot() {
     return;
   }
   subscribe(render);
+  subscribe(scheduleResync);
+  /* And once at boot, because the alarms are a projection of the state rather
+   * than a second copy of it: anything that changed while the app was shut -
+   * or an Android that dropped them - is corrected the first time you open it. */
+  scheduleResync();
   // The Craft tab finishes loading its data after the first paint, so it
   // needs a way to ask for a redraw once it has.
   setCraftRerender(() => {

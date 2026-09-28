@@ -1,7 +1,7 @@
 // Cache-first shell so the app opens instantly and works with no signal.
 // Bump CACHE when the shell or the game data changes.
 
-const CACHE = 'albionfarm-v47';  // v47: your rounds — what is planted and when
+const CACHE = 'albionfarm-v48';  // v48: the Android build, and alarms that need it
 const SHELL = [
   './', './index.html', './manifest.webmanifest',
   './css/app.css',
@@ -9,7 +9,7 @@ const SHELL = [
   './js/calc.js', './js/craft.js', './js/me.js', './js/solve.js',
   './js/prices.js', './js/ui.js', './js/util.js', './js/html.js',
   './js/gather.js', './js/exits.js', './js/fish.js', './js/wild.js',
-  './js/install.js', './js/rounds.js', './js/roundscard.js',
+  './js/install.js', './js/rounds.js', './js/roundscard.js', './js/notify.js',
   './data/gamedata.json',
   './icons/icon.svg', './icons/icon-192.png', './icons/icon-512.png',
   // The home-screen icons themselves, so installing works offline too and the

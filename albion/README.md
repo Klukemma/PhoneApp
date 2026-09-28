@@ -178,11 +178,42 @@ that the game will let you act, so it says "while it grows" and how long is
 left. A window you miss is missed; it is not offered back, and it is not
 counted as done either.
 
-**There are no push notifications, and there cannot be.** The one browser API
-that would have let a page schedule its own alarm was abandoned by Chrome and
-never existed in Safari; real push needs a server, which this app does not
-have. Chrome on Android does not support home-screen badges either. So the
-rounds card is at the top of Plan and tells you the moment you open the app.
+**In a browser there are no reminders, and there cannot be.** The one API that
+would have let a page schedule its own alarm was abandoned by Chrome and never
+existed in Safari; real web push needs a server, which this app does not have.
+Chrome on Android does not support home-screen badges either. So on the web the
+rounds card tells you the moment you open the app, and that is the limit.
+
+**The Android build can wake you**, and that is the only reason it exists — see
+below.
+
+## The Android build
+
+The same app, packaged as an APK, for one capability the web platform refuses:
+**an alarm that arrives while the app is shut.** No server, no account, nothing
+leaving the device — Android holds the time and wakes the app.
+
+**Me → Remind me when things are ready** turns it on. One alarm per growing
+plot at the moment it is ready, and one an hour before a watering window shuts.
+They are re-laid every time anything changes, so harvesting early cancels the
+alarm it was about rather than leaving it to fire.
+
+The same refusals apply, and they matter more here because an alarm arrives
+where you cannot see the caveat: a plot with no planting time gets none, and a
+plot a whole growth overdue gets none either — by then the app has stopped
+claiming to know what is in there.
+
+It is built by CI, not committed: `.github/workflows/apk.yml` scaffolds the
+Android project fresh from `capacitor.config.json` on every run and leaves an
+installable APK attached to the run. Nothing generated lives in the repo.
+
+The packaged app bundles `equipment.json`, so the Craft tab and every refining
+route work from the moment it is installed rather than after a 2.3 MB download.
+It carries no service worker — every asset is already on the device, and a
+cache-first worker would add a second stale copy to invalidate.
+
+The web app is untouched by any of this. It is a second way to install the same
+thing, and the two keep separate data: **Backup and restore** moves it across.
 
 ## Installing it
 
