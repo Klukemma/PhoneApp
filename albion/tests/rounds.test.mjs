@@ -381,3 +381,77 @@ test('an untimed plot still knows how long its crop takes', () => {
   const chick = R.plotStatus(ctx({ premium: true }), plot({ itemId: CHICKEN, plantedMin: 0 }), HOURS(1));
   assert.equal(chick.span, 22 * 60);
 });
+
+/* ---------------------------------------------------------- the rounds -- */
+
+test('a whole round is one save, stamped at the tap', () => {
+  /* Running the single-plot setters in a loop would work and would be wrong
+   * twice over: every one of them commits, so a four-plot island writes the
+   * save four times and re-lays the phone's alarms four times; and a failure
+   * halfway would leave half a round recorded with no way to tell which half. */
+  store.wipe();
+  const home = store.addIsland('Home');
+  const a = store.addIslandPlot(home.id, 'farm');
+  const b = store.addIslandPlot(home.id, 'herbgarden');
+  const c = store.addIslandPlot(home.id, 'farm');
+  store.setPlotCrop(home.id, a.id, CARROT, T0);
+  store.setPlotCrop(home.id, b.id, CARROT, T0);
+  store.setPlotCrop(home.id, c.id, CARROT, T0);
+
+  const at = T0 + 30 * 3600e3;               // you came back 8 hours late
+  const n = store.applyRounds([
+    { islandId: home.id, plotId: a.id, action: 'harvest' },
+    { islandId: home.id, plotId: b.id, action: 'harvestBare' },
+    { islandId: home.id, plotId: c.id, action: 'nurture' },
+  ], at);
+  assert.equal(n, 3);
+
+  const [pa, pb, pc] = store.state.islands[0].plots;
+  assert.equal(pa.itemId, CARROT, 'the same thing went back in');
+  assert.equal(pa.plantedMin, Math.floor(at / 60000), 'stamped at the tap');
+  assert.notEqual(pa.plantedMin, Math.floor((T0 + 22 * 3600e3) / 60000),
+    'not backdated to when it became ready');
+  assert.equal(pb.itemId, '', 'left bare');
+  assert.equal(pb.plantedMin, 0);
+  assert.equal(pc.itemId, CARROT, 'a nurture changes nothing but the count');
+  assert.equal(pc.plantedMin, Math.floor(T0 / 60000));
+  assert.deepEqual(pc.caredMin, [Math.floor(at / 60000)]);
+});
+
+test('a round survives entries it cannot act on', () => {
+  store.wipe();
+  const home = store.addIsland('Home');
+  const p = store.addIslandPlot(home.id, 'farm');
+  store.setPlotCrop(home.id, p.id, CARROT, T0);
+  const n = store.applyRounds([
+    { islandId: home.id, plotId: p.id, action: 'harvest' },
+    { islandId: home.id, plotId: 'gone', action: 'harvest' },
+    { islandId: 'nowhere', plotId: p.id, action: 'harvest' },
+    { islandId: home.id, plotId: p.id, action: 'set fire to it' },
+  ], T0 + 3600e3);
+  assert.equal(n, 1, 'only the one it understood');
+  assert.equal(store.state.islands[0].plots[0].itemId, CARROT);
+});
+
+test('an empty round writes nothing at all', () => {
+  store.wipe();
+  const home = store.addIsland('Home');
+  const p = store.addIslandPlot(home.id, 'farm');
+  store.setPlotCrop(home.id, p.id, CARROT, T0);
+  const before = JSON.stringify(store.state.islands);
+  assert.equal(store.applyRounds([], T0), 0);
+  assert.equal(store.applyRounds([{ islandId: home.id, plotId: p.id }], T0), 0);
+  assert.equal(JSON.stringify(store.state.islands), before, 'untouched');
+});
+
+test('harvesting through a round clears the nurtures with it', () => {
+  // A new growth starts with none done, or the next window would be wrong.
+  store.wipe();
+  const home = store.addIsland('Home');
+  const p = store.addIslandPlot(home.id, 'farm');
+  store.setPlotCrop(home.id, p.id, CARROT, T0);
+  store.nurturePlot(home.id, p.id, T0 + 3600e3);
+  assert.equal(store.state.islands[0].plots[0].caredMin.length, 1);
+  store.applyRounds([{ islandId: home.id, plotId: p.id, action: 'harvest' }], T0 + 23 * 3600e3);
+  assert.deepEqual(store.state.islands[0].plots[0].caredMin, []);
+});

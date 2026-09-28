@@ -1308,6 +1308,51 @@ export function setPlotRemaining(islandId, plotId, leftMinutes, spanMinutes, at 
   commit();
 }
 
+/**
+ * A whole round of plots in one go, saved once.
+ *
+ * The rounds sheet is a checklist: you tick what you actually did across an
+ * island and confirm the lot. Running the single-plot setters in a loop would
+ * work and would be wrong in two ways - every one of them commits, so a
+ * four-plot island would write the save four times, re-render four times and
+ * re-lay the phone's alarms four times; and a failure halfway would leave half
+ * a round recorded with no way to tell which half.
+ *
+ * `at` is the moment of the confirming tap, and every entry is stamped with
+ * it. Not with the moment each plot became ready: backdating a replant to "you
+ * must have done it the instant it was done" widens the error by the length of
+ * every real gap, every cycle.
+ */
+export function applyRounds(entries = [], at = Date.now()) {
+  const stamp = Math.floor(at / 60000);
+  let done = 0;
+  for (const e of entries) {
+    const plot = plotById(e.islandId, e.plotId);
+    if (!plot) continue;
+    if (e.action === 'harvest') {
+      if (!plot.itemId) continue;
+      plot.caredMin = [];
+      plot.checkedMin = 0;
+      plot.plantedMin = stamp;
+    } else if (e.action === 'harvestBare') {
+      plot.itemId = '';
+      plot.plantedMin = 0;
+      plot.caredMin = [];
+      plot.checkedMin = 0;
+    } else if (e.action === 'nurture') {
+      if (!plot.itemId) continue;
+      plot.caredMin = [...(plot.caredMin || []), stamp].slice(-32);
+    } else if (e.action === 'checked') {
+      plot.checkedMin = stamp;
+    } else {
+      continue;
+    }
+    done += 1;
+  }
+  if (done) commit();
+  return done;
+}
+
 export function setNodeLevel(nodeId, level) {
   const n = Number(level);
   if (!Number.isFinite(n) || n <= 0) delete state.nodeLevels[nodeId];

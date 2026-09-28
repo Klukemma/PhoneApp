@@ -172,6 +172,13 @@ Nothing is ever marked done because time passed. An unharvested crop does not
 harvest itself, and a list that quietly rolled itself forward would be
 inventing your afternoon.
 
+**Do my rounds** turns a whole island into one tap. It lists everything that
+wants a decision, "Tick all" marks the ordinary thing — harvested and
+replanted, watered — and nothing is written until you confirm. Nothing starts
+ticked: a box already ticked would be the app claiming you did something and
+asking you to deny it. A stale plot is listed but deliberately left out of
+"Tick all", because it is the one thing the app must not guess for you.
+
 A nurture is a **window**, not a deadline — the files say how many a growth
 allows and how long each period lasts, and never the moment within a period
 that the game will let you act, so it says "while it grows" and how long is

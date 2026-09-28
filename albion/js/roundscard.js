@@ -100,6 +100,10 @@ export function roundsCard(at = Date.now()) {
   const sum = roundsSummary(rows);
   const due = rows.filter((r) => r.task !== 'wait');
   const assumed = [...new Set(due.flatMap((r) => r.assumed || []))];
+  /* How many rows a single visit could actually close. An empty plot, or one
+   * with no planting time, needs a decision of its own rather than a tick, so
+   * neither counts towards the button. */
+  const actionable = due.filter((r) => ['harvest', 'nurture', 'check'].includes(r.task)).length;
 
   const head = sum.due
     ? [sum.harvest ? `${sum.harvest} ready` : '',
@@ -122,6 +126,8 @@ export function roundsCard(at = Date.now()) {
         : 'Nothing to do' })}
       ${due.length > 8 ? slimRow({ act: 'islands', icon: '\u{1F3DD}️',
     title: `and ${due.length - 8} more` }) : ''}
+      ${actionable ? `<button class="btn primary" data-act="rounds"
+        style="margin-top:8px">Do my rounds \u00b7 ${actionable} to tick off</button>` : ''}
       ${sum.due && sum.next ? note(`Next after these: ${esc(sum.next.label)} at
         ${esc(clockWords(sum.next.dueMin, at))}.`, 'centered') : ''}
       ${assumed.length ? note(`Yours rather than the game's: ${esc(assumed.join('; '))}.`) : ''}

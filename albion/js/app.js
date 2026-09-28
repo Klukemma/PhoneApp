@@ -7,7 +7,7 @@ import {
   openCraftCity, openCraftPick, openCycle, openData, openFarm, openFarmCity,
   openFishSetup, openFishExits, openFishTime, openGatherSetup, openGoal,
   openInstall, openIsland, openIslands, openMastery, openPlot, openPrice,
-  openPriceSource, openReminders,
+  openPriceSource, openReminders, openRounds,
   openQuality, openResourceExits, openScanFilter, openStock, runCraftPriceFetch,
   runPriceFetch, runScanPriceFetch, runSolve, setNavigate, solveWithPrices,
 } from './sheets.js';
@@ -189,6 +189,8 @@ function act(el) {
     openIslands();
   } else if (d.act === 'reminders') {
     openReminders();
+  } else if (d.act === 'rounds') {
+    openRounds();
   } else if (d.act === 'install') {
     openInstall();
   } else if (d.act === 'fish-setup') {

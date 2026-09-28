@@ -15,7 +15,7 @@ import {
   landSummary, plotsOwned, pricedItemIds, priceOf, qBmPriceOf, qPriceOf,
   priceSeenAt, removeCraft, removePlot, scheduleDays, setBmPrice, setBuyPrice,
   setCraftCity, setDayMode, setGather, setGoal, setGoalStamp, setHolding,
-  addIsland, addIslandPlot, checkedPlot, harvestPlot, nurturePlot, removeIsland,
+  addIsland, addIslandPlot, applyRounds, checkedPlot, harvestPlot, nurturePlot, removeIsland,
   removeIslandPlot, setPlotCrop, setPlotRemaining, updateIsland,
   setFishMeasured, setMeasured, setNodeLevel, setPrice, setPrices, setQualityPrice,
   setQualityPrices, setSchedule, setScheduleLength, setSettings, setSpec,
@@ -3321,6 +3321,11 @@ export function openIsland(islandId) {
     </div>` : ''}
 
     <div class="section-head" style="margin-top:14px"><h2>Plots</h2></div>
+    ${(island.plots || []).some((p) => {
+    const st = plotStatus(roundsCtx(), p, at);
+    return st.state === 'ready' || st.state === 'stale' || st.nurture?.ready;
+  }) ? `<button class="btn primary" id="doRounds" style="margin-bottom:10px">
+      Do my rounds</button>` : ''}
     ${(island.plots || []).map(plotRow).join('')
     || '<div class="hint">No plots yet. Add one for each patch you actually farm.</div>'}
 
@@ -3387,6 +3392,8 @@ export function openIsland(islandId) {
           toast('Clock set from the panel');
         };
       }
+      const rounds = $('#doRounds', root);
+      if (rounds) rounds.onclick = () => openRounds(islandId);
       $('#del', root).onclick = () => { removeIsland(islandId); openIslands(); };
       $('#done', root).onclick = () => { closeSheet(); };
     },
@@ -3556,5 +3563,161 @@ export function openReminders() {
         $('#done', root).onclick = closeSheet;
       },
     });
+  });
+}
+
+/* ------------------------------------------------------------ rounds --- */
+
+/* What you have ticked so far, plotId -> action. Module-level and cleared on
+ * every open, because it is a draft of one visit and nothing more. Deliberately
+ * not in the store: nothing here is saved until you confirm, so a half-ticked
+ * list must not survive the sheet being dismissed. */
+let roundDraft = new Map();
+
+/** The ordinary thing you would have done to a plot in this state. */
+function defaultAction(st) {
+  if (st.state === 'ready') return 'harvest';
+  if (st.nurture?.ready) return 'nurture';
+  return '';
+}
+
+const ACTION_WORDS = {
+  harvest: 'harvested, same again',
+  harvestBare: 'harvested, left it bare',
+  nurture: 'watered it',
+  checked: 'still standing',
+};
+
+/**
+ * Do my rounds: tick what you actually did, once, for the whole island.
+ *
+ * The thing this replaces is four separate taps on a four-plot island, which
+ * is most of the friction in the whole feature. What it must not become is a
+ * button that asserts on your behalf: nothing starts ticked, "Tick all" is an
+ * action you take rather than a state you find, and nothing is written until
+ * you confirm. A pre-ticked box saying you harvested something is the app
+ * making a claim and asking you to deny it.
+ *
+ * A stale plot is listed but its default is nothing, because a plot the app
+ * has stopped reasoning about is precisely the one it must not guess for.
+ */
+export function openRounds(islandId = null) {
+  const at = Date.now();
+  const islands = (state.islands || []).filter((h) => !islandId || h.id === islandId);
+  const ctx = roundsCtx();
+
+  // Every plot that wants a decision, with the plot and island it belongs to.
+  const items = [];
+  for (const island of islands) {
+    (island.plots || []).forEach((plot, i) => {
+      const st = plotStatus(ctx, plot, at);
+      if (st.state === 'growing' && !st.nurture?.ready) return;
+      if (st.state === 'empty') return;
+      items.push({ island, plot, st, name: plotName(plot, i) });
+    });
+  }
+
+  const choices = (st) => {
+    const out = [];
+    if (st.state === 'ready' || st.state === 'stale') {
+      out.push('harvest', 'harvestBare');
+    }
+    if (st.nurture?.ready) out.push('nurture');
+    if (st.state === 'stale') out.push('checked');
+    return out;
+  };
+
+  const rowFor = ({ island, plot, st, name }) => {
+    const picked = roundDraft.get(plot.id) || '';
+    const opts = choices(st);
+    return `
+      <div class="card" style="margin-bottom:8px">
+        <div class="row" style="gap:8px">
+          <span class="ico">${st.state === 'stale' ? '\u2753'
+    : (KIND_ICON[plot.kind] || '\u{1F33E}')}</span>
+          <span class="body">
+            <span class="title">${esc(name)}${islands.length > 1
+    ? ` · ${esc(island.name)}` : ''}</span>
+            <span class="meta">${esc(plotWords(plot, at))}</span>
+          </span>
+          ${picked ? tick() : ''}
+        </div>
+        <div class="seg small wrap" style="margin-top:8px">
+          ${opts.map((a) => `
+            <button data-round-pick="${esc(plot.id)}:${a}"
+              aria-pressed="${picked === a}">${esc(ACTION_WORDS[a])}</button>`).join('')}
+        </div>
+      </div>`;
+  };
+
+  const ticked = items.filter((x) => roundDraft.get(x.plot.id)).length;
+  const canTickAll = items.filter((x) => defaultAction(x.st)).length;
+
+  openSheet(`
+    <h2>Do my rounds</h2>
+    <p class="muted">Tick what you actually did. Nothing is saved until you tap
+      Done, and nothing is ticked for you — a box already ticked would be the
+      app claiming you did something and asking you to deny it.</p>
+
+    ${items.length ? `
+      ${canTickAll ? `<div class="seg small" style="margin-bottom:10px">
+        <button id="tickAll">Tick all · harvested and replanted</button>
+        ${ticked ? '<button id="tickNone">Clear</button>' : ''}
+      </div>` : ''}
+      ${items.map(rowFor).join('')}`
+    : `<div class="hint">Nothing wants a decision right now. This is where the
+        ready plots turn up.</div>`}
+
+    ${items.some((x) => x.st.state === 'stale') ? note(`A plot marked with a
+      question is one a whole growth past due, and it is deliberately not part of
+      "tick all" — by then the app has stopped knowing what is in there, so it
+      is the one thing it must not guess for you.`) : ''}
+
+    <div class="sheet-actions">
+      <button class="btn" id="cancel">Cancel</button>
+      <button class="btn primary" id="apply" ${ticked ? '' : 'disabled'}>${
+  ticked ? `Done · ${ticked} recorded` : 'Nothing ticked'}</button>
+    </div>
+  `, {
+    onMount(root) {
+      const again = () => openRounds(islandId);
+      for (const b of $$('[data-round-pick]', root)) {
+        b.onclick = () => {
+          const [plotId, action] = b.dataset.roundPick.split(':');
+          // Tapping the chosen one again unpicks it, so a mis-tap is one tap back.
+          if (roundDraft.get(plotId) === action) roundDraft.delete(plotId);
+          else roundDraft.set(plotId, action);
+          again();
+        };
+      }
+      const all = $('#tickAll', root);
+      if (all) {
+        all.onclick = () => {
+          for (const x of items) {
+            const d = defaultAction(x.st);
+            if (d) roundDraft.set(x.plot.id, d);
+          }
+          again();
+        };
+      }
+      const none = $('#tickNone', root);
+      if (none) none.onclick = () => { roundDraft.clear(); again(); };
+
+      $('#apply', root).onclick = () => {
+        const entries = items
+          .filter((x) => roundDraft.get(x.plot.id))
+          .map((x) => ({
+            islandId: x.island.id,
+            plotId: x.plot.id,
+            action: roundDraft.get(x.plot.id),
+          }));
+        const n = applyRounds(entries);
+        roundDraft.clear();
+        closeSheet();
+        toast(n === 1 ? '1 plot updated' : `${n} plots updated`);
+      };
+      $('#cancel', root).onclick = () => { roundDraft.clear(); closeSheet(); };
+    },
+    onDismiss: () => { roundDraft.clear(); },
   });
 }
