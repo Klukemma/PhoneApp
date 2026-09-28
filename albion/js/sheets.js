@@ -15,6 +15,8 @@ import {
   landSummary, plotsOwned, pricedItemIds, priceOf, qBmPriceOf, qPriceOf,
   priceSeenAt, removeCraft, removePlot, scheduleDays, setBmPrice, setBuyPrice,
   setCraftCity, setDayMode, setGather, setGoal, setGoalStamp, setHolding,
+  addIsland, addIslandPlot, checkedPlot, harvestPlot, nurturePlot, removeIsland,
+  removeIslandPlot, setPlotCrop, setPlotRemaining, updateIsland,
   setFishMeasured, setMeasured, setNodeLevel, setPrice, setPrices, setQualityPrice,
   setQualityPrices, setSchedule, setScheduleLength, setSettings, setSpec,
   setStock, state, updateCraft, updatePlot, wipe,
@@ -24,6 +26,10 @@ import {
   rawIdOf, refinedOf,
 } from './gather.js';
 import { resourceExits } from './exits.js';
+import { growableOf, growMinutes, plotStatus, clockWords } from './rounds.js';
+import {
+  choicesFor, islandWords, KIND_ICON, KIND_LABEL, plotName, plotWords, roundsCtx,
+} from './roundscard.js';
 import { canPrompt, promptInstall, steps as installSteps } from './install.js';
 import {
   baitBreakEven, commonFishId, fishChoices, fishExits, fishKitOf, fishNameOf,
@@ -31,7 +37,7 @@ import {
 } from './fish.js';
 import { solve } from './solve.js';
 import { $, $$, closeSheet, esc, openSheet, toast } from './ui.js';
-import { ICON, amt, go, moreHTML, note, rowHTML, tag, tick } from './html.js';
+import { ICON, addRow, amt, go, moreHTML, note, rowHTML, tag, tick } from './html.js';
 import { row as meRow, toggle as meToggle } from './me.js';
 import { ago, hours, pct, short, silver, tierText, toneOf } from './util.js';
 import {
@@ -3192,6 +3198,280 @@ export function openInstall() {
         };
       }
       $('#installDone', root).onclick = closeSheet;
+    },
+  });
+}
+
+/* ------------------------------------------------------- your islands --- */
+
+/** Your islands, and a way in to each. */
+export function openIslands() {
+  const list = state.islands || [];
+  openSheet(`
+    <h2>Your islands</h2>
+    <p class="muted">What is actually planted, and when. This is the only part of
+      the app that knows the time of day, and every moment in it is one you
+      tapped — nothing here is ever worked out from the clock.</p>
+
+    ${list.length ? list.map((h) => rowHTML({
+    attrs: `data-island="${esc(h.id)}"`,
+    icon: '\u{1F3DD}️',
+    title: esc(h.name),
+    meta: esc(islandWords(h)),
+    right: go(),
+  })).join('') : '<div class="hint">No islands yet. Add one and put your plots in it.</div>'}
+
+    ${addRow('Add an island', 'island-add')}
+
+    <div class="sheet-actions">
+      <button class="btn primary" id="done">Done</button>
+    </div>
+  `, {
+    onMount(root) {
+      for (const b of $$('[data-island]', root)) {
+        b.onclick = () => openIsland(b.dataset.island);
+      }
+      const add = $('[data-act="island-add"]', root);
+      if (add) {
+        add.onclick = () => {
+          const h = addIsland(`Island ${(state.islands.length || 0) + 1}`);
+          openIsland(h.id);
+        };
+      }
+      $('#done', root).onclick = closeSheet;
+    },
+  });
+}
+
+/**
+ * One island: every plot, what is in it, and one tap for the thing you just did.
+ *
+ * The buttons are the whole design. "Harvested, same again" is the ordinary
+ * case and costs one tap; everything else is a tap away behind it. Nothing is
+ * pre-ticked, because a pre-ticked action is the app asserting you did
+ * something and asking you to deny it.
+ */
+export function openIsland(islandId) {
+  const island = (state.islands || []).find((h) => h.id === islandId);
+  if (!island) { openIslands(); return; }
+  const s = state.settings;
+  const at = Date.now();
+  const cities = (s.cities || []).filter((c) => !c.craftOnly);
+
+  const plotRow = (plot, i) => {
+    const st = plotStatus(roundsCtx(), plot, at);
+    const g = st.growable;
+    const acts = [];
+    if (st.state === 'empty' || st.state === 'unknown') {
+      acts.push(`<button class="btn small" data-plot-set="${esc(plot.id)}">What's in it?</button>`);
+    } else {
+      if (st.state === 'ready' || st.state === 'stale') {
+        acts.push(`<button class="btn small primary" data-plot-harvest="${esc(plot.id)}">Harvested, same again</button>`);
+        acts.push(`<button class="btn small" data-plot-clear="${esc(plot.id)}">Harvested, left it bare</button>`);
+      }
+      if (st.state === 'stale') {
+        acts.push(`<button class="btn small" data-plot-check="${esc(plot.id)}">It's still standing</button>`);
+      }
+      if (st.nurture?.ready) {
+        acts.push(`<button class="btn small" data-plot-nurture="${esc(plot.id)}">Watered it (${
+          st.nurture.done + 1} of ${st.nurture.allowed})</button>`);
+      }
+      if (st.state === 'untimed' || st.state === 'stale') {
+        acts.push(`<button class="btn small" data-plot-now="${esc(plot.id)}">Start the clock now</button>`);
+      }
+      acts.push(`<button class="btn small ghost" data-plot-set="${esc(plot.id)}">Change</button>`);
+    }
+    const left = g && st.span ? `
+      <label class="field" style="margin:8px 0 0">
+        <span class="hint">or type what the game's panel says is left, in hours</span>
+        <input type="number" inputmode="decimal" min="0" max="${(st.span / 60).toFixed(0)}"
+          step="0.1" placeholder="e.g. 3.5" data-plot-left="${esc(plot.id)}"
+          data-span="${st.span}" aria-label="Hours left on ${esc(plotName(plot, i))}">
+      </label>` : '';
+
+    return `
+      <div class="card" style="margin-bottom:10px">
+        <div class="row" style="gap:8px">
+          <span class="ico">${KIND_ICON[plot.kind] || '\u{1F33E}'}</span>
+          <span class="body">
+            <span class="title">${esc(plotName(plot, i))}</span>
+            <span class="meta">${esc(plotWords(plot, at))}</span>
+          </span>
+          <button class="btn small ghost" data-plot-del="${esc(plot.id)}" aria-label="Remove">✕</button>
+        </div>
+        ${st.why && st.state !== 'empty' ? `<div class="hint">${esc(st.why)}.</div>` : ''}
+        <div class="seg small wrap" style="margin-top:8px">${acts.join('')}</div>
+        ${left}
+      </div>`;
+  };
+
+  openSheet(`
+    <h2>${esc(island.name)}</h2>
+    <div class="field">
+      <label for="islandName">Name</label>
+      <input id="islandName" type="text" maxlength="40" value="${esc(island.name)}">
+    </div>
+    ${cities.length ? `<div class="field">
+      <label for="islandCity">Where it is</label>
+      <select id="islandCity">${cities.map((c) => `
+        <option value="${esc(c.id)}" ${c.id === island.cityId ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select>
+    </div>` : ''}
+
+    <div class="section-head" style="margin-top:14px"><h2>Plots</h2></div>
+    ${(island.plots || []).map(plotRow).join('')
+    || '<div class="hint">No plots yet. Add one for each patch you actually farm.</div>'}
+
+    <div class="seg small wrap" style="margin-top:6px">
+      ${['farm', 'herbgarden', 'pasture', 'kennel'].map((k) => `
+        <button data-plot-add="${k}">+ ${esc(KIND_LABEL[k])}</button>`).join('')}
+    </div>
+
+    ${note(`Tap what you actually did, when you did it. The app never decides
+      something happened because time passed — an unharvested crop does not
+      harvest itself, and a list that quietly rolled itself forward would be
+      inventing your afternoon.`)}
+
+    <div class="sheet-actions">
+      <button class="btn" id="del">Remove island</button>
+      <button class="btn primary" id="done">Done</button>
+    </div>
+  `, {
+    onMount(root) {
+      const again = () => openIsland(islandId);
+      const name = $('#islandName', root);
+      if (name) name.onchange = () => { updateIsland(islandId, { name: name.value }); again(); };
+      const city = $('#islandCity', root);
+      if (city) city.onchange = () => { updateIsland(islandId, { cityId: city.value }); again(); };
+
+      for (const b of $$('[data-plot-add]', root)) {
+        b.onclick = () => { addIslandPlot(islandId, b.dataset.plotAdd); again(); };
+      }
+      for (const b of $$('[data-plot-del]', root)) {
+        b.onclick = () => { removeIslandPlot(islandId, b.dataset.plotDel); again(); };
+      }
+      for (const b of $$('[data-plot-harvest]', root)) {
+        b.onclick = () => {
+          harvestPlot(islandId, b.dataset.plotHarvest, { replant: true });
+          again(); toast('Replanted, clock started');
+        };
+      }
+      for (const b of $$('[data-plot-clear]', root)) {
+        b.onclick = () => { harvestPlot(islandId, b.dataset.plotClear, { replant: false }); again(); };
+      }
+      for (const b of $$('[data-plot-nurture]', root)) {
+        b.onclick = () => { nurturePlot(islandId, b.dataset.plotNurture); again(); };
+      }
+      for (const b of $$('[data-plot-check]', root)) {
+        b.onclick = () => { checkedPlot(islandId, b.dataset.plotCheck); again(); toast('Noted'); };
+      }
+      for (const b of $$('[data-plot-now]', root)) {
+        b.onclick = () => {
+          const plot = island.plots.find((p) => p.id === b.dataset.plotNow);
+          if (plot) setPlotCrop(islandId, plot.id, plot.itemId, Date.now());
+          again();
+        };
+      }
+      for (const b of $$('[data-plot-set]', root)) {
+        b.onclick = () => openPlotPick(islandId, b.dataset.plotSet);
+      }
+      for (const box of $$('[data-plot-left]', root)) {
+        box.onchange = () => {
+          const hours = Number(box.value);
+          if (!Number.isFinite(hours) || hours < 0) return;
+          setPlotRemaining(islandId, box.dataset.plotLeft, hours * 60,
+            Number(box.dataset.span));
+          again();
+          toast('Clock set from the panel');
+        };
+      }
+      $('#del', root).onclick = () => { removeIsland(islandId); openIslands(); };
+      $('#done', root).onclick = () => { closeSheet(); };
+    },
+  });
+}
+
+/** What went into this plot, and when. */
+export function openPlotPick(islandId, plotId) {
+  const island = (state.islands || []).find((h) => h.id === islandId);
+  const plot = island?.plots.find((p) => p.id === plotId);
+  if (!plot) { openIsland(islandId); return; }
+  const list = choicesFor(plot.kind);
+
+  openSheet(`
+    <h2>What's in it?</h2>
+    <p class="muted">${esc(KIND_LABEL[plot.kind] || 'Plot')} · ${
+  esc(island.name)}. Pick what you put in, then say when.</p>
+
+    ${list.length ? list.map((g) => rowHTML({
+    attrs: `data-pick="${esc(g.id)}"`,
+    icon: KIND_ICON[plot.kind] || '\u{1F331}',
+    title: `T${g.tier} ${esc(g.name)}`,
+    meta: `${(growMinutes(roundsCtx(), g) / 60).toFixed(0)}h a growth${
+      g.maxCycles > 1 ? ` · ${g.maxCycles} nurtures` : ''}`,
+    right: go(),
+    cls: g.id === plot.itemId ? 'warn' : '',
+  })).join('') : '<div class="hint">Nothing in the game data goes in this kind of plot.</div>'}
+
+    ${plot.itemId ? `<div class="sheet-actions" style="margin-top:10px">
+      <button class="btn ghost" id="empty">It's empty</button>
+    </div>` : ''}
+
+    <div class="sheet-actions">
+      <button class="btn" id="back">Back</button>
+    </div>
+  `, {
+    onMount(root) {
+      for (const b of $$('[data-pick]', root)) {
+        b.onclick = () => openPlotWhen(islandId, plotId, b.dataset.pick);
+      }
+      const empty = $('#empty', root);
+      if (empty) empty.onclick = () => { setPlotCrop(islandId, plotId, '', 0); openIsland(islandId); };
+      $('#back', root).onclick = () => openIsland(islandId);
+    },
+  });
+}
+
+/**
+ * When it went in.
+ *
+ * "I don't know when" is a first-class answer and not a cop-out: it keeps the
+ * crop and refuses the due time, which is exactly right. Guessing here would
+ * be the app inventing the one number this whole feature exists to carry.
+ */
+export function openPlotWhen(islandId, plotId, itemId) {
+  const g = growableOf(roundsCtx(), itemId);
+  const span = growMinutes(roundsCtx(), g);
+  openSheet(`
+    <h2>When did it go in?</h2>
+    <p class="muted">${esc(g?.name || itemId)} takes ${(span / 60).toFixed(0)} hours,
+      which is the game's own number. All the app needs from you is the moment
+      you started.</p>
+
+    ${rowHTML({ attrs: 'data-when="0"', icon: '⏱️', title: 'Just now',
+    meta: `ready ${esc(clockWords(Math.floor(Date.now() / 60000) + span))}`, right: go() })}
+    ${[1, 2, 4, 8, 12].map((h) => rowHTML({
+    attrs: `data-when="${h}"`, icon: '⏱️', title: `${h} hour${h === 1 ? '' : 's'} ago`,
+    meta: `ready ${esc(clockWords(Math.floor(Date.now() / 60000) - h * 60 + span))}`,
+    right: go(),
+  })).join('')}
+    ${rowHTML({ attrs: 'data-when="none"', icon: '❓', title: "I don't know when",
+    meta: 'keeps the crop, gives no due time — you can fix it later from the panel',
+    right: go() })}
+
+    <div class="sheet-actions">
+      <button class="btn" id="back">Back</button>
+    </div>
+  `, {
+    onMount(root) {
+      for (const b of $$('[data-when]', root)) {
+        b.onclick = () => {
+          const v = b.dataset.when;
+          const at = v === 'none' ? 0 : Date.now() - Number(v) * 3600e3;
+          setPlotCrop(islandId, plotId, itemId, at);
+          openIsland(islandId);
+        };
+      }
+      $('#back', root).onclick = () => openPlotPick(islandId, plotId);
     },
   });
 }

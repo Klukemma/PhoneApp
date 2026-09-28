@@ -6,7 +6,7 @@ import {
   openAddPlot, openAdvanced, openAssumptions, openBoard, openCraft,
   openCraftCity, openCraftPick, openCycle, openData, openFarm, openFarmCity,
   openFishSetup, openFishExits, openFishTime, openGatherSetup, openGoal,
-  openInstall, openMastery, openPlot, openPrice, openPriceSource,
+  openInstall, openIsland, openIslands, openMastery, openPlot, openPrice, openPriceSource,
   openQuality, openResourceExits, openScanFilter, openStock, runCraftPriceFetch,
   runPriceFetch, runScanPriceFetch, runSolve, setNavigate, solveWithPrices,
 } from './sheets.js';
@@ -71,7 +71,7 @@ const SEL = '[data-act],[data-plot],[data-craft],[data-price],[data-rank],'
   + '[data-price-filter],[data-toggle],[data-add-plot],[data-add-craft],'
   + '[data-add-step],[data-add-spare],[data-craft-sell],[data-source],'
   + '[data-craft-rank],[data-gather-row],[data-gather-tier],'
-  + '[data-fish-row],[data-wild-tier],[data-wild-unit]';
+  + '[data-fish-row],[data-wild-tier],[data-wild-unit],[data-round]';
 
 /** One tap, wherever it landed. Shared by the screen and the top-bar button. */
 function act(el) {
@@ -89,6 +89,8 @@ function act(el) {
   if (d.wildUnit) { setWildUnit(d.wildUnit); render(); return; }
   // A fish row opens every way out of that catch, the same as a land row does.
   if (d.fishRow) { openFishExits(d.fishRow); return; }
+  // A rounds row opens the island it belongs to, at that plot.
+  if (d.round) { openIsland(d.round.split(':')[0]); return; }
 
   if (d.plot) {
     const row = state.plan.plots.find((p) => p.id === d.plot);
@@ -179,6 +181,8 @@ function act(el) {
     go('prices');
   } else if (d.act === 'wild-prices') {
     runPriceFetch(wildMissingIds());
+  } else if (d.act === 'islands') {
+    openIslands();
   } else if (d.act === 'install') {
     openInstall();
   } else if (d.act === 'fish-setup') {

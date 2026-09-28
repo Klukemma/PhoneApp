@@ -15,6 +15,7 @@ import {
 } from './craft.js';
 import { me } from './me.js';
 import { wild } from './wild.js';
+import { roundsCard } from './roundscard.js';
 import {
   ICON, addRow, amt, askLine, askStrip, craftIcon, go, heroHTML, iconFor, moreHTML,
   note, rowHTML, slimRow, tag,
@@ -171,6 +172,7 @@ export function plan() {
     return {
       title: 'Plan',
       html: `
+        ${roundsCard()}
         ${planStrip(sim, moved, false)}
         ${chainNudge()}
         ${note('Pick a potion and it works out what to plant, what to buy, how many days, and what you earn.', 'centered')}`,
@@ -181,6 +183,7 @@ export function plan() {
     title: 'Plan',
     action: moved.length ? { label: 'Redo', act: 'solve', warn: true } : null,
     html: `
+      ${roundsCard()}
       ${planStrip(sim, moved, true)}
       ${planHero(sim, moved)}
       ${nudges(sim)}

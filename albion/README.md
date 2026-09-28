@@ -139,6 +139,51 @@ otherwise look like a bargain when it is really just unknown.
 
 ---
 
+## Your rounds
+
+The one part of the app that knows the time of day. Everything else answers
+"what is this worth"; this answers "what do I do now".
+
+Tell it about your islands and what is in each plot, and it works out when
+every one of them is ready. That arithmetic is exact rather than estimated:
+Albion publishes every duration — all fifteen crops take 22 hours, a chicken
+44, a Master's Ox 188 with a nurture allowed every 22 — and this app already
+holds all of them. The single number no game file carries is the wall-clock
+moment *you* planted, and one tap supplies it.
+
+Worth saying plainly, because it is the reason this is worth having at all:
+the game never sends anyone "your foxglove is ready at 19:40". Even a tool
+that reads the game's own network traffic derives readiness from these same
+published durations and labels its answer an estimate.
+
+What it refuses to do is the point:
+
+- **Nothing recorded** — it says so and offers to be told. No due time.
+- **Recorded, but no time** — "I am not going to guess when this went in."
+  You can start the clock, or type what the game's own panel says is left,
+  which recovers the planting moment exactly.
+- **One whole growth overdue** — it *stops* asserting and starts asking. Past
+  that point "ready" is a guess: you may have harvested and replanted two days
+  ago without telling it, and nothing can tell the two apart.
+- **A task the game will not let you do** is never raised. Watering and
+  nurturing need Premium, so without it no watering task exists.
+
+Nothing is ever marked done because time passed. An unharvested crop does not
+harvest itself, and a list that quietly rolled itself forward would be
+inventing your afternoon.
+
+A nurture is a **window**, not a deadline — the files say how many a growth
+allows and how long each period lasts, and never the moment within a period
+that the game will let you act, so it says "while it grows" and how long is
+left. A window you miss is missed; it is not offered back, and it is not
+counted as done either.
+
+**There are no push notifications, and there cannot be.** The one browser API
+that would have let a page schedule its own alarm was abandoned by Chrome and
+never existed in Safari; real push needs a server, which this app does not
+have. Chrome on Android does not support home-screen badges either. So the
+rounds card is at the top of Plan and tells you the moment you open the app.
+
 ## Installing it
 
 It is a web app that installs as a real one. No app store, no account, no

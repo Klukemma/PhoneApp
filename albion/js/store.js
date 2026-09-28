@@ -304,6 +304,12 @@ function defaults() {
     // Empty means you have not said, and the plan treats your plot count as
     // one undifferentiated heap in your default farming city.
     farm: [],
+    /* Your actual islands and what is actually in them, which is a different
+     * question from `farm` (how much land you own) and from `plan.plots` (what
+     * you intend to grow). This is the only part of the app that carries
+     * wall-clock time about the game, and every moment in it was typed or
+     * tapped by the user - nothing in here is ever inferred from the clock. */
+    islands: [],
     plan: { plots: [], crafts: [] },
   };
 }
@@ -357,6 +363,13 @@ function withConstants(state, data) {
  * split it properly.
  */
 const LAND_KINDS = new Set(['farm', 'herbgarden', 'pasture', 'kennel', 'plant', 'animal']);
+
+/** A moment, or nothing. Anything that is not a positive whole number is not a
+ * moment, and a plot with no moment gets no due time rather than one from 1970. */
+const posInt = (v) => {
+  const n = Math.round(Number(v) || 0);
+  return n > 0 ? n : 0;
+};
 
 /**
  * Schema 2 is where the four buildings were told apart. Before it, "farm" was
@@ -500,6 +513,31 @@ function normalize(raw) {
         count: Math.max(0, Math.round(Number(h.count)) || 0),
       }))
       .filter((h) => h.count > 0),
+    /* Deliberately NOT behind a LAND_SCHEMA bump. That constant drives the
+     * legacy `kind` rewrite a few lines above: raising it would make every
+     * existing save re-enter that branch and turn every Farm back into the old
+     * 'plant' spelling. Islands are new, so a save without them gets an empty
+     * list and nothing else moves. */
+    islands: (Array.isArray(raw.islands) ? raw.islands : [])
+      .map((h) => ({
+        id: h.id || uid(),
+        name: String(h.name || 'My island').slice(0, 40),
+        cityId: h.cityId || raw.settings?.farmCity || 'martlock',
+        plots: (Array.isArray(h.plots) ? h.plots : []).map((p) => ({
+          id: p.id || uid(),
+          kind: LAND_KINDS.has(p.kind) ? p.kind : 'farm',
+          label: String(p.label || '').slice(0, 40),
+          itemId: typeof p.itemId === 'string' ? p.itemId : '',
+          // Epoch MINUTES, and the name says so. A moment that is not a
+          // positive number is no moment, and the engine then refuses to
+          // quote a due time rather than quoting one from zero.
+          plantedMin: posInt(p.plantedMin),
+          checkedMin: posInt(p.checkedMin),
+          caredMin: (Array.isArray(p.caredMin) ? p.caredMin : [])
+            .map(posInt).filter(Boolean).slice(-32),
+        })).slice(0, 64),
+      }))
+      .slice(0, 24),
     plan: {
       plots: Array.isArray(raw.plan?.plots) ? raw.plan.plots : [],
       crafts: (Array.isArray(raw.plan?.crafts) ? raw.plan.crafts : []).map((c) => {
@@ -1120,6 +1158,151 @@ export function setFishMeasured(key, per10min) {
   if (!Number.isFinite(n) || n <= 0) delete measured[key];
   else measured[key] = { per10min: Math.round(n) };
   setGather({ fish: { measured } });
+}
+
+/* ---------------------------------------------------------- your islands -- */
+
+/* Every setter in here records something the USER did. None of them infers an
+ * action from the clock, and none of them is called by a render. That is the
+ * whole guarantee the rounds engine rests on: a moment in this state is a
+ * moment somebody tapped. */
+
+const islandById = (id) => state.islands.find((h) => h.id === id) || null;
+const plotById = (islandId, plotId) =>
+  islandById(islandId)?.plots.find((p) => p.id === plotId) || null;
+
+export function addIsland(name = 'My island', cityId = null) {
+  const island = {
+    id: uid(),
+    name: String(name).slice(0, 40) || 'My island',
+    cityId: cityId || state.settings.farmCity || 'martlock',
+    plots: [],
+  };
+  state.islands.push(island);
+  commit();
+  return island;
+}
+
+export function updateIsland(id, patch) {
+  const island = islandById(id);
+  if (!island) return;
+  if (patch.name !== undefined) island.name = String(patch.name).slice(0, 40) || 'My island';
+  if (patch.cityId !== undefined) island.cityId = patch.cityId;
+  commit();
+}
+
+export function removeIsland(id) {
+  const i = state.islands.findIndex((h) => h.id === id);
+  if (i < 0) return;
+  state.islands.splice(i, 1);
+  commit();
+}
+
+export function addIslandPlot(islandId, kind = 'farm', label = '') {
+  const island = islandById(islandId);
+  if (!island || island.plots.length >= 64) return null;
+  const plot = {
+    id: uid(),
+    kind: kind || 'farm',
+    label: String(label).slice(0, 40),
+    itemId: '',
+    plantedMin: 0,
+    checkedMin: 0,
+    caredMin: [],
+  };
+  island.plots.push(plot);
+  commit();
+  return plot;
+}
+
+export function removeIslandPlot(islandId, plotId) {
+  const island = islandById(islandId);
+  if (!island) return;
+  const i = island.plots.findIndex((p) => p.id === plotId);
+  if (i < 0) return;
+  island.plots.splice(i, 1);
+  commit();
+}
+
+/**
+ * What is in a plot, and when it went in.
+ *
+ * `at` is the moment the user says it was planted. Passing 0 means "I do not
+ * know when" - which is a real answer, and the engine then declines to give a
+ * due time rather than counting from now and pretending.
+ */
+export function setPlotCrop(islandId, plotId, itemId, at = Date.now()) {
+  const plot = plotById(islandId, plotId);
+  if (!plot) return;
+  plot.itemId = typeof itemId === 'string' ? itemId : '';
+  plot.plantedMin = plot.itemId && at > 0 ? Math.floor(at / 60000) : 0;
+  plot.caredMin = [];
+  plot.checkedMin = 0;
+  commit();
+}
+
+/**
+ * Harvested. Optionally the same thing goes straight back in, which is the
+ * ordinary case and the one that should cost one tap.
+ *
+ * The new planting is stamped at the moment of the TAP, never at the moment
+ * the crop became ready. Backdating it to "it must have been replanted as soon
+ * as it was done" would widen the error by the length of every real gap, every
+ * cycle, until the due times were fiction.
+ */
+export function harvestPlot(islandId, plotId, { replant = true, at = Date.now() } = {}) {
+  const plot = plotById(islandId, plotId);
+  if (!plot) return;
+  const was = plot.itemId;
+  plot.caredMin = [];
+  plot.checkedMin = 0;
+  if (replant && was) {
+    plot.itemId = was;
+    plot.plantedMin = Math.floor(at / 60000);
+  } else {
+    plot.itemId = '';
+    plot.plantedMin = 0;
+  }
+  commit();
+}
+
+/** One nurture, counted rather than assumed. */
+export function nurturePlot(islandId, plotId, at = Date.now()) {
+  const plot = plotById(islandId, plotId);
+  if (!plot || !plot.itemId) return;
+  plot.caredMin = [...(plot.caredMin || []), Math.floor(at / 60000)].slice(-32);
+  commit();
+}
+
+/**
+ * "I looked at it and it is still standing."
+ *
+ * An observation, kept strictly apart from the actions above. It does not
+ * change what the plot holds or when it went in; it only records that the user
+ * has seen it recently, which is what lets a stale plot stop nagging without
+ * anybody pretending it was harvested.
+ */
+export function checkedPlot(islandId, plotId, at = Date.now()) {
+  const plot = plotById(islandId, plotId);
+  if (!plot) return;
+  plot.checkedMin = Math.floor(at / 60000);
+  commit();
+}
+
+/**
+ * The panel says this much is left, so the planting moment is now derivable
+ * exactly: it went in `span - left` ago.
+ *
+ * This is the one input that beats a tap, because it recovers a moment the
+ * user never recorded. `leftMinutes` is what the game's own countdown shows.
+ */
+export function setPlotRemaining(islandId, plotId, leftMinutes, spanMinutes, at = Date.now()) {
+  const plot = plotById(islandId, plotId);
+  const left = Math.max(0, Math.round(Number(leftMinutes) || 0));
+  if (!plot || !plot.itemId || !(spanMinutes > 0)) return;
+  plot.plantedMin = Math.floor(at / 60000) - Math.max(0, spanMinutes - left);
+  plot.checkedMin = Math.floor(at / 60000);
+  commit();
 }
 
 export function setNodeLevel(nodeId, level) {
