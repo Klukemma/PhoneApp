@@ -53,6 +53,26 @@ jobs:
           npm install --no-audit --no-fund
           npm test
 
+      # Sign every build with the SAME key, which is the difference between an
+      # update you can install over the top and one Android refuses.
+      #
+      # Gradle's debug signing config reads ~/.android/debug.keystore and
+      # generates one if it is missing. A CI runner is a fresh machine every
+      # time, so that generated a new random key on every build - and Android
+      # will not replace an app with a build signed by a different key. The
+      # first APKs out of this workflow could only be installed by uninstalling
+      # the old one, which takes your data with it.
+      #
+      # tools/debug.keystore is committed on purpose and is NOT a secret. It is
+      # Android's standard debug key, with the password every debug key has,
+      # and it is public knowledge by design - a debug-signed app is one nobody
+      # should trust on that basis alone. It is here so that two builds of this
+      # app are the same app to Android, and nothing more.
+      - name: Use a signing key that does not change between builds
+        run: |
+          mkdir -p ~/.android
+          cp tools/debug.keystore ~/.android/debug.keystore
+
       - name: Stage the web root
         run: node tools/stage-app.mjs
 
@@ -105,6 +125,11 @@ jobs:
           A debug-signed build for personal use. It is not on any store and does
           not update itself - come back here for a newer one, and installing over
           the top keeps your data.
+
+          If Android refuses with "App not installed", the build you have is from
+          before 28 Sep 2026, when every build was signed with a different key by
+          accident. One-time fix: export from Me - Backup and restore, uninstall,
+          install this, restore. It will not happen again.
 
           The web app is unchanged and still installs from the home screen.
           EOF

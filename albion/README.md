@@ -214,6 +214,13 @@ It is built by CI, not committed: `.github/workflows/apk.yml` scaffolds the
 Android project fresh from `capacitor.config.json` on every run and leaves an
 installable APK attached to the run. Nothing generated lives in the repo.
 
+`tools/debug.keystore` is committed on purpose and is **not a secret** — it is
+Android's standard debug key with the password every debug key has. It is there
+so that two builds are the same app to Android, and therefore so that a new APK
+installs over the old one instead of being refused. Without it Gradle generates
+a fresh random key on every CI runner, and an app signed by a different key can
+only be installed by uninstalling the old one, which takes your data with it.
+
 The packaged app bundles `equipment.json`, so the Craft tab and every refining
 route work from the moment it is installed rather than after a 2.3 MB download.
 It carries no service worker — every asset is already on the device, and a
