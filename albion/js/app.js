@@ -24,6 +24,7 @@ import {
 } from './wild.js';
 import { openDetails } from './html.js';
 import { canRemind, syncReminders } from './notify.js';
+import { isNative } from './install.js';
 import { roundsCtx } from './roundscard.js';
 import { addPlot, addCraft, setGoal, setSettings } from './store.js';
 
@@ -300,7 +301,11 @@ async function boot() {
 
 boot();
 
-if ('serviceWorker' in navigator) {
+/* The web build caches itself with a service worker so it opens with no signal.
+ * The packaged app has no use for one - every asset is already inside the APK -
+ * and tools/stage-app.mjs leaves it out of the bundle, so registering it there
+ * would only be a 404 the console complains about. */
+if ('serviceWorker' in navigator && !isNative()) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('sw.js').catch(() => { /* offline is a bonus */ });
   });
