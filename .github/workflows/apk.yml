@@ -28,7 +28,8 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  # Needed to keep the rolling release the APK is attached to.
+  contents: write
 
 jobs:
   apk:
@@ -77,3 +78,36 @@ jobs:
           path: out/*.apk
           if-no-files-found: error
           retention-days: 90
+
+      # And as a release, because that is the one you can actually install from
+      # a tablet: an Actions artifact downloads as a ZIP, which Android will not
+      # open, so installing from one means a file manager and an unzip first. A
+      # release asset is the raw .apk - tap it and Android offers to install.
+      #
+      # One rolling tag rather than a version per build. This is a personal app
+      # and the only question anyone asks of it is "give me the current one".
+      # And as a release, because that is the one you can actually install from
+      # a tablet: an Actions artifact downloads as a ZIP, which Android will not
+      # open, so installing from one means a file manager and an unzip first. A
+      # release asset is the raw .apk - tap it and Android offers to install.
+      #
+      # One rolling tag rather than a version per build. This is a personal app
+      # and the only question anyone asks of it is "give me the current one".
+      - name: Publish it somewhere a phone can reach
+        if: github.ref_name == 'main' || startsWith(github.ref_name, 'claude/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          NOTES=$(cat <<'EOF'
+          Download the .apk below on your tablet and tap it. Android will ask you
+          to allow installing from your browser the first time.
+
+          A debug-signed build for personal use. It is not on any store and does
+          not update itself - come back here for a newer one, and installing over
+          the top keeps your data.
+
+          The web app is unchanged and still installs from the home screen.
+          EOF
+          )
+          gh release delete apk-latest --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag || true
+          gh release create apk-latest out/*.apk --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "Albion Farm Profit - latest Android build" --notes "$NOTES"
