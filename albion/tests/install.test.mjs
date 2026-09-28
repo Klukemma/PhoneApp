@@ -32,7 +32,7 @@ const UA = {
 };
 
 as(UA.desktop);
-const { canPrompt, isInstalled, platform, steps } = await import('../js/install.js');
+const { canPrompt, isInstalled, isNative, platform, steps } = await import('../js/install.js');
 
 test('an iPhone is told to use Safari, and told so only when it is Safari', () => {
   as(UA.iphoneSafari);
@@ -84,6 +84,23 @@ test('an app already on the home screen does not ask to be installed', () => {
   assert.equal(isInstalled(), false);
   as(UA.android);
   assert.equal(isInstalled(), false);
+});
+
+test('the packaged app never offers to install itself', () => {
+  /* The APK is the strongest form of "installed" there is, and a WebView does
+   * not reliably report a display mode - so without this check the packaged
+   * Android build would sit there offering to put itself on the home screen. */
+  as(UA.android);
+  assert.equal(isNative(), false);
+  assert.equal(isInstalled(), false, 'a plain Chrome tab is not installed');
+  globalThis.window.Capacitor = { isNativePlatform: () => true };
+  assert.equal(isNative(), true);
+  assert.equal(isInstalled(), true);
+  // And it never holds a browser install prompt either, whatever fires.
+  globalThis.window.__installPrompt = { prompt() {} };
+  assert.equal(canPrompt(), false);
+  delete globalThis.window.Capacitor;
+  delete globalThis.window.__installPrompt;
 });
 
 test('there is no install dialog to offer until the browser hands one over', () => {

@@ -1,0 +1,79 @@
+# Builds the Android app and leaves an installable APK attached to the run.
+#
+# Why this exists at all: an installed web app cannot schedule a notification
+# while it is closed. The browser API that would have allowed it was abandoned
+# by Chrome and never existed in Safari, so a reminder has to come from
+# something that is not a web page. Wrapping the same code in a WebView with
+# Capacitor gets it real OS-level alarms, with no server and nothing leaving
+# the device.
+#
+# The web app on GitHub Pages is untouched by any of this. This is a second way
+# to install the same thing, not a replacement.
+#
+# Nothing native is committed. The Android project is scaffolded fresh on every
+# run from capacitor.config.json, so there is no generated code in the repo to
+# drift out of date.
+
+name: Build the Android APK
+
+on:
+  push:
+    branches: [main, 'claude/**']
+    paths:
+      - 'albion/**'
+      - 'capacitor.config.json'
+      - 'package.json'
+      - 'tools/stage-app.mjs'
+      - '.github/workflows/apk.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # The runner image already carries the Android SDK and sets ANDROID_HOME;
+      # Gradle needs a JDK chosen explicitly.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: The app's own tests come first
+        run: |
+          npm install --no-audit --no-fund
+          npm test
+
+      - name: Stage the web root
+        run: node tools/stage-app.mjs
+
+      - name: Scaffold and sync the Android project
+        run: |
+          npx cap add android
+          npx cap sync android
+
+      - name: Build
+        working-directory: android
+        run: ./gradlew --no-daemon assembleDebug
+
+      - name: Name it something you can recognise on a phone
+        run: |
+          mkdir -p out
+          cp android/app/build/outputs/apk/debug/app-debug.apk \
+             "out/albion-farm-profit-${GITHUB_SHA::7}.apk"
+          ls -lh out
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: albion-farm-profit-apk
+          path: out/*.apk
+          if-no-files-found: error
+          retention-days: 90

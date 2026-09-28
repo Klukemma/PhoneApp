@@ -19,15 +19,25 @@
 // than here, because it can fire before a deferred module has run, and an
 // event you did not hear is an install you cannot offer.
 
-/** Is it already on the home screen, and running from there? */
+/** Is this the packaged Android app rather than a page in a browser? */
+export const isNative = () => !!(window.Capacitor?.isNativePlatform?.());
+
+/**
+ * Is it already an app, by whichever of the two routes?
+ *
+ * The APK is the strongest form of "installed" there is, and it must be
+ * checked first: a WebView does not reliably report a display mode, so
+ * without this the packaged app would sit there offering to install itself.
+ */
 export function isInstalled() {
-  return window.matchMedia?.('(display-mode: standalone)').matches
+  return isNative()
+    || window.matchMedia?.('(display-mode: standalone)').matches
     || window.matchMedia?.('(display-mode: fullscreen)').matches
     || window.navigator.standalone === true;
 }
 
 /** Did the browser offer us its install dialog to hold on to? */
-export const canPrompt = () => !!window.__installPrompt;
+export const canPrompt = () => !isNative() && !!window.__installPrompt;
 
 /**
  * Show the browser's own install dialog.

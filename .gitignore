@@ -4,3 +4,9 @@ node_modules/
 albion/tools/.cache/
 __pycache__/
 *.pyc
+
+# The native wrapper's working files. capacitor.config.json is the source of
+# truth and CI regenerates the rest on every build: android/ is scaffolded by
+# `npx cap add android`, and _app/ is the staged web root that goes inside it.
+_app/
+android/

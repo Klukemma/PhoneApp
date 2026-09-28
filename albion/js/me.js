@@ -12,7 +12,7 @@ import {
 } from './store.js';
 import { kitOf } from './gather.js';
 import { fishKitOf, fishNameOf } from './fish.js';
-import { canPrompt, isInstalled } from './install.js';
+import { canPrompt, isInstalled, isNative } from './install.js';
 import { islandWords } from './roundscard.js';
 import { rowHTML } from './html.js';
 import { serverName } from './prices.js';
@@ -229,8 +229,9 @@ export function me() {
 
       ${installed ? `<section>
         ${rowHTML({ act: '', cls: 'wrap', icon: '\u{1F4F2}',
-    title: 'Installed on this device',
-    meta: 'Running from your home screen. It works with no signal, and your '
+    title: isNative() ? 'Running as an app' : 'Installed on this device',
+    meta: `${isNative() ? 'The packaged Android build'
+      : 'Running from your home screen'}. It works with no signal, and your `
       + 'numbers live on this device only.',
     right: '' })}
       </section>` : ''}

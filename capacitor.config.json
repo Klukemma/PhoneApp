@@ -1,0 +1,14 @@
+{
+  "appId": "com.klukemma.albionfarm",
+  "appName": "Albion Farm Profit",
+  "webDir": "_app",
+  "android": {
+    "backgroundColor": "#0c0a07"
+  },
+  "plugins": {
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_icon",
+      "iconColor": "#e0b64a"
+    }
+  }
+}

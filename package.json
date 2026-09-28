@@ -9,5 +9,11 @@
     "start": "node tools/serve.mjs",
     "gamedata": "python3 albion/tools/build_gamedata.py"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/cli": "^8.5.2",
+    "@capacitor/core": "^8.5.2",
+    "@capacitor/local-notifications": "^8.3.1"
+  }
 }
